@@ -42,7 +42,9 @@ final class SettingsStore: ObservableObject {
     @Published var apiKey: String
 
     private init() {
-        apiKey = Keychain.get("llm-api-key") ?? ""
+        // 环境变量优先（CI/自动化测试注入），日常走钥匙串。
+        apiKey = ProcessInfo.processInfo.environment["DOZYCAT_LLM_KEY"]
+            ?? Keychain.get("llm-api-key") ?? ""
     }
 
     var provider: LLMProvider {

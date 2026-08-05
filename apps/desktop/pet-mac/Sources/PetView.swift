@@ -26,6 +26,15 @@ struct PetView: View {
                         withAnimation { hovering = true }
                     }
                     if defaults.bool(forKey: "showMoods") { PetPanels.shared.showMoodBoard() }
+                    if let text = defaults.string(forKey: "chatSend") {
+                        PetPanels.shared.toggleChat()
+                        PetChat.shared.send(text)
+                    }
+                    if defaults.bool(forKey: "searchSubmit") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            SearchModel.shared.submit()
+                        }
+                    }
                 }
                 #endif
             }

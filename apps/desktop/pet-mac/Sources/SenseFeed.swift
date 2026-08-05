@@ -29,6 +29,11 @@ final class SenseFeed: ObservableObject {
         if UserDefaults.standard.bool(forKey: "demoBubble") {
             show(reminder: String(localized: "坐了 1 小时 50 分，生理能量掉到 45 了。写完这段就去接杯水？"))
         }
+        // 账本归 pet（单写者）；重启从账本接续能量
+        if let saved = PetStore.shared.latestEnergy() {
+            phys = saved.phys
+            mind = saved.mind
+        }
         refreshMood()
         guard let bin = Self.senseBinary() else {
             NSLog("SenseFeed: dozycat-sense binary not found; UI runs static")
@@ -36,6 +41,12 @@ final class SenseFeed: ObservableObject {
         }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: bin)
+        // sense 是纯传感器：不碰账本，初始能量由 pet 注入
+        var env = ProcessInfo.processInfo.environment
+        env["DOZYCAT_STORE"] = "off"
+        env["DOZYCAT_INIT_PHYS"] = "\(phys)"
+        env["DOZYCAT_INIT_MIND"] = "\(mind)"
+        process.environment = env
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
@@ -66,6 +77,7 @@ final class SenseFeed: ObservableObject {
             if let p = obj["phys"] as? Double { phys = Int(p.rounded()) }
             if let m = obj["mind"] as? Double { mind = Int(m.rounded()) }
             if let streak = obj["activeStreakMin"] as? Int { activeStreakMin = streak }
+            PetStore.shared.recordEnergy(phys: Double(phys), mind: Double(mind), kind: "minute")
             refreshMood()
         case "nudge":
             let localized = localizedBubble(kind: obj["nudge"] as? String)

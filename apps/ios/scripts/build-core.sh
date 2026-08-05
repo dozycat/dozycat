@@ -13,9 +13,10 @@ GEN="$OUT/uniffi-generated"
 echo "▸ building rust (host cdylib for bindgen)"
 cargo build --release --manifest-path "$CORE/Cargo.toml"
 
-echo "▸ building rust (iOS device + simulator staticlibs)"
+echo "▸ building rust (iOS device + simulator + macOS staticlibs)"
 cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios
 cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios-sim
+cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-darwin
 
 echo "▸ generating swift bindings"
 rm -rf "$GEN"
@@ -26,18 +27,19 @@ rm -rf "$GEN"
   --language swift --out-dir "$GEN")
 
 # xcframework 的每个 slice 要一个 headers 目录，modulemap 必须叫 module.modulemap
-for slice in device sim; do
+for slice in device sim mac; do
   mkdir -p "$GEN/include-$slice"
   cp "$GEN/dozycat_coreFFI.h" "$GEN/include-$slice/"
   cp "$GEN/dozycat_coreFFI.modulemap" "$GEN/include-$slice/module.modulemap"
 done
 
-echo "▸ packaging xcframework"
+echo "▸ packaging xcframework (ios + sim + macos)"
 rm -rf "$IOS/Vendor/DozycatCore.xcframework"
 mkdir -p "$IOS/Vendor"
 xcodebuild -create-xcframework \
   -library "$OUT/aarch64-apple-ios/release/libdozycat_core.a" -headers "$GEN/include-device" \
   -library "$OUT/aarch64-apple-ios-sim/release/libdozycat_core.a" -headers "$GEN/include-sim" \
+  -library "$OUT/aarch64-apple-darwin/release/libdozycat_core.a" -headers "$GEN/include-mac" \
   -output "$IOS/Vendor/DozycatCore.xcframework"
 
 mkdir -p "$IOS/Dozycat/Core"

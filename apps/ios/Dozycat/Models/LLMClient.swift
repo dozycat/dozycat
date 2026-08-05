@@ -23,7 +23,8 @@ enum LLMClient {
     """
 
     static func reply(history: [(role: String, content: String)],
-                      config: Config) async throws -> String {
+                      config: Config,
+                      memoryContext: String? = nil) async throws -> String {
         let url = config.baseURL.appendingPathComponent("chat/completions")
         var request = URLRequest(url: url, timeoutInterval: 60)
         request.httpMethod = "POST"
@@ -32,7 +33,11 @@ enum LLMClient {
 
         struct Message: Codable { let role: String; let content: String }
         struct Body: Codable { let model: String; let messages: [Message] }
-        let messages = [Message(role: "system", content: persona)]
+        var system = persona
+        if let memoryContext, !memoryContext.isEmpty {
+            system += "\n\n你记得的关于用户的小传（可自然引用，不要逐条复述）：\n" + memoryContext
+        }
+        let messages = [Message(role: "system", content: system)]
             + history.suffix(12).map { Message(role: $0.role, content: $0.content) }
         request.httpBody = try JSONEncoder().encode(Body(model: config.model, messages: messages))
 

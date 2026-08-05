@@ -12,3 +12,6 @@ target/
 # dozycat-core 构建产物（apps/ios/scripts/build-core.sh 重新生成）
 apps/ios/Vendor/
 apps/ios/Dozycat/Core/dozycat_core.swift
+
+# secrets
+.env

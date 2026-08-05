@@ -231,37 +231,69 @@ struct ChatWidget: View {
     }
 }
 
-/// 桌面对话的模型层：与 iOS 同一套 BYOK LLM，本地兜底。
+/// 桌面对话的模型层：BYOK LLM + 真记忆——聊天带小传上下文，
+/// 每轮对话后抽取值得记住的小事写入 dozycat-core。
 @MainActor
 final class PetChat: ObservableObject {
     static let shared = PetChat()
 
     @Published var messages: [ChatMessage] = [
-        ChatMessage(role: .me, text: String(localized: "好烦，方案又被打回来了")),
-        ChatMessage(role: .cat, text: String(localized: "第三稿了对吧，换谁都会烦的。先不想它——你从中午到现在还没喝过水，去接一杯，回来要是还想说，我在。")),
+        ChatMessage(role: .cat, text: String(localized: "嗨，我在呢。想说什么都行。")),
     ]
-    @Published var memoryNote: String? = String(localized: "它记下了：这个项目最近让你很耗")
+    @Published var memoryNote: String?
 
     func send(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         messages.append(ChatMessage(role: .me, text: trimmed))
-        if let config = SettingsStore.shared.llmConfig {
-            let history = messages.suffix(12).map {
-                (role: $0.role == .cat ? "assistant" : "user", content: $0.text)
-            }
-            Task {
-                do {
-                    let reply = try await LLMClient.reply(history: history, config: config)
-                    messages.append(ChatMessage(role: .cat, text: reply))
-                } catch {
-                    messages.append(ChatMessage(
-                        role: .cat,
-                        text: String(localized: "（模型连不上了…没关系，我自己也能陪你。）")))
-                }
-            }
-        } else {
+        guard let config = SettingsStore.shared.llmConfig else {
             messages.append(ChatMessage(role: .cat, text: String(localized: "嗯嗯，我听着呢。不用急，慢慢说。")))
+            return
+        }
+        let history = messages.suffix(12).map {
+            (role: $0.role == .cat ? "assistant" : "user", content: $0.text)
+        }
+        let memoryContext = PetStore.shared.recent(limit: 8)
+            .map { "\($0.source)：\($0.text)" }
+            .joined(separator: "\n")
+        Task {
+            do {
+                let reply = try await LLMClient.reply(history: history, config: config,
+                                                      memoryContext: memoryContext)
+                messages.append(ChatMessage(role: .cat, text: reply))
+                extractMemory(userText: trimmed, catReply: reply, config: config)
+            } catch {
+                messages.append(ChatMessage(
+                    role: .cat,
+                    text: String(localized: "（模型连不上了…没关系，我自己也能陪你。）")))
+            }
+        }
+    }
+
+    /// 小传抽取：这轮对话里有没有值得记住的一件小事。
+    private func extractMemory(userText: String, catReply: String, config: LLMClient.Config) {
+        let prompt = """
+        从这轮对话判断有没有值得记进用户小传的一件小事（事实、情绪或约定）。
+        用户：\(userText)
+        懒猫：\(catReply)
+        只输出 JSON，不要多余文字：
+        {"save": true, "text": "第三人称白描，≤40字", "note": "两三个字的情绪词，可选 · 跟进动作"}
+        或 {"save": false}
+        """
+        Task {
+            guard let raw = try? await LLMClient.reply(
+                history: [(role: "user", content: prompt)], config: config) else { return }
+            let cleaned = raw
+                .replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let data = cleaned.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  obj["save"] as? Bool == true,
+                  let text = obj["text"] as? String, !text.isEmpty else { return }
+            let note = obj["note"] as? String
+            PetStore.shared.addMemory(text: text, note: note)
+            memoryNote = String(localized: "它记下了：\(text)")
         }
     }
 }

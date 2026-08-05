@@ -88,7 +88,7 @@ struct SearchPanelView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func memoryRow(_ hit: DemoMemory) -> some View {
+    private func memoryRow(_ hit: PetStore.MemoryHit) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Circle().fill(DS.blue).frame(width: 6, height: 6).padding(.top, 7)
             VStack(alignment: .leading, spacing: 3) {
@@ -191,12 +191,6 @@ struct FileHit: Identifiable {
     var ext: String { (name as NSString).pathExtension.isEmpty ? "?" : (name as NSString).pathExtension }
 }
 
-struct DemoMemory: Identifiable {
-    let id = UUID()
-    let text: String
-    let source: String
-}
-
 @MainActor
 final class SearchModel: ObservableObject {
     static let shared = SearchModel()
@@ -204,27 +198,13 @@ final class SearchModel: ObservableObject {
     @Published var query = "" {
         didSet { queryChanged() }
     }
-    @Published var memoryHits: [DemoMemory] = []
+    @Published var memoryHits: [PetStore.MemoryHit] = []
     @Published var fileHits: [FileHit] = []
     @Published var answer: String?
     @Published var answering = false
-    @Published var answerSources: [DemoMemory] = []
+    @Published var answerSources: [PetStore.MemoryHit] = []
 
     private var searchTask: Task<Void, Never>?
-
-    /// 回忆库（v0 演示集，对齐设计稿；接 dozycat-core 检索是下一里程碑）。
-    let memories: [DemoMemory] = [
-        DemoMemory(text: String(localized: "「有点怕见小林」——后来你们和好了"),
-                   source: String(localized: "7月29日 · 倾诉")),
-        DemoMemory(text: String(localized: "和小林见面聊开了，回来路上有点空落落的"),
-                   source: String(localized: "今天 · 倾诉")),
-        DemoMemory(text: String(localized: "「右边智齿疼得没睡好」"),
-                   source: String(localized: "5月14日 · 倾诉")),
-        DemoMemory(text: String(localized: "「医生建议拔，我说缓缓再说」"),
-                   source: String(localized: "5月17日 · 倾诉")),
-        DemoMemory(text: String(localized: "妈妈想吃你做的番茄牛腩，你说周末回家做"),
-                   source: String(localized: "8月1日 · 倾诉")),
-    ]
 
     var isQuestion: Bool {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -242,7 +222,7 @@ final class SearchModel: ObservableObject {
             memoryHits = []; fileHits = []
             return
         }
-        memoryHits = memories.filter { $0.text.localizedCaseInsensitiveContains(q) }
+        memoryHits = PetStore.shared.search(q)
         searchTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 250_000_000) // debounce
             guard !Task.isCancelled else { return }
@@ -278,13 +258,16 @@ final class SearchModel: ObservableObject {
         }
     }
 
-    private func relevantMemories(for q: String) -> [DemoMemory] {
-        let hits = memories.filter { memory in
-            q.contains("牙") && memory.text.contains("智齿")
-                || memory.text.split(separator: "，").contains { q.contains($0.prefix(2)) }
-                || memory.text.localizedCaseInsensitiveContains(q)
+    /// RAG 上下文：先按词命中，命不中就取最近的小传。
+    private func relevantMemories(for q: String) -> [PetStore.MemoryHit] {
+        var hits = PetStore.shared.search(q)
+        if hits.isEmpty {
+            // 逐字命中（中文问句里的关键词往往不是完整子串）
+            let chars = q.filter { !"？?，。的了是什么时候怎么上次我你 ".contains($0) }
+            let recent = PetStore.shared.recent(limit: 100)
+            hits = recent.filter { hit in chars.contains { hit.text.contains($0) } }
         }
-        return hits.isEmpty ? Array(memories.prefix(3)) : hits
+        return hits.isEmpty ? Array(PetStore.shared.recent(limit: 5)) : Array(hits.prefix(6))
     }
 
     /// Spotlight 文件搜索（mdfind，本机完成）。

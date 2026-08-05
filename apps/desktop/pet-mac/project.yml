@@ -11,11 +11,16 @@ targets:
     platform: macOS
     sources:
       - path: Sources
-      # 与 iOS 共用：同一只猫、同一套 token、同一份 BYOK 配置与 Keychain 条目
+      # 与 iOS 共用：同一只猫、同一套 token、同一份 BYOK 配置与 Keychain 条目，
+      # 以及同一个 Rust 内核（UniFFI 绑定）
       - path: ../../ios/Dozycat/Components/CatFace.swift
       - path: ../../ios/Dozycat/DesignSystem/DS.swift
       - path: ../../ios/Dozycat/Models/SettingsStore.swift
       - path: ../../ios/Dozycat/Models/LLMClient.swift
+      - path: ../../ios/Dozycat/Core/dozycat_core.swift
+    dependencies:
+      - framework: ../../ios/Vendor/DozycatCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.paperboytm.dozycat.pet
