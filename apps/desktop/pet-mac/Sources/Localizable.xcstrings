@@ -8,7 +8,19 @@
     "会开完了吧？高强度输出后要补血，起来走两步～" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Meeting's over? That was intense — walk it off a little~" } } } },
     "生理能量掉到 %lld 了，眼睛离开屏幕一会儿好不好？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Body energy is down to %lld. Rest your eyes for a bit?" } } } },
     "感觉你在好多事之间跳，挑一件收个尾？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You're bouncing between things — wrap one up?" } } } },
-    "坐了 1 小时 50 分，生理能量掉到 45 了。写完这段，去接杯水回血？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Sitting for 1h 50m — body energy at 45. Finish this bit, then grab some water?" } } } }
+    "坐了 1 小时 50 分，生理能量掉到 45 了。写完这段，去接杯水回血？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Sitting for 1h 50m — body energy at 45. Finish this bit, then grab some water?" } } } },
+    "设置…" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings…" } } } },
+    "语言" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "LANGUAGE" } } } },
+    "设置" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } } } },
+    "跟随系统" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Follows system" } } } },
+    "懒猫跟随系统语言（系统设置 → 通用 → 语言与地区）。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "dozycat follows your system language (System Settings → General → Language & Region)." } } } },
+    "模型（自带 Key）" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Model (bring your own key)" } } } },
+    "服务商" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Provider" } } } },
+    "自定义" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom" } } } },
+    "模型名" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Model" } } } },
+    "保存 Key" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Save key" } } } },
+    "已保存" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved" } } } },
+    "Key 只存在钥匙串；同一 Apple 账号的设备间经 iCloud 钥匙串端到端同步。观屏生成小传（见路线图）将使用这里的模型。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Your key lives only in the Keychain and syncs end-to-end between your devices via iCloud Keychain. The screen-to-Moments pipeline (see roadmap) will use this model." } } } }
   },
   "version" : "1.0"
 }

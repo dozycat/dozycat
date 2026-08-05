@@ -91,6 +91,15 @@ Loro（怎么合并）     ← 每用户自己的 doc，只在 TA 自己的设�
   一次性**恢复码**（Signal/1Password 模式）。设备被盗：从 Keychain 撤设备 +
   轮换数据密钥，后续 update 重加密。
 
+## 设置与 Key 的同步
+
+- **API Key（机密）不进 CRDT**：走 **iCloud 钥匙串**（`kSecAttrSynchronizable`
+  条目，Apple 端到端加密，零自建设施）。iOS ↔ macOS 共享同一条目需要两个
+  target 挂同一个 keychain access group（`com.paperboytm.dozycat.shared`，
+  签名时启用——project.yml 里已留注释；开发期未签名构建各存各的，代码零改动）。
+- **provider / model / baseURL（非机密）**：进 core 的 `settings` map，
+  随小传账本一起 CRDT 同步（里程碑，transport 落地即生效）。
+
 ## 威胁模型（谁挡什么）
 
 | 威胁 | 谁挡 | 方案 |

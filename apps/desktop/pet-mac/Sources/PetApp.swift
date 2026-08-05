@@ -9,9 +9,15 @@ struct DozycatPetApp: App {
         MenuBarExtra {
             Text("心理 \(feed.mind) · 生理 \(feed.phys)")
             Divider()
+            SettingsLink { Text("设置…") }
+                .keyboardShortcut(",", modifiers: .command)
             Button("退出懒猫") { NSApp.terminate(nil) }
         } label: {
             Text("懒猫 \(feed.phys)")
+        }
+
+        Settings {
+            PetSettingsView()
         }
     }
 }

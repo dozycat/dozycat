@@ -11,9 +11,11 @@ targets:
     platform: macOS
     sources:
       - path: Sources
-      # 与 iOS 共用同一只猫和同一套设计 token
+      # 与 iOS 共用：同一只猫、同一套 token、同一份 BYOK 配置与 Keychain 条目
       - path: ../../ios/Dozycat/Components/CatFace.swift
       - path: ../../ios/Dozycat/DesignSystem/DS.swift
+      - path: ../../ios/Dozycat/Models/SettingsStore.swift
+      - path: ../../ios/Dozycat/Models/LLMClient.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.paperboytm.dozycat.pet
@@ -23,3 +25,10 @@ targets:
         CODE_SIGN_IDENTITY: "-"
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+    # 签名发布时打开（iOS target 同步加同名 group）：iOS ↔ macOS 共享同一条
+    # Keychain Key，经 iCloud 钥匙串同步。见 docs/MEMORY-SYNC.md「设置与 Key」。
+    # entitlements:
+    #   path: DozycatPet.entitlements
+    #   properties:
+    #     keychain-access-groups:
+    #       - $(AppIdentifierPrefix)com.paperboytm.dozycat.shared

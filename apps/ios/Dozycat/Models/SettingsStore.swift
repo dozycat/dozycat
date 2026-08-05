@@ -66,13 +66,19 @@ final class SettingsStore: ObservableObject {
     }
 }
 
-/// 极简 Keychain 封装（generic password）。
+/// 极简 Keychain 封装（generic password，可同步条目）。
+///
+/// `kSecAttrSynchronizable` = 经 iCloud 钥匙串在用户设备间端到端同步。
+/// iOS app 与 macOS 桌宠共享同一条目还需 shared keychain access group
+/// （签名时给两个 target 加 `com.paperboytm.dozycat.shared` entitlement，
+/// 代码不用改——默认写入 entitlement 列表的第一个组）。
 enum Keychain {
     private static func query(_ key: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "com.paperboytm.dozycat",
             kSecAttrAccount as String: key,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
         ]
     }
 
@@ -80,8 +86,9 @@ enum Keychain {
         SecItemDelete(query(key) as CFDictionary)
         guard !value.isEmpty, let data = value.data(using: .utf8) else { return }
         var attrs = query(key)
+        attrs[kSecAttrSynchronizable as String] = true
         attrs[kSecValueData as String] = data
-        attrs[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        attrs[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(attrs as CFDictionary, nil)
     }
 

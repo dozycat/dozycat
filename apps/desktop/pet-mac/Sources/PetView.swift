@@ -3,8 +3,23 @@ import SwiftUI
 /// 桌宠本体：气泡 + 会呼吸眨眼的猫（设计稿 07，与 iOS 同一只 CatFace）。
 struct PetView: View {
     @ObservedObject private var feed = SenseFeed.shared
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        content
+            .onAppear {
+                #if DEBUG
+                if UserDefaults.standard.bool(forKey: "showSettings") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        NSApp.activate(ignoringOtherApps: true)
+                        openSettings()
+                    }
+                }
+                #endif
+            }
+    }
+
+    private var content: some View {
         VStack(alignment: .trailing, spacing: 14) {
             Spacer(minLength: 0)
             if let bubble = feed.bubble {
