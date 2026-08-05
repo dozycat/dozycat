@@ -41,8 +41,6 @@ struct SettingsView: View {
                         .foregroundStyle(DS.faint)
                 }
             }
-        } footer: {
-            Text("懒猫跟随系统语言。点这里去系统设置，可以为懒猫单独选语言。")
         }
     }
 
@@ -95,9 +93,9 @@ struct SettingsView: View {
             }
             .disabled(keySaved)
         } header: {
-            Text("模型（自带 Key）")
+            Text("模型")
         } footer: {
-            Text("不配置也能聊，会用内置的懒猫回复。配置后，聊天走你自己的模型；Key 只存在钥匙串，经 iCloud 钥匙串在你的设备间端到端同步，不经过任何我们的服务器。")
+            Text("Key 只在你的钥匙串里。")
         }
     }
 }

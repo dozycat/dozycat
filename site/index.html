@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dozycat 懒猫 — 工作交给别的 AI，它只负责你。</title>
+<meta name="description" content="懒猫是一个不帮你干活的 AI。它记得你的一切，提醒你休息、喝水、睡觉，在你需要的时候陪你说说话。">
+<meta property="og:title" content="dozycat 懒猫">
+<meta property="og:description" content="工作交给别的 AI，它只负责你。">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="alternate" hreflang="zh-Hans" href="./">
+<link rel="alternate" hreflang="en" href="./en/">
+<link rel="alternate" hreflang="x-default" href="./">
+<script>
+  // 首访按浏览器语言跳转；手动切换后尊重选择（localStorage）
+  (function () {
+    var saved = localStorage.getItem("dozycat-lang");
+    if (saved === "zh") return;
+    if (saved === "en" || (!saved && !/^zh/i.test(navigator.language))) {
+      location.replace("en/");
+    }
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="logo">dozycat<span class="dot">.</span></div>
+  <div class="nav-links">
+    <a href="#features">它会什么</a>
+    <a href="#night">睡前模式</a>
+    <a href="#platforms">桌面与手机</a>
+    <a class="lang-switch" href="en/" onclick="localStorage.setItem('dozycat-lang','en')">EN</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat">免费下载</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="kicker">COMPANION, NOT COPILOT</div>
+  <h1>工作交给别的 AI，<br>它只负责你。</h1>
+  <p class="hero-sub">懒猫是一个不帮你干活的 AI。它记得你的一切，提醒你休息、喝水、睡觉，在你需要的时候陪你说说话。</p>
+  <div class="hero-ctas">
+    <a class="btn btn-coral" href="https://github.com/dozycat/dozycat">领养一只懒猫</a>
+    <a class="btn btn-ghost" href="#features">看看它的一天</a>
+  </div>
+
+  <div class="cat cat-hero breathe" aria-hidden="true">
+    <div class="ear ear-l"></div>
+    <div class="ear ear-r"></div>
+    <div class="head">
+      <div class="eye eye-l blink"></div>
+      <div class="eye eye-r blink"></div>
+      <div class="nose"></div>
+      <div class="cheek cheek-l"></div>
+      <div class="cheek cheek-r"></div>
+    </div>
+    <div class="cat-shadow"></div>
+  </div>
+</header>
+
+<section class="statement">
+  <p>现在的 AI 都在帮人做更多的事。<br><strong>懒猫想帮你做更少的事</strong>——少熬一次夜，少憋一件心事，少错过一场晚霞。</p>
+</section>
+
+<section id="features" class="features">
+  <div class="kicker">它会什么</div>
+  <div class="feature-grid">
+
+    <div class="feature">
+      <div class="card card-memory">
+        <div class="memory-row"><span class="memory-date">7.29</span><span>「有点怕见小林」</span></div>
+        <div class="memory-row"><span class="memory-date">8.01</span><span>妈妈想吃番茄牛腩</span></div>
+        <div class="memory-row last"><span class="memory-date">今天</span><span>和小林聊开了 <em class="mind">松了口气</em></span></div>
+      </div>
+      <h3>记得你的一切</h3>
+      <p>大事小事它都记着，聊天时自然地想起来。所有记忆只存在你自己的设备里。</p>
+    </div>
+
+    <div class="feature">
+      <div class="card card-energy">
+        <div class="energy-cell">
+          <span class="energy-label">心理能量</span>
+          <span class="energy-num">72</span>
+          <span class="bar"><span class="fill fill-mind" style="width:72%"></span></span>
+        </div>
+        <div class="energy-divider"></div>
+        <div class="energy-cell">
+          <span class="energy-label">生理能量</span>
+          <span class="energy-num">45</span>
+          <span class="bar"><span class="fill fill-body" style="width:45%"></span></span>
+        </div>
+      </div>
+      <h3>两条能量刻度</h3>
+      <p>心理能量和生理能量，轻轻记着你的状态。掉下去了，它会想办法帮你充回来。</p>
+    </div>
+
+    <div class="feature">
+      <div class="card card-nudge">
+        <div class="nudge">
+          <div class="cat cat-mini" aria-hidden="true">
+            <div class="ear ear-l"></div>
+            <div class="ear ear-r"></div>
+            <div class="head">
+              <div class="eye eye-l"></div>
+              <div class="eye eye-r"></div>
+            </div>
+          </div>
+          <div class="nudge-text">窗外晚霞正烧得好看，去阳台看两分钟？</div>
+        </div>
+      </div>
+      <h3>在你需要时出现</h3>
+      <p>坐太久了、该睡了、答应自己的事快忘了——它会主动来找你，轻轻的，不吵。</p>
+    </div>
+  </div>
+</section>
+
+<section id="night" class="night">
+  <div class="night-inner">
+    <div class="night-copy">
+      <div class="kicker kicker-night">睡前模式</div>
+      <h2>一天的最后，<br>它陪你收个尾。</h2>
+      <p class="night-sub">23 点以后，屏幕慢慢暗下来。它数给你听今天做到的三件小事，陪你呼吸三分钟，然后说晚安。明早再轻轻叫你。</p>
+      <div class="recap-row"><span>01</span>鼓起勇气见了小林，还聊开了</div>
+      <div class="recap-row"><span>02</span>难过的时候没有硬扛，出门走了一圈</div>
+      <div class="recap-row last"><span>03</span>喝够了 8 杯水，第一次</div>
+    </div>
+    <div class="night-cat-col">
+      <div class="cat cat-night breathe" aria-hidden="true">
+        <div class="ear ear-l"></div>
+        <div class="ear ear-r"></div>
+        <div class="head">
+          <div class="eye-closed eye-l"></div>
+          <div class="eye-closed eye-r"></div>
+          <div class="nose"></div>
+        </div>
+      </div>
+      <div class="night-caption">呼——吸——它睡着的时候也会起伏</div>
+    </div>
+  </div>
+</section>
+
+<section id="platforms" class="platforms">
+  <div class="kicker">桌面与手机</div>
+  <div class="platform-grid">
+
+    <div class="platform">
+      <div class="card desktop-mock">
+        <div class="menubar"><span class="menubar-app">访达</span><span>文件</span><span class="menubar-right"><span class="dot-coral"></span>懒猫 45% · 15:24</span></div>
+        <div class="doc-window">
+          <span class="line" style="width:56%;background:#EDECE8"></span>
+          <span class="line" style="width:92%"></span>
+          <span class="line" style="width:86%"></span>
+        </div>
+        <div class="desktop-pet">
+          <div class="bubble">写完这段，去接杯水回血？</div>
+          <div class="cat cat-desk" aria-hidden="true">
+            <div class="ear ear-l"></div>
+            <div class="ear ear-r"></div>
+            <div class="head">
+              <div class="eye eye-l blink"></div>
+              <div class="eye eye-r blink"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h3>桌面端 · 安静地待在角落</h3>
+      <p>它坐在屏幕角落陪你干活，坐太久会提醒你，到点了整个桌面轻轻暗下来。</p>
+    </div>
+
+    <div class="platform">
+      <div class="card phone-frame-wrap">
+        <div class="phone">
+          <div class="phone-hero">
+            <div class="cat cat-phone" aria-hidden="true">
+              <div class="ear ear-l"></div>
+              <div class="ear ear-r"></div>
+              <div class="head">
+                <div class="eye eye-l"></div>
+                <div class="eye eye-r"></div>
+              </div>
+            </div>
+            <span class="phone-greeting">下午好呀</span>
+          </div>
+          <div class="phone-energy">
+            <div class="pe-cell"><span class="pe-label">心理</span><span class="pe-num">72</span><span class="pe-bar"><span style="width:72%;background:#7C8DB5"></span></span></div>
+            <div class="pe-cell"><span class="pe-label">生理</span><span class="pe-num">45</span><span class="pe-bar"><span style="width:45%;background:#FF8A75"></span></span></div>
+          </div>
+          <div class="phone-list">
+            <span><i class="li-dot" style="background:#7C8DB5"></i>喝水 4/8 杯</span>
+            <span><i class="li-dot" style="background:#FF8A75"></i>傍晚散步 18:30</span>
+          </div>
+        </div>
+      </div>
+      <h3>手机端 · 装进口袋</h3>
+      <p>倾诉、记忆、回顾都在手机里。锁屏上它也会主动来找你，轻轻的。</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>今晚就早点睡吧。</h2>
+  <div class="cta-platforms">macOS · Windows · iOS · Android</div>
+  <a class="btn btn-coral btn-lg" href="https://github.com/dozycat/dozycat">领养一只懒猫</a>
+  <div class="cta-note">免费 · 记忆只存在你自己的设备里</div>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>dozycat<span class="dot">.</span> 懒猫 © 2026</span>
+    <span class="footer-links">
+      <a href="#features">它会什么</a>
+      <a href="#night">睡前模式</a>
+      <a href="#platforms">桌面与手机</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>

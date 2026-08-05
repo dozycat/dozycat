@@ -7,13 +7,13 @@ struct DozycatPetApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Text("心理 \(feed.mind) · 生理 \(feed.phys)")
+            Text("心理 \(feed.mind.formatted(.percent)) · 生理 \(feed.phys.formatted(.percent))")
             Divider()
             SettingsLink { Text("设置…") }
                 .keyboardShortcut(",", modifiers: .command)
             Button("退出懒猫") { NSApp.terminate(nil) }
         } label: {
-            Text("懒猫 \(feed.phys)")
+            Text("懒猫 \(feed.phys.formatted(.percent))")
         }
 
         Settings {

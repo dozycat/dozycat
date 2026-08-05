@@ -92,14 +92,13 @@
     "设置" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } } } },
     "完成" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } } } },
     "语言" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } } } },
-    "懒猫跟随系统语言。点这里去系统设置，可以为懒猫单独选语言。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "dozycat follows your system language. Tap to open Settings and pick a language just for dozycat." } } } },
-    "模型（自带 Key）" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Model (bring your own key)" } } } },
+    "模型" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Model" } } } },
+    "Key 只在你的钥匙串里。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Your key stays in your Keychain." } } } },
     "服务商" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Provider" } } } },
     "自定义" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom" } } } },
     "模型名" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Model" } } } },
     "保存 Key" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Save key" } } } },
     "已保存" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved" } } } },
-    "不配置也能聊，会用内置的懒猫回复。配置后，聊天走你自己的模型；Key 只存在钥匙串，经 iCloud 钥匙串在你的设备间端到端同步，不经过任何我们的服务器。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Chat works without a key, using dozycat's built-in replies. With a key, chat runs on your own model; the key lives only in the Keychain and syncs end-to-end between your devices via iCloud Keychain — it never touches any server of ours." } } } },
     "（模型连不上了…没关系，我自己也能陪你。）" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "(Couldn't reach the model… that's okay, I can keep you company myself.)" } } } }
   },
   "version" : "1.0"

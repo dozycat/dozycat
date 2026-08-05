@@ -1,8 +1,8 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
-    "懒猫 %lld" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "dozycat %lld" } } } },
-    "心理 %lld · 生理 %lld" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Mind %lld · Body %lld" } } } },
+    "懒猫 %@" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "dozycat %@" } } } },
+    "心理 %@ · 生理 %@" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Mind %@ · Body %@" } } } },
     "退出懒猫" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit dozycat" } } } },
     "坐了 %lld 分钟啦，去接杯水回血？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Sitting for %lld minutes — grab some water?" } } } },
     "会开完了吧？高强度输出后要补血，起来走两步～" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Meeting's over? That was intense — walk it off a little~" } } } },
@@ -13,14 +13,13 @@
     "语言" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "LANGUAGE" } } } },
     "设置" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } } } },
     "跟随系统" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Follows system" } } } },
-    "懒猫跟随系统语言（系统设置 → 通用 → 语言与地区）。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "dozycat follows your system language (System Settings → General → Language & Region)." } } } },
-    "模型（自带 Key）" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Model (bring your own key)" } } } },
+    "模型" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "MODEL" } } } },
+    "Key 只在你的钥匙串里。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Your key stays in your Keychain." } } } },
     "服务商" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Provider" } } } },
     "自定义" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom" } } } },
     "模型名" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Model" } } } },
     "保存 Key" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Save key" } } } },
-    "已保存" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved" } } } },
-    "Key 只存在钥匙串；同一 Apple 账号的设备间经 iCloud 钥匙串端到端同步。观屏生成小传（见路线图）将使用这里的模型。" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Your key lives only in the Keychain and syncs end-to-end between your devices via iCloud Keychain. The screen-to-Moments pipeline (see roadmap) will use this model." } } } }
+    "已保存" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved" } } } }
   },
   "version" : "1.0"
 }

@@ -19,9 +19,8 @@ struct PetSettingsView: View {
                         .font(.system(size: 13))
                         .foregroundStyle(DS.muted)
                 }
-                caption("懒猫跟随系统语言（系统设置 → 通用 → 语言与地区）。")
             }
-            section(title: "模型（自带 Key）") {
+            section(title: "模型") {
                 providerPicker
                 if settings.provider == .custom {
                     underlinedField("Base URL", text: $settings.baseURL, prompt: "https://…/v1")
@@ -43,7 +42,7 @@ struct PetSettingsView: View {
                     Spacer()
                 }
                 .padding(.top, 6)
-                caption("Key 只存在钥匙串；同一 Apple 账号的设备间经 iCloud 钥匙串端到端同步。观屏生成小传（见路线图）将使用这里的模型。")
+                caption("Key 只在你的钥匙串里。")
             }
         }
         .padding(.horizontal, 28)

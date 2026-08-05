@@ -21,6 +21,7 @@ docs/
   FATIGUE.md            疲劳模型（内容盲感知 → 能量 → 补血）
   MOMENTS-PIPELINE.md   桌面观屏 → 小传管线（5min sequence → 每日 ≤3 条蒸馏）
   RELEASE.md            发布与审核选型（iOS App Store / macOS 直发公证）
+site/         官网（静态页，中文根路径 + /en/，实现自「dozycat 官网.dc.html」）
 design/       设计稿指针（源在 Claude Design）
 ```
 
