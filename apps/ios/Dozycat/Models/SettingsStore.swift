@@ -1,0 +1,97 @@
+import SwiftUI
+import Security
+
+enum LLMProvider: String, CaseIterable, Identifiable {
+    case openai, deepseek, custom
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .openai: return "OpenAI"
+        case .deepseek: return "DeepSeek"
+        case .custom: return String(localized: "自定义")
+        }
+    }
+
+    var defaultBaseURL: String {
+        switch self {
+        case .openai: return "https://api.openai.com/v1"
+        case .deepseek: return "https://api.deepseek.com"
+        case .custom: return ""
+        }
+    }
+
+    var defaultModel: String {
+        switch self {
+        case .openai: return "gpt-5-mini"
+        case .deepseek: return "deepseek-chat"
+        case .custom: return ""
+        }
+    }
+}
+
+/// BYOK 配置：provider/model/baseURL 在 UserDefaults，API Key 只进 Keychain。
+@MainActor
+final class SettingsStore: ObservableObject {
+    static let shared = SettingsStore()
+
+    @AppStorage("llmProvider") var providerRaw: String = LLMProvider.openai.rawValue
+    @AppStorage("llmModel") var model: String = ""
+    @AppStorage("llmBaseURL") var baseURL: String = ""
+    @Published var apiKey: String
+
+    private init() {
+        apiKey = Keychain.get("llm-api-key") ?? ""
+    }
+
+    var provider: LLMProvider {
+        get { LLMProvider(rawValue: providerRaw) ?? .openai }
+        set { providerRaw = newValue.rawValue }
+    }
+
+    func persistKey() {
+        Keychain.set(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: "llm-api-key")
+    }
+
+    /// 可用的模型配置；Key 或 URL 缺失时为 nil（聊天回退内置回复）。
+    var llmConfig: LLMClient.Config? {
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return nil }
+        let urlString = baseURL.isEmpty ? provider.defaultBaseURL : baseURL
+        guard let url = URL(string: urlString), url.scheme == "https" else { return nil }
+        let modelName = model.isEmpty ? provider.defaultModel : model
+        guard !modelName.isEmpty else { return nil }
+        return LLMClient.Config(baseURL: url, model: modelName, apiKey: key)
+    }
+}
+
+/// 极简 Keychain 封装（generic password）。
+enum Keychain {
+    private static func query(_ key: String) -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.paperboytm.dozycat",
+            kSecAttrAccount as String: key,
+        ]
+    }
+
+    static func set(_ value: String, for key: String) {
+        SecItemDelete(query(key) as CFDictionary)
+        guard !value.isEmpty, let data = value.data(using: .utf8) else { return }
+        var attrs = query(key)
+        attrs[kSecValueData as String] = data
+        attrs[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(attrs as CFDictionary, nil)
+    }
+
+    static func get(_ key: String) -> String? {
+        var attrs = query(key)
+        attrs[kSecReturnData as String] = true
+        attrs[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: AnyObject?
+        guard SecItemCopyMatching(attrs as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+}

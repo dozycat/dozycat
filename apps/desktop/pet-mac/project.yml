@@ -1,0 +1,25 @@
+name: DozycatPet
+options:
+  bundleIdPrefix: com.paperboytm
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  developmentLanguage: zh-Hans
+targets:
+  DozycatPet:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      # 与 iOS 共用同一只猫和同一套设计 token
+      - path: ../../ios/Dozycat/Components/CatFace.swift
+      - path: ../../ios/Dozycat/DesignSystem/DS.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.paperboytm.dozycat.pet
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: YES   # 菜单栏应用，不占 Dock
+        INFOPLIST_KEY_CFBundleDisplayName: 懒猫
+        CODE_SIGN_IDENTITY: "-"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"

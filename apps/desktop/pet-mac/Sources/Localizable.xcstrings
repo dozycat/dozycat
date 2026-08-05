@@ -1,0 +1,14 @@
+{
+  "sourceLanguage" : "zh-Hans",
+  "strings" : {
+    "懒猫 %lld" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "dozycat %lld" } } } },
+    "心理 %lld · 生理 %lld" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Mind %lld · Body %lld" } } } },
+    "退出懒猫" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit dozycat" } } } },
+    "坐了 %lld 分钟啦，去接杯水回血？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Sitting for %lld minutes — grab some water?" } } } },
+    "会开完了吧？高强度输出后要补血，起来走两步～" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Meeting's over? That was intense — walk it off a little~" } } } },
+    "生理能量掉到 %lld 了，眼睛离开屏幕一会儿好不好？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Body energy is down to %lld. Rest your eyes for a bit?" } } } },
+    "感觉你在好多事之间跳，挑一件收个尾？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You're bouncing between things — wrap one up?" } } } },
+    "坐了 1 小时 50 分，生理能量掉到 45 了。写完这段，去接杯水回血？" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Sitting for 1h 50m — body energy at 45. Finish this bit, then grab some water?" } } } }
+  },
+  "version" : "1.0"
+}

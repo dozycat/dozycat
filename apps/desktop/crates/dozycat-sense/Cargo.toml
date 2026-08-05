@@ -1,0 +1,11 @@
+[package]
+name = "dozycat-sense"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "内容盲的疲劳感知：只看强度/节奏/时长，不看内容。见 docs/FATIGUE.md"
+
+[dependencies]
+# 采集与模型零外部依赖：CoreGraphics 计数器走 FFI，JSON 手写。
+# 能量落账进共享内核（跨端同步的同一本账，见 docs/MEMORY-SYNC.md）。
+dozycat-core = { path = "../../../../core/dozycat-core" }

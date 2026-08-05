@@ -1,0 +1,13 @@
+{
+  "sourceLanguage" : "zh-Hans",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "懒猫" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "dozycat" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

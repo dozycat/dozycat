@@ -1,0 +1,9 @@
+[package]
+name = "dozycat-pet"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# 里程碑 1 接入（见 ../../README.md）：
+# pocket-widget = { path = "../../vendor/pocketjs/crates/pocket-widget" }

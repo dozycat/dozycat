@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/dozycat-pet", "crates/dozycat-sense"]
+# 之后 vendor/ 下的子模块（pocketjs、pocket-pi）是独立 workspace，
+# 与 cat-poc 相同，这里要 exclude 掉。
+exclude = ["vendor"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+
+[profile.release]
+opt-level = 2
+lto = "thin"

@@ -1,0 +1,17 @@
+[package]
+name = "dozycat-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "共享记忆内核：CRDT 记忆库 + 可插拔加密同步传输。见 docs/MEMORY-SYNC.md"
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+loro = "1.13.9"
+rusqlite = { version = "0.40.1", features = ["bundled"] }
+uniffi = { version = "0.32.0", features = ["cli"] }
+
+[dev-dependencies]
+tempfile = "3"
