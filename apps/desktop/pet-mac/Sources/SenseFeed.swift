@@ -1,28 +1,35 @@
 import Foundation
+import AppKit
 
-/// 把 dozycat-sense（子进程）的 JSONL 语义流喂给 UI。
+/// 把 dozycat-sense（子进程）的 JSONL 语义流喂给 UI，并推导猫猫状态。
 ///
 /// pb-os 式组合：守护进程持有原始计数与账本（EXCLUSIVE 锁的单写者），
-/// UI 只消费小语义流——能量数字与 nudge 文案。
-///
-/// 定位 sense 二进制（依次）：`DOZYCAT_SENSE_BIN` 环境变量 →
-/// `-senseBin` 启动参数 → app bundle 资源。找不到则静态展示。
+/// UI 只消费小语义流——能量数字、nudge 与表情。
 @MainActor
 final class SenseFeed: ObservableObject {
     static let shared = SenseFeed()
 
     @Published var phys = 45
     @Published var mind = 72
-    @Published var bubble: String?
     @Published var activeStreakMin = 0
+    @Published var mood: CatMood = .doze
+
+    /// 当前提醒卡文案（nil = 无卡）。20 秒后自己走（设计稿）。
+    @Published var reminder: String?
+    @Published var reminderCount = 3
+
+    /// 对话/搜索面板打开时猫是「好奇」——由 PetPanels 维护。
+    var panelsOpen = false { didSet { refreshMood() } }
 
     private var process: Process?
-    private var bubbleClearTask: Task<Void, Never>?
+    private var reminderDismissTask: Task<Void, Never>?
+    private var happyUntil: Date?
 
     func start() {
         if UserDefaults.standard.bool(forKey: "demoBubble") {
-            show(bubble: String(localized: "坐了 1 小时 50 分，生理能量掉到 45 了。写完这段，去接杯水回血？"))
+            show(reminder: String(localized: "坐了 1 小时 50 分，生理能量掉到 45 了。写完这段就去接杯水？"))
         }
+        refreshMood()
         guard let bin = Self.senseBinary() else {
             NSLog("SenseFeed: dozycat-sense binary not found; UI runs static")
             return
@@ -59,14 +66,67 @@ final class SenseFeed: ObservableObject {
             if let p = obj["phys"] as? Double { phys = Int(p.rounded()) }
             if let m = obj["mind"] as? Double { mind = Int(m.rounded()) }
             if let streak = obj["activeStreakMin"] as? Int { activeStreakMin = streak }
+            refreshMood()
         case "nudge":
-            // 语义流只带 kind，文案在展示层按当前语言生成；
-            // 未知 kind 回退到 sense 自带的中文 message。
             let localized = localizedBubble(kind: obj["nudge"] as? String)
-            if let text = localized ?? (obj["message"] as? String) { show(bubble: text) }
+            if let text = localized ?? (obj["message"] as? String) {
+                reminderCount += 1
+                show(reminder: text)
+            }
         default:
             break
         }
+    }
+
+    // MARK: 提醒卡
+
+    private func show(reminder text: String) {
+        reminder = text
+        reminderDismissTask?.cancel()
+        reminderDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000) // 20 秒后自己走
+            if !Task.isCancelled { self?.reminder = nil }
+        }
+    }
+
+    /// 「这就去」：收卡，猫开心一会儿。
+    func acknowledgeReminder() {
+        reminderDismissTask?.cancel()
+        reminder = nil
+        happyUntil = Date().addingTimeInterval(120)
+        refreshMood()
+    }
+
+    /// 「3 分钟后」：收卡，3 分钟后再来。
+    func snoozeReminder() {
+        reminderDismissTask?.cancel()
+        let text = reminder
+        reminder = nil
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 180_000_000_000)
+            if let text { self?.show(reminder: text) }
+        }
+    }
+
+    // MARK: 猫猫状态（猫本身就是能量表）
+
+    private func refreshMood() {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let newMood: CatMood
+        if hour >= 23 || hour < 7 {
+            newMood = .asleep
+        } else if panelsOpen {
+            newMood = .curious
+        } else if let until = happyUntil, until > Date() {
+            newMood = .happy
+        } else if phys < 30 {
+            newMood = .drained
+        } else if mind < 40 {
+            newMood = .worried
+        } else {
+            newMood = .doze
+        }
+        if newMood != mood { mood = newMood }
     }
 
     private func localizedBubble(kind: String?) -> String? {
@@ -81,15 +141,6 @@ final class SenseFeed: ObservableObject {
             return String(localized: "感觉你在好多事之间跳，挑一件收个尾？")
         default:
             return nil
-        }
-    }
-
-    private func show(bubble text: String) {
-        bubble = text
-        bubbleClearTask?.cancel()
-        bubbleClearTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 45_000_000_000)
-            if !Task.isCancelled { self?.bubble = nil }
         }
     }
 
