@@ -1,9 +1,15 @@
 # dozycat 的 agent 体系
 
-桌面与手机不再是零散的 LLM 调用：所有智能行为都跑在同一个 **pi 式 agent
-循环**上（`PiAgent.swift`：system + 工具 + 多轮 tool-calling，OpenAI 兼容
-function calling，DeepSeek/OpenAI 通吃）。**行为（prompt + 工具集）与执行器
-分离**——将来把执行器换成 pocket-pi（QuickJS，cat-poc 同款），行为定义原样迁移。
+桌面与手机不再是零散的 LLM 调用，智能行为跑在 agent 执行器上，按平台分两档：
+
+- **桌面（首选）：真 pi**（`PiCLI.swift`）——pet spawn 本机 `pi` CLI，
+  dream/searcher/chat 直接用 pi 自带的 read/bash/edit/write 工具跑在花园目录上，
+  **session 落 `~/.pi/agent/sessions`（project = `~/.dozycat/garden`），
+  在 pi 的 session 浏览器里可见**（dozycat·梦 / dozycat·找线索 / dozycat·聊天）。
+  小传经 `moments_inbox.jsonl` 交接，pet 收件入库（store 单写者不破）。
+- **回退/手机：内置循环**（`PiAgent.swift`：OpenAI 兼容 function calling）——
+  没装 pi 的机器和 iOS 用它，行为定义（prompt/工具）与 pi 档完全同构。
+  面向上架的自包含运行时是 pocket-pi（QuickJS），行为原样迁移。
 
 ```text
                        ┌ 每 ~5 分钟 ────────────────────────────┐

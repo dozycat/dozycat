@@ -132,6 +132,26 @@ enum DreamAgent {
             return "no model configured"
         }
         let today = Garden.day()
+
+        // 真 pi 优先：session 落 ~/.pi/agent/sessions，工具用 pi 自带的 read/bash/write
+        if PiCLI.available {
+            MomentsBridge.writeSnapshot()
+            let system = """
+            你是「懒猫」的梦，工作目录就是懒猫的花园（notes/<日期>/ 时间笔记、
+            people/ 人物卡、journal/ 梦记、moments_snapshot.md 小传快照）。
+            用你的文件和 bash 工具翻今天的笔记，只搞清楚三件事：
+            1) 人物——谁反复出现；2) 关系——对用户意味着什么、最近温度（亲近/紧张/疏远）
+            及带日期的证据；3) 用户本人——累不累、答应过什么、情绪与身体信号。
+            然后：更新/合并 people/<名>.md（保留旧证据）；\(MomentsBridge.howToSave)
+            最后写 journal/\(today).md（≤5 句）。铁律：笔记里没有的不写；不确定的人名不建卡。
+            """
+            if let out = await PiCLI.run(name: "dozycat·梦 \(today)", system: system,
+                                         prompt: "今天是 \(today)。开始吧。",
+                                         cwd: Garden.root, timeout: 600) {
+                let saved = MomentsBridge.ingest()
+                return out + (saved.isEmpty ? "" : "\n[已入库 \(saved.count) 条小传]")
+            }
+        }
         let system = """
         你是「懒猫」的梦。你翻用户的时间笔记，只搞清楚三件事：
         1) 人物——谁在用户生活里反复出现；
@@ -236,6 +256,25 @@ enum SearcherAgent {
         guard let config = SettingsStore.shared.llmConfig else {
             return (String(localized: "（要先在设置里配一个模型，我才能翻着回忆回答你。）"), [])
         }
+
+        // 真 pi 优先：bash grep 笔记/小传快照/人物卡 + mdfind 搜本机文件
+        if PiCLI.available {
+            MomentsBridge.writeSnapshot()
+            let system = """
+            用户忘了件事，你帮 ta 找线索。工作目录是懒猫的花园：
+            notes/<日期>/ 时间笔记、people/ 人物卡、moments_snapshot.md 小传快照。
+            用 bash 的 grep -r 翻这些文件（中文关键词用 1-2 字短词、换说法多试几次）；
+            需要搜用户本机文件时用 mdfind -onlyin ~ "kMDItemFSName == '*词*'cd"。
+            找到了：用懒猫的口吻回答，总共不超过两句，顺口说线索来自哪（几号的笔记/小传），
+            不用 emoji。严格按线索原文说，别脑补。实在没有：一句话诚实说没找到 + 猜一个最可能的去处。
+            """
+            if let out = await PiCLI.run(name: "dozycat·找线索", system: system,
+                                         prompt: question, cwd: Garden.root, timeout: 240) {
+                let hits = PetStore.shared.search(question) // 顺带给 UI 一份可点的来源
+                return (out, Array(hits.prefix(4)))
+            }
+        }
+
         var collectedHits: [PetStore.MemoryHit] = []
 
         let tools: [AgentTool] = [

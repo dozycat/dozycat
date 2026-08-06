@@ -231,8 +231,8 @@ struct ChatWidget: View {
     }
 }
 
-/// 桌面对话的模型层：BYOK LLM + 真记忆——聊天带小传上下文，
-/// 每轮对话后抽取值得记住的小事写入 dozycat-core。
+/// 桌面对话的模型层：真 pi 优先（持久 session，落 ~/.pi/agent/sessions），
+/// 聊天带小传上下文，值得记的小事经 moments_inbox 入库。
 @MainActor
 final class PetChat: ObservableObject {
     static let shared = PetChat()
@@ -242,12 +242,42 @@ final class PetChat: ObservableObject {
     ]
     @Published var memoryNote: String?
 
+    /// 这轮对话的 pi session（续聊靠它；重开对话换新的）
+    private let piSessionID = UUID().uuidString
+
     func send(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         messages.append(ChatMessage(role: .me, text: trimmed))
         guard let config = SettingsStore.shared.llmConfig else {
             messages.append(ChatMessage(role: .cat, text: String(localized: "嗯嗯，我听着呢。不用急，慢慢说。")))
+            return
+        }
+
+        // 真 pi：session 持久（pi sessions 里可见），小事写 inbox 由 pet 入库
+        if PiCLI.available {
+            MomentsBridge.writeSnapshot()
+            let memoryContext = PetStore.shared.recent(limit: 8)
+                .map { "\($0.source)：\($0.text)" }.joined(separator: "\n")
+            var system = LLMClient.persona
+            if !memoryContext.isEmpty {
+                system += "\n\n你记得的关于用户的小传：\n" + memoryContext
+            }
+            system += "\n\n工作目录是懒猫的花园。\(MomentsBridge.howToSave)\n闲聊不存，存了也不必告诉用户。"
+            Task {
+                if let reply = await PiCLI.run(name: "dozycat·聊天", system: system,
+                                               prompt: trimmed, cwd: Garden.root,
+                                               sessionID: piSessionID, timeout: 120) {
+                    messages.append(ChatMessage(role: .cat, text: reply))
+                    if let saved = MomentsBridge.ingest().first {
+                        memoryNote = String(localized: "它记下了：\(saved)")
+                    }
+                } else {
+                    messages.append(ChatMessage(
+                        role: .cat,
+                        text: String(localized: "（模型连不上了…没关系，我自己也能陪你。）")))
+                }
+            }
             return
         }
         let history = messages.suffix(12).map {
