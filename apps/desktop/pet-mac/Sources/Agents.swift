@@ -40,7 +40,10 @@ enum SequenceAgent {
     static func run() async -> String? {
         Garden.ensure()
         let feed = SenseFeed.shared
-        let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? ""
+        // 前台应用；如果此刻前台是懒猫自己（面板/搜索开着），不算数
+        let front = NSWorkspace.shared.frontmostApplication
+        let app = front?.bundleIdentifier == Bundle.main.bundleIdentifier
+            ? "" : (front?.localizedName ?? "")
         let ocr = await screenText()
 
         var body = ""
