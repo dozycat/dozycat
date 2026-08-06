@@ -65,23 +65,27 @@ struct PetView: View {
                                 panels.append(("booknews", AnyView(BookNewsCard(chapter: chapter))))
                             }
                             for (name, view) in panels {
-                                // NSHostingView 快照：ScrollView 里的内容也能画出来。
-                                // 离屏视图没有窗口、backing scale 是 1x，得手动给 2x 位图。
+                                // 没有窗口的视图 layer contentsScale 是 1x，文字先按 1x
+                                // 光栅化再放大必然发虚——挂进一个全透明、垫底的真窗口，
+                                // 让图层拿到屏幕的 Retina backing scale 再截。
                                 let host = NSHostingView(rootView: view)
                                 let size = host.fittingSize
                                 host.frame = NSRect(origin: .zero, size: size)
-                                let scale: CGFloat = 3
-                                guard let rep = NSBitmapImageRep(
-                                    bitmapDataPlanes: nil,
-                                    pixelsWide: Int(size.width * scale),
-                                    pixelsHigh: Int(size.height * scale),
-                                    bitsPerSample: 8, samplesPerPixel: 4,
-                                    hasAlpha: true, isPlanar: false,
-                                    colorSpaceName: .deviceRGB,
-                                    bytesPerRow: 0, bitsPerPixel: 0
-                                ) else { continue }
-                                rep.size = size
+                                let window = NSWindow(
+                                    contentRect: NSRect(origin: .zero, size: size),
+                                    styleMask: [.borderless], backing: .buffered, defer: false)
+                                window.isOpaque = false
+                                window.backgroundColor = .clear
+                                window.alphaValue = 0        // 用户看不见，内容照常光栅化
+                                window.ignoresMouseEvents = true
+                                window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) - 1)
+                                window.contentView = host
+                                window.orderBack(nil)
+                                try? await Task.sleep(nanoseconds: 400_000_000) // 等布局与 2x 重光栅化
+                                guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)
+                                else { window.orderOut(nil); continue }
                                 host.cacheDisplay(in: host.bounds, to: rep)
+                                window.orderOut(nil)
                                 if let png = rep.representation(using: .png, properties: [:]) {
                                     try? png.write(to: URL(fileURLWithPath: dir)
                                         .appendingPathComponent("\(name).png"))
