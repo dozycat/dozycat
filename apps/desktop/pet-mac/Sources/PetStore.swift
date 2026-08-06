@@ -47,6 +47,19 @@ final class PetStore: ObservableObject {
         NSLog("PetStore: memory saved — \(text)")
     }
 
+    /// 某个自然月的小传素材（《传》取材用），按时间升序。
+    func memories(monthOf date: Date) -> [(at: Date, text: String, note: String?)] {
+        guard let store else { return [] }
+        let calendar = Calendar.current
+        return store.timeline(limit: 500)
+            .compactMap { m in
+                let at = Date(timeIntervalSince1970: TimeInterval(m.atMs) / 1000)
+                guard calendar.isDate(at, equalTo: date, toGranularity: .month) else { return nil }
+                return (at, m.text, m.note)
+            }
+            .sorted { $0.at < $1.at }
+    }
+
     private static func hit(from m: FfiMemory) -> MemoryHit {
         let date = Date(timeIntervalSince1970: TimeInterval(m.atMs) / 1000)
         let label: String
@@ -69,6 +82,8 @@ final class PetStore: ObservableObject {
         try? store?.recordEnergy(event: FfiEnergy(
             atMs: Int64(Date().timeIntervalSince1970 * 1000),
             device: "mac", phys: phys, mind: mind, kind: kind))
+        // core 只留最新值；日历/K 线要历史，旁账见 EnergyLog
+        EnergyLog.append(phys: phys, mind: mind)
     }
 
     func latestEnergy() -> (phys: Int, mind: Int)? {

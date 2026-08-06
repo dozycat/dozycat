@@ -6,12 +6,31 @@ struct DozycatPetApp: App {
     @NSApplicationDelegateAdaptor(PetAppDelegate.self) private var delegate
     @ObservedObject private var feed = SenseFeed.shared
 
+    init() {
+        Self.applyLanguagePreference()
+    }
+
+    /// 界面语言：默认中文；设置里可切「跟随系统 / 中文 / EN」（重启生效）。
+    /// 必须在任何字符串被解析前调用（App.init 最早）。
+    static func applyLanguagePreference() {
+        switch UserDefaults.standard.string(forKey: "uiLanguage") ?? "zh" {
+        case "zh": UserDefaults.standard.set(["zh-Hans"], forKey: "AppleLanguages")
+        case "en": UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
+        default: UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        }
+    }
+
     var body: some Scene {
         // 菜单栏下拉 · 数字的第二个家（设计稿「菜单栏下拉」）
         MenuBarExtra {
             MenuBarDropdown()
         } label: {
-            Text("懒猫 \(feed.phys.formatted(.percent))")
+            HStack(spacing: 4) {
+                Image(systemName: "cat.fill")
+                    .accessibilityLabel("懒猫")
+                Text(verbatim: feed.phys.formatted(.percent))
+            }
+            .accessibilityElement(children: .combine)
         }
         .menuBarExtraStyle(.window)
 
@@ -24,21 +43,34 @@ struct DozycatPetApp: App {
 /// 菜单栏下拉：能量对 + 三个动作行（休息 / 搜索 / 下一个提醒）。
 struct MenuBarDropdown: View {
     @ObservedObject private var feed = SenseFeed.shared
+    @ObservedObject private var bio = BiographyStore.shared
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 0) {
-                energyCell("心理", value: feed.mind, color: DS.blue, warn: false)
-                DS.line.frame(width: 1).padding(.horizontal, 14)
-                energyCell("生理", value: feed.phys, color: DS.coral, warn: feed.phys < 50)
+            // 点数字进能量 widgets：日历、K 线、回血清单、明日计划
+            Button {
+                PetPanels.shared.toggleEnergy()
+            } label: {
+                HStack(spacing: 0) {
+                    energyCell("心理", value: feed.mind, color: DS.blue, warn: false)
+                    DS.line.frame(width: 1).padding(.horizontal, 14)
+                    energyCell("生理", value: feed.phys, color: DS.coral, warn: feed.phys < 50)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .contentShape(Rectangle())
             }
-            .fixedSize(horizontal: false, vertical: true)
+            .buttonStyle(.plain)
+            .help("能量日历与今天的走势")
 
             VStack(spacing: 0) {
                 actionRow("休息 5 分钟", shortcut: "⌥R") { PetPanels.shared.startRest() }
                 DS.lineSoft.frame(height: 1)
                 actionRow("找点什么 / 问问回忆", shortcut: "⌥␣") { PetPanels.shared.toggleSearch() }
+                DS.lineSoft.frame(height: 1)
+                actionRow("能量 · 日历与 K 线", shortcut: "⌥E") { PetPanels.shared.toggleEnergy() }
+                DS.lineSoft.frame(height: 1)
+                actionRow(bookRowLabel, shortcut: "") { PetPanels.shared.toggleBook() }
                 DS.lineSoft.frame(height: 1)
                 HStack {
                     Text("下一个提醒 · 傍晚散步").font(.system(size: 13)).foregroundStyle(DS.ink)
@@ -61,6 +93,13 @@ struct MenuBarDropdown: View {
         .padding(16)
         .frame(width: 300)
         .background(DS.paper)
+    }
+
+    private var bookRowLabel: LocalizedStringKey {
+        if let latest = bio.latest {
+            return "传 · 第\(ChineseNumeral.ordinal(latest.index))回《\(latest.title)》"
+        }
+        return "传 · 还没开笔"
     }
 
     private func energyCell(_ label: LocalizedStringKey, value: Int, color: Color, warn: Bool) -> some View {
@@ -97,42 +136,25 @@ struct MenuBarDropdown: View {
     }
 }
 
-/// 面板管理：对话 widget、Search Everything、休息倒计时。
+/// 面板管理：Search Everything、对话、能量 widgets 与休息倒计时。
 @MainActor
 final class PetPanels {
     static let shared = PetPanels()
 
-    var petWindow: NSWindow?
-    private var chatPanel: NSPanel?
+    /// 桌宠窗——对话面板往猫旁边靠时用它定位。
+    weak var petWindow: NSWindow?
+
     private var searchPanel: NSPanel?
+    private var chatPanel: NSPanel?
+    private var energyPanel: NSPanel?
+    private var bookPanel: NSPanel?
     private lazy var escMonitor: Any? = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-        if event.keyCode == 53 { // esc
-            self?.closeSearch()
-            self?.closeChat()
-            return nil
-        }
+        guard event.keyCode == 53, let self else { return event } // esc
+        if self.searchVisible { self.closeSearch(); return nil }
+        if self.energyVisible { self.closeEnergy(); return nil }
+        if self.bookVisible { self.closeBook(); return nil }
+        if self.chatVisible { self.closeChat(); return nil }
         return event
-    }
-
-    func toggleChat() {
-        if let panel = chatPanel, panel.isVisible {
-            closeChat()
-            return
-        }
-        _ = escMonitor
-        let panel = FloatingPanel(
-            content: ChatWidget { [weak self] in self?.closeChat() },
-            width: 380
-        )
-        chatPanel = panel
-        SenseFeed.shared.panelsOpen = true
-        panel.showAbove(window: petWindow, offset: NSPoint(x: -20, y: -110))
-    }
-
-    func closeChat() {
-        chatPanel?.orderOut(nil)
-        chatPanel = nil
-        SenseFeed.shared.panelsOpen = searchVisible
     }
 
     func toggleSearch() {
@@ -152,7 +174,75 @@ final class PetPanels {
     func closeSearch() {
         searchPanel?.orderOut(nil)
         searchPanel = nil
-        SenseFeed.shared.panelsOpen = false
+        syncPanelMood()
+    }
+
+    /// 对话 · 点猫猫展开（设计稿「对话」）。
+    func toggleChat() {
+        if chatVisible {
+            closeChat()
+            return
+        }
+        _ = escMonitor
+        let panel = FloatingPanel(content: ChatPanelView(), width: 380)
+        chatPanel = panel
+        SenseFeed.shared.panelsOpen = true
+        panel.show(near: petWindow)
+    }
+
+    private var chatVisible: Bool { chatPanel?.isVisible ?? false }
+
+    func closeChat() {
+        chatPanel?.orderOut(nil)
+        chatPanel = nil
+        syncPanelMood()
+    }
+
+    /// 能量 widgets：日历、K 线、回血清单、明日计划（设计稿「能量 WIDGETS」）。
+    func toggleEnergy() {
+        if energyVisible {
+            closeEnergy()
+            return
+        }
+        _ = escMonitor
+        RechargeStore.shared.refreshRecommendation()
+        let panel = FloatingPanel(content: EnergyPanelView(), width: 900)
+        energyPanel = panel
+        SenseFeed.shared.panelsOpen = true
+        panel.showCentered(yRatio: 0.54)
+    }
+
+    private var energyVisible: Bool { energyPanel?.isVisible ?? false }
+
+    func closeEnergy() {
+        energyPanel?.orderOut(nil)
+        energyPanel = nil
+        syncPanelMood()
+    }
+
+    /// 《传》——正文书页（书脊上的「传」印切目录）。
+    func toggleBook() {
+        if bookVisible {
+            closeBook()
+            return
+        }
+        _ = escMonitor
+        let panel = FloatingPanel(content: BookPanelView(), width: 760)
+        bookPanel = panel
+        SenseFeed.shared.panelsOpen = true
+        panel.showCentered(yRatio: 0.56)
+    }
+
+    private var bookVisible: Bool { bookPanel?.isVisible ?? false }
+
+    func closeBook() {
+        bookPanel?.orderOut(nil)
+        bookPanel = nil
+        syncPanelMood()
+    }
+
+    private func syncPanelMood() {
+        SenseFeed.shared.panelsOpen = searchVisible || chatVisible || energyVisible || bookVisible
     }
 
     #if DEBUG
@@ -220,7 +310,6 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         window.orderFrontRegardless()
         self.window = window
         PetPanels.shared.petWindow = window
-
         // 全局快捷键：⌥空格 = Search Everything，⌥R = 休息
         hotKeys.append(HotKey(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey)) {
             PetPanels.shared.toggleSearch()
@@ -228,9 +317,17 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         hotKeys.append(HotKey(keyCode: UInt32(kVK_ANSI_R), modifiers: UInt32(optionKey)) {
             PetPanels.shared.startRest()
         })
+        hotKeys.append(HotKey(keyCode: UInt32(kVK_ANSI_E), modifiers: UInt32(optionKey)) {
+            PetPanels.shared.toggleEnergy()
+        })
 
         SenseFeed.shared.start()
         startAgents()
+        // 《传》：启动后看看是不是该写了（月初定稿上一回 / 本月开新的一回）
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            BiographyStore.shared.tickIfNeeded()
+        }
     }
 
     /// sequence agent 定时跑（默认 5 分钟），每 12 次 sequence 后做一次梦。
@@ -247,6 +344,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
                 runs += 1
                 if runs % 12 == 0 {
                     NSLog("DreamAgent: %@", await DreamAgent.run())
+                    BiographyStore.shared.tickIfNeeded()
                 }
             }
         }

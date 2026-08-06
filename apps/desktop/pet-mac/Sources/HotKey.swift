@@ -38,7 +38,7 @@ final class HotKey {
     }
 }
 
-/// 无边框浮动面板：Search Everything / 对话 widget 的宿主。
+/// 无边框浮动面板：Search Everything 的宿主。
 final class FloatingPanel<Content: View>: NSPanel {
     init(content: Content, width: CGFloat) {
         super.init(contentRect: NSRect(x: 0, y: 0, width: width, height: 100),
@@ -46,13 +46,18 @@ final class FloatingPanel<Content: View>: NSPanel {
                    backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = false // 阴影由 SwiftUI 卡片自带
+        // 阴影交给窗口系统绘制。SwiftUI shadow 不参与 fittingSize，会在透明
+        // NSPanel 的矩形边界被裁成直角残片（尤其明显在 Chat 左下角）。
+        hasShadow = true
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
         hidesOnDeactivate = false
         becomesKeyOnlyIfNeeded = false
         let hosting = NSHostingView(rootView: content)
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = NSColor.clear.cgColor
+        hosting.layer?.isOpaque = false
         hosting.setFrameSize(hosting.fittingSize)
         contentView = hosting
         setContentSize(hosting.fittingSize)
@@ -69,16 +74,27 @@ final class FloatingPanel<Content: View>: NSPanel {
                                    y: f.minY + f.height * yRatio - size.height / 2))
         }
         makeKeyAndOrderFront(nil)
+        invalidateShadow()
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    func showAbove(window: NSWindow?, offset: NSPoint) {
-        guard let anchor = window else { return showCentered() }
+    /// 挨着桌宠窗弹出（对话面板）；找不到锚点就居中。
+    func show(near anchor: NSWindow?) {
+        guard let anchor, let screen = anchor.screen ?? NSScreen.main else {
+            showCentered(yRatio: 0.4)
+            return
+        }
         let size = contentView?.fittingSize ?? frame.size
         setContentSize(size)
-        setFrameOrigin(NSPoint(x: anchor.frame.maxX - size.width + offset.x,
-                               y: anchor.frame.maxY + offset.y))
+        let f = screen.visibleFrame
+        var origin = NSPoint(x: anchor.frame.maxX - size.width - 20,
+                             y: anchor.frame.minY + 200)
+        origin.x = max(f.minX + 16, min(origin.x, f.maxX - size.width - 16))
+        origin.y = max(f.minY + 16, min(origin.y, f.maxY - size.height - 16))
+        setFrameOrigin(origin)
         makeKeyAndOrderFront(nil)
+        invalidateShadow()
         NSApp.activate(ignoringOtherApps: true)
     }
+
 }

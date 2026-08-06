@@ -5,19 +5,24 @@ import SwiftUI
 struct PetSettingsView: View {
     @ObservedObject private var settings = SettingsStore.shared
     @State private var keySaved = false
+    @AppStorage("uiLanguage") private var uiLanguage = "zh"
+    @State private var languageChanged = false
 
     var body: some View {
         VStack(spacing: 0) {
             hero
             section(title: "语言") {
                 HStack {
-                    Text("跟随系统")
+                    Text("界面语言")
                         .font(.system(size: 13))
                         .foregroundStyle(DS.ink)
                     Spacer()
-                    Text(currentLanguageLabel)
-                        .font(.system(size: 13))
-                        .foregroundStyle(DS.muted)
+                    languagePill("跟随系统", value: "system")
+                    languagePill("中文", value: "zh")
+                    languagePill("EN", value: "en")
+                }
+                if languageChanged {
+                    caption("重启懒猫后生效。")
                 }
             }
             section(title: "模型") {
@@ -32,7 +37,7 @@ struct PetSettingsView: View {
 
                 HStack {
                     Spacer()
-                    Button(keySaved ? "已保存" : "保存 Key") {
+                    Button(keySaved ? String(localized: "已保存") : String(localized: "保存 Key")) {
                         settings.persistKey()
                         keySaved = true
                     }
@@ -81,6 +86,25 @@ struct PetSettingsView: View {
         .padding(.top, 14)
     }
 
+    private func languagePill(_ label: LocalizedStringKey, value: String) -> some View {
+        let active = uiLanguage == value
+        return Button {
+            guard uiLanguage != value else { return }
+            uiLanguage = value
+            DozycatPetApp.applyLanguagePreference()
+            languageChanged = true
+        } label: {
+            Text(label)
+                .font(.system(size: 12, weight: active ? .medium : .regular))
+                .foregroundStyle(active ? DS.paper : DS.inkSoft)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 14)
+                .background(Capsule().fill(active ? DS.ink : Color.clear))
+                .overlay(Capsule().stroke(active ? Color.clear : DS.lineStrong, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var providerPicker: some View {
         HStack(spacing: 8) {
             ForEach(LLMProvider.allCases) { provider in
@@ -91,7 +115,7 @@ struct PetSettingsView: View {
                     settings.model = ""
                     keySaved = false
                 } label: {
-                    Text(provider.label)
+                    Text(verbatim: provider.label)
                         .font(.system(size: 12, weight: active ? .medium : .regular))
                         .foregroundStyle(active ? DS.paper : DS.inkSoft)
                         .padding(.vertical, 7)
@@ -140,8 +164,9 @@ struct PetSettingsView: View {
     }
 
     private var currentLanguageLabel: String {
-        let code = Locale.current.language.languageCode?.identifier ?? "en"
-        return Locale.current.localizedString(forLanguageCode: code) ?? code
+        let code = Bundle.main.preferredLocalizations.first ?? "en"
+        let displayLocale = Locale(identifier: code)
+        return displayLocale.localizedString(forLanguageCode: code) ?? code
     }
 }
 

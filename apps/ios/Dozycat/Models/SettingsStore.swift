@@ -91,7 +91,17 @@ enum Keychain {
         attrs[kSecAttrSynchronizable as String] = true
         attrs[kSecValueData as String] = data
         attrs[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        SecItemAdd(attrs as CFDictionary, nil)
+        let syncStatus = SecItemAdd(attrs as CFDictionary, nil)
+        guard syncStatus != errSecSuccess else { return }
+
+        // Ad-hoc / 本地 Debug 构建通常没有 iCloud Keychain entitlement。
+        // 这时同步条目会写失败，自动回退为同 service/account 的本机条目；
+        // `get` 使用 SynchronizableAny，发布签名与本机条目都能读取。
+        attrs.removeValue(forKey: kSecAttrSynchronizable as String)
+        let localStatus = SecItemAdd(attrs as CFDictionary, nil)
+        if localStatus != errSecSuccess {
+            NSLog("Keychain: failed to store \(key) (sync=\(syncStatus), local=\(localStatus))")
+        }
     }
 
     static func get(_ key: String) -> String? {

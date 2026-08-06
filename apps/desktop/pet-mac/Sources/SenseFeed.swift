@@ -18,7 +18,7 @@ final class SenseFeed: ObservableObject {
     @Published var reminder: String?
     @Published var reminderCount = 3
 
-    /// 对话/搜索面板打开时猫是「好奇」——由 PetPanels 维护。
+    /// 搜索面板打开时猫是「好奇」——由 PetPanels 维护。
     var panelsOpen = false { didSet { refreshMood() } }
 
     private var process: Process?
@@ -105,6 +105,12 @@ final class SenseFeed: ObservableObject {
     func acknowledgeReminder() {
         reminderDismissTask?.cancel()
         reminder = nil
+        happyUntil = Date().addingTimeInterval(120)
+        refreshMood()
+    }
+
+    /// 做完一个回血动作：猫开心一会儿（回血清单「现在做」）。
+    func celebrate() {
         happyUntil = Date().addingTimeInterval(120)
         refreshMood()
     }

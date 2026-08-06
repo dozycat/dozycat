@@ -15,6 +15,7 @@ targets:
       # 以及同一个 Rust 内核（UniFFI 绑定）
       - path: ../../ios/Dozycat/Components/CatFace.swift
       - path: ../../ios/Dozycat/DesignSystem/DS.swift
+      - path: ../../ios/Dozycat/InfoPlist.xcstrings
       - path: ../../ios/Dozycat/Models/SettingsStore.swift
       - path: ../../ios/Dozycat/Models/LLMClient.swift
       - path: ../../ios/Dozycat/Models/PiAgent.swift

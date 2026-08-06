@@ -23,6 +23,9 @@ struct EnergyCapsule: View {
             .frame(width: 220)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DS.paper)
                 .shadow(color: DS.ink.opacity(0.16), radius: 22, y: 16))
+            .contentShape(Rectangle())
+            // 点胶囊直接进能量 widgets（日历 / K 线 / 回血清单）
+            .onTapGesture { PetPanels.shared.toggleEnergy() }
 
             DS.lineStrong.frame(width: 1, height: 14)
         }
@@ -68,12 +71,12 @@ struct ReminderCard: View {
             HStack(alignment: .top, spacing: 14) {
                 CatFace(size: 40, outlined: true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(message)
+                    Text(verbatim: message)
                         .font(.system(size: 14))
                         .lineSpacing(5)
                         .foregroundStyle(DS.ink)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(countLine)
+                    Text(verbatim: countLine)
                         .font(.system(size: 12))
                         .foregroundStyle(DS.muted)
                 }
@@ -110,217 +113,4 @@ struct SmallGhostPill: ButtonStyle {
             .background(Capsule().stroke(DS.lineStrong, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.6 : 1)
     }
-}
-
-/// 对话 widget — 点猫猫展开，随手一句话的地方（设计稿「对话」）。
-struct ChatWidget: View {
-    @ObservedObject private var chat = PetChat.shared
-    @State private var draft = ""
-    @FocusState private var focused: Bool
-    var onCollapse: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            ScrollViewReader { proxy in
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 12) {
-                        ForEach(chat.messages) { message in
-                            bubble(message).id(message.id)
-                        }
-                        if let note = chat.memoryNote {
-                            HStack(spacing: 8) {
-                                DS.blue.frame(width: 10, height: 1)
-                                Text(note).font(.system(size: 11)).foregroundStyle(DS.blue)
-                                Spacer()
-                            }
-                            .padding(.leading, 2)
-                        }
-                        Color.clear.frame(height: 1).id("bottom")
-                    }
-                    .padding(.vertical, 18)
-                    .padding(.horizontal, 20)
-                }
-                .frame(height: 240)
-                .onChange(of: chat.messages.count) {
-                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom") }
-                }
-            }
-            inputBar
-        }
-        .frame(width: 380)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(DS.paper)
-            .shadow(color: DS.ink.opacity(0.16), radius: 26, y: 20))
-        .onAppear { focused = true }
-    }
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            CatFace(size: 34, outlined: true)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("懒猫").font(.system(size: 14, weight: .medium)).foregroundStyle(DS.ink)
-                Text("一直都在").font(.system(size: 11)).foregroundStyle(DS.muted)
-            }
-            Spacer()
-            Button(action: onCollapse) {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11))
-                    .foregroundStyle(DS.faint)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 20)
-        .overlay(alignment: .bottom) { DS.line.frame(height: 1) }
-    }
-
-    @ViewBuilder
-    private func bubble(_ message: ChatMessage) -> some View {
-        if message.role == .cat {
-            Text(message.text)
-                .font(.system(size: 14)).lineSpacing(5).foregroundStyle(DS.ink)
-                .padding(.vertical, 11).padding(.horizontal, 15)
-                .background(UnevenRoundedRectangle(
-                    topLeadingRadius: 4, bottomLeadingRadius: 16,
-                    bottomTrailingRadius: 16, topTrailingRadius: 16,
-                    style: .continuous).fill(DS.lineSoft))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.trailing, 56)
-        } else {
-            Text(message.text)
-                .font(.system(size: 14)).lineSpacing(5).foregroundStyle(DS.paper)
-                .padding(.vertical, 11).padding(.horizontal, 15)
-                .background(UnevenRoundedRectangle(
-                    topLeadingRadius: 16, bottomLeadingRadius: 16,
-                    bottomTrailingRadius: 16, topTrailingRadius: 4,
-                    style: .continuous).fill(DS.ink))
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.leading, 56)
-        }
-    }
-
-    private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("随便说点什么", text: $draft)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .foregroundStyle(DS.ink)
-                .focused($focused)
-                .onSubmit(send)
-            Button(action: send) {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 32, height: 32)
-                    .background(Circle().fill(DS.coral))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.leading, 16)
-        .padding(.trailing, 7)
-        .padding(.vertical, 7)
-        .overlay(RoundedRectangle(cornerRadius: 999).stroke(DS.lineStrong, lineWidth: 1))
-        .padding(.horizontal, 16)
-        .padding(.bottom, 16)
-        .padding(.top, 4)
-    }
-
-    private func send() {
-        chat.send(draft)
-        draft = ""
-    }
-}
-
-/// 桌面对话的模型层：真 pi 优先（持久 session，落 ~/.pi/agent/sessions），
-/// 聊天带小传上下文，值得记的小事经 moments_inbox 入库。
-@MainActor
-final class PetChat: ObservableObject {
-    static let shared = PetChat()
-
-    @Published var messages: [ChatMessage] = [
-        ChatMessage(role: .cat, text: String(localized: "嗨，我在呢。想说什么都行。")),
-    ]
-    @Published var memoryNote: String?
-
-    /// 这轮对话的 pi session（续聊靠它；重开对话换新的）
-    private let piSessionID = UUID().uuidString
-
-    func send(_ text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        messages.append(ChatMessage(role: .me, text: trimmed))
-        guard let config = SettingsStore.shared.llmConfig else {
-            messages.append(ChatMessage(role: .cat, text: String(localized: "嗯嗯，我听着呢。不用急，慢慢说。")))
-            return
-        }
-
-        // 真 pi：session 持久（pi sessions 里可见），小事写 inbox 由 pet 入库
-        if PiCLI.available {
-            MomentsBridge.writeSnapshot()
-            let memoryContext = PetStore.shared.recent(limit: 8)
-                .map { "\($0.source)：\($0.text)" }.joined(separator: "\n")
-            var system = LLMClient.persona
-            if !memoryContext.isEmpty {
-                system += "\n\n你记得的关于用户的小传：\n" + memoryContext
-            }
-            system += "\n\n工作目录是懒猫的花园。\(MomentsBridge.howToSave)\n闲聊不存，存了也不必告诉用户。"
-            Task {
-                if let reply = await PiCLI.run(name: "dozycat·聊天", system: system,
-                                               prompt: trimmed, cwd: Garden.root,
-                                               sessionID: piSessionID, timeout: 120) {
-                    messages.append(ChatMessage(role: .cat, text: reply))
-                    if let saved = MomentsBridge.ingest().first {
-                        memoryNote = String(localized: "它记下了：\(saved)")
-                    }
-                } else {
-                    messages.append(ChatMessage(
-                        role: .cat,
-                        text: String(localized: "（模型连不上了…没关系，我自己也能陪你。）")))
-                }
-            }
-            return
-        }
-        let history = messages.suffix(12).map {
-            (role: $0.role == .cat ? "assistant" : "user", content: $0.text)
-        }
-        let memoryContext = PetStore.shared.recent(limit: 8)
-            .map { "\($0.source)：\($0.text)" }
-            .joined(separator: "\n")
-        var system = LLMClient.persona
-        if !memoryContext.isEmpty {
-            system += "\n\n你记得的关于用户的小传（可自然引用，不要逐条复述）：\n" + memoryContext
-        }
-        system += "\n\n如果这轮聊到了值得记进小传的一件小事（事实、情绪或约定），调用 save_moment 存下来（白描 ≤40 字 + 两三个字的情绪 note），不用告诉用户你存了。闲聊不存。"
-
-        let saveTool = AgentTool(
-            name: "save_moment",
-            description: "把这轮对话里值得记住的一件小事存进用户的小传",
-            parameters: ["text": ["type": "string"], "note": ["type": "string"]]
-        ) { [weak self] args in
-            guard let text = args["text"] as? String, !text.isEmpty else { return "text 缺失" }
-            PetStore.shared.addMemory(text: text, note: args["note"] as? String)
-            self?.memoryNote = String(localized: "它记下了：\(text)")
-            return "已记下"
-        }
-
-        Task {
-            do {
-                let reply = try await PiAgent.run(system: system, history: history,
-                                                  tools: [saveTool], config: config, maxSteps: 4)
-                messages.append(ChatMessage(role: .cat, text: reply))
-            } catch {
-                messages.append(ChatMessage(
-                    role: .cat,
-                    text: String(localized: "（模型连不上了…没关系，我自己也能陪你。）")))
-            }
-        }
-    }
-}
-
-/// ChatMessage 的桌面副本（iOS 的定义在 AppModel.swift，未共享进 pet target）。
-struct ChatMessage: Identifiable, Equatable {
-    enum Role { case cat, me }
-    let id = UUID()
-    let role: Role
-    let text: String
 }

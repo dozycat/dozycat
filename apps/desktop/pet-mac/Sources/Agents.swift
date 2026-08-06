@@ -18,9 +18,10 @@ enum Garden {
     static var notes: URL { root.appendingPathComponent("notes") }
     static var people: URL { root.appendingPathComponent("people") }
     static var journal: URL { root.appendingPathComponent("journal") }
+    static var biography: URL { root.appendingPathComponent("biography") }
 
     static func ensure() {
-        for dir in [notes, people, journal] {
+        for dir in [notes, people, journal, biography] {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
     }
@@ -44,6 +45,8 @@ enum SequenceAgent {
         let front = NSWorkspace.shared.frontmostApplication
         let app = front?.bundleIdentifier == Bundle.main.bundleIdentifier
             ? "" : (front?.localizedName ?? "")
+        let appBundleID = front?.bundleIdentifier == Bundle.main.bundleIdentifier
+            ? "" : (front?.bundleIdentifier ?? "")
         let ocr = await screenText()
 
         var body = ""
@@ -55,6 +58,8 @@ enum SequenceAgent {
             ---
             前台应用：\(app)。用 2-3 句第三人称白描用户在做的事：只写屏幕上可见的事实
             （在和谁说什么、看什么、约了什么），不要想象动作、表情或心理活动。
+            如果屏幕清楚显示了文件或目录的绝对路径，必须保留准确路径并写成 Markdown 链接：
+            [文件名](file:///绝对路径)。没有完整路径就不要猜，也不要把普通文字伪装成链接。
             屏幕上出现的具体人名（含「X医生」这类称呼）最后单独一行写「人物：名字1、名字2」，没有则写「人物：无」。
             """
             body = (try? await LLMClient.reply(history: [(role: "user", content: prompt)],
@@ -65,14 +70,21 @@ enum SequenceAgent {
         var stamp = time.string(from: Date())
         let local = DateFormatter()
         local.dateFormat = "yyyy-MM-dd HH:mm"
+        let appLabel = app.replacingOccurrences(of: "]", with: "\\]")
+        let appContext = app.isEmpty ? "" : (appBundleID.isEmpty
+            ? "使用：\(app)"
+            : "使用：[\(appLabel)](app://\(appBundleID))")
         let md = """
         ---
         time: \(local.string(from: Date()))（本地时间）
         app: \(app)
+        appBundleID: \(appBundleID)
         phys: \(feed.phys)
         mind: \(feed.mind)
         activeStreakMin: \(feed.activeStreakMin)
         ---
+        \(appContext)
+
         \(body.isEmpty ? "（无屏幕内容）" : body)
         """
         let dayDir = Garden.notes.appendingPathComponent(Garden.day())
