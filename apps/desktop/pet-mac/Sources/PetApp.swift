@@ -328,6 +328,36 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             BiographyStore.shared.tickIfNeeded()
         }
+
+        #if DEBUG
+        // 历史迁移（放 delegate 里：锁屏时窗口不 appear，不能挂在 onAppear 上）
+        if let path = UserDefaults.standard.string(forKey: "importMoments") {
+            let raw = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+            let day = DateFormatter()
+            day.dateFormat = "yyyy-MM-dd"
+            var count = 0
+            for line in raw.split(separator: "\n") {
+                guard let obj = try? JSONSerialization.jsonObject(with: Data(line.utf8))
+                    as? [String: Any],
+                    let text = obj["text"] as? String, !text.isEmpty else { continue }
+                let atMs = (obj["atMs"] as? Double).map(Int64.init)
+                    ?? (obj["date"] as? String)
+                        .flatMap { day.date(from: $0) }
+                        .map { Int64($0.timeIntervalSince1970 * 1000 + 12 * 3600 * 1000) }
+                guard let atMs else { continue }
+                PetStore.shared.importMemory(atMs: atMs, text: text, note: obj["note"] as? String)
+                count += 1
+            }
+            MomentsBridge.writeSnapshot()
+            NSLog("importMoments: %d from %@", count, path)
+        }
+        // 历史章节补写：给每个有素材、没有章的月份定稿一回
+        if UserDefaults.standard.bool(forKey: "backfillBiography") {
+            Task { @MainActor in
+                await BiographyStore.shared.backfillHistory()
+            }
+        }
+        #endif
     }
 
     /// sequence agent 定时跑（默认 5 分钟），每 12 次 sequence 后做一次梦。

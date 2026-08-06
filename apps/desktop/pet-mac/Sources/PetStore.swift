@@ -47,6 +47,12 @@ final class PetStore: ObservableObject {
         NSLog("PetStore: memory saved — \(text)")
     }
 
+    /// 历史迁移：按原始时间写入（DEBUG 导入口用；正常路径走 addMemory）。
+    func importMemory(atMs: Int64, text: String, note: String?) {
+        guard let store else { return }
+        try? store.add(id: UUID().uuidString, atMs: atMs, text: text, note: note, categories: [])
+    }
+
     /// 某个自然月的小传素材（《传》取材用），按时间升序。
     func memories(monthOf date: Date) -> [(at: Date, text: String, note: String?)] {
         guard let store else { return [] }

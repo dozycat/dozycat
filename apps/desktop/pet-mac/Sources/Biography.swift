@@ -161,8 +161,35 @@ final class BiographyStore: ObservableObject {
 
     /// 写/续/定稿某个月的一回。素材由 pet 备好塞进 prompt，一次生成。
     func write(month: Date, index: Int, finalize: Bool, keepTitle: String? = nil) {
-        guard let config = SettingsStore.shared.llmConfig, !writing else { return }
+        guard !writing else { return }
         writing = true
+        Task {
+            defer { writing = false }
+            await generate(month: month, index: index, finalize: finalize, keepTitle: keepTitle)
+        }
+    }
+
+    /// 历史迁移后补写：从最早有素材的月份到上个月，凡没有章的都补一回（定稿）。
+    func backfillHistory() async {
+        let calendar = Calendar.current
+        var month = calendar.date(byAdding: .month, value: -12, to: Date())!
+        while !calendar.isDate(month, equalTo: Date(), toGranularity: .month) {
+            let key = { let f = DateFormatter(); f.dateFormat = "yyyy-MM"; return f.string(from: month) }()
+            let hasChapter = chapters.contains { $0.id == key }
+            let material = Self.material(monthOf: month)
+            if !hasChapter, material.momentCount > 0, !writing {
+                writing = true
+                await generate(month: month, index: (chapters.last?.index ?? 0) + 1,
+                               finalize: true)
+                writing = false
+            }
+            month = calendar.date(byAdding: .month, value: 1, to: month)!
+        }
+        NSLog("BiographyStore: backfill done, \(chapters.count) chapters")
+    }
+
+    private func generate(month: Date, index: Int, finalize: Bool, keepTitle: String? = nil) async {
+        guard let config = SettingsStore.shared.llmConfig else { return }
         let material = Self.material(monthOf: month)
         let bookLine = bookTitle.map { "书名《\($0)》。" }
             ?? "这本书还没有名字，请一并起一个（3-6 字，含蓄、像本散文集，不带「猫」字）。"
@@ -180,28 +207,25 @@ final class BiographyStore: ObservableObject {
                    : "这一回还在连载中，结尾留一点「待续」的余地，不写批注。")
         只输出 JSON：{"bookTitle":"书名","title":"标题","body":"段落间用两个换行分隔","annotation":"批注或空串"}
         """
-        Task {
-            defer { writing = false }
-            var out: String?
-            if PiCLI.available {
-                out = await PiCLI.run(name: "dozycat·传 第\(index)回",
-                                      system: "你只输出 JSON，不输出其它内容。",
-                                      prompt: prompt, cwd: Garden.root,
-                                      ephemeral: true, timeout: 240)
-            }
-            if out == nil {
-                out = try? await LLMClient.reply(history: [(role: "user", content: prompt)],
-                                                 config: config)
-            }
-            guard let out, let parsed = Self.parseChapterJSON(out) else {
-                NSLog("BiographyStore: chapter \(index) generation failed")
-                return
-            }
-            save(month: month, index: index, finalize: finalize,
-                 title: keepTitle ?? parsed.title, body: parsed.body,
-                 annotation: finalize ? parsed.annotation : nil,
-                 sources: material.sourcesLine, bookTitle: parsed.bookTitle)
+        var out: String?
+        if PiCLI.available {
+            out = await PiCLI.run(name: "dozycat·传 第\(index)回",
+                                  system: "你只输出 JSON，不输出其它内容。",
+                                  prompt: prompt, cwd: Garden.root,
+                                  ephemeral: true, timeout: 240)
         }
+        if out == nil {
+            out = try? await LLMClient.reply(history: [(role: "user", content: prompt)],
+                                             config: config)
+        }
+        guard let out, let parsed = Self.parseChapterJSON(out) else {
+            NSLog("BiographyStore: chapter \(index) generation failed")
+            return
+        }
+        save(month: month, index: index, finalize: finalize,
+             title: keepTitle ?? parsed.title, body: parsed.body,
+             annotation: finalize ? parsed.annotation : nil,
+             sources: material.sourcesLine, bookTitle: parsed.bookTitle)
     }
 
     private func save(month: Date, index: Int, finalize: Bool, title: String, body: String,
