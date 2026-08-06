@@ -3,27 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dozycat 懒猫 — 工作交给别的 AI，它只负责你。</title>
-<meta name="description" content="懒猫是一个不帮你干活的 AI。它记得你的一切，提醒你休息、喝水、睡觉，在你需要的时候陪你说说话。">
-<meta property="og:title" content="dozycat 懒猫">
-<meta property="og:description" content="工作交给别的 AI，它只负责你。">
+<title>懒猫君小传 — dozycat · 工作交给别的 AI，它只负责你。</title>
+<meta name="description" content="在这个负能量爆炸、人人都迟早被替代的今天，我就想活得轻松一点。于是我给自己造了一只猫——懒猫君小传，连载中。">
+<meta property="og:title" content="懒猫君小传 — dozycat">
+<meta property="og:description" content="它不帮你干活。工作交给别的 AI，它只负责你。">
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="apple-touch-icon" href="assets/icon.png">
 <link rel="alternate" hreflang="zh-Hans" href="./">
 <link rel="alternate" hreflang="en" href="./en/">
 <link rel="alternate" hreflang="x-default" href="./">
-<script>
-  // 首访按浏览器语言跳转；手动切换后尊重选择（localStorage）
-  (function () {
-    var saved = localStorage.getItem("dozycat-lang");
-    if (saved === "zh") return;
-    if (saved === "en" || (!saved && !/^zh/i.test(navigator.language))) {
-      location.replace("en/");
-    }
-  })();
-</script>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,22 +21,20 @@
 <nav class="nav">
   <div class="logo">dozycat<span class="dot">.</span></div>
   <div class="nav-links">
-    <a href="#features">它会什么</a>
-    <a href="#night">睡前模式</a>
-    <a href="#platforms">桌面与手机</a>
+    <a href="#ch1">它搬进了桌面</a>
+    <a href="#ch5">它在写我</a>
+    <a href="#ending">尾声</a>
     <a class="lang-switch" href="en/" onclick="localStorage.setItem('dozycat-lang','en')">EN</a>
-    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat">免费下载</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat">领养一只懒猫</a>
   </div>
 </nav>
 
-<header class="hero">
-  <div class="kicker">COMPANION, NOT COPILOT</div>
-  <h1>工作交给别的 AI，<br>它只负责你。</h1>
-  <p class="hero-sub">懒猫是一个不帮你干活的 AI。它记得你的一切，提醒你休息、喝水、睡觉，在你需要的时候陪你说说话。</p>
-  <div class="hero-ctas">
-    <a class="btn btn-coral" href="https://github.com/dozycat/dozycat">领养一只懒猫</a>
-    <a class="btn btn-ghost" href="#features">看看它的一天</a>
-  </div>
+<!-- ======== 书名页 ======== -->
+<header class="hero story-hero">
+  <div class="kicker">懒猫君小传 · 连载中</div>
+  <h1>在这个人人都迟早被替代的今天，<br>我就想活得轻松一点。</h1>
+  <p class="hero-sub">负能量到处爆炸，KPI 永远在涨。我不想跑得更快了——我想早点睡，多喝水，难过的时候有地方说，忘了的事有人替我记得。道理都懂，就是做不到。</p>
+  <p class="hero-sub hero-turn">于是我给自己造了一只猫。<br>它叫懒猫君。它不帮我干活：<strong>工作交给别的 AI，它只负责我。</strong></p>
 
   <div class="cat cat-hero breathe" aria-hidden="true">
     <div class="ear ear-l"></div>
@@ -60,70 +48,100 @@
     </div>
     <div class="cat-shadow"></div>
   </div>
+  <div class="scroll-hint">往下翻，是它的故事 ↓</div>
 </header>
 
-<section class="statement">
-  <p>现在的 AI 都在帮人做更多的事。<br><strong>懒猫想帮你做更少的事</strong>——少熬一次夜，少憋一件心事，少错过一场晚霞。</p>
-</section>
-
-<section id="features" class="features">
-  <div class="kicker">它会什么</div>
-  <div class="feature-grid">
-
-    <div class="feature">
-      <div class="card card-memory">
-        <div class="memory-row"><span class="memory-date">7.29</span><span>「有点怕见小林」</span></div>
-        <div class="memory-row"><span class="memory-date">8.01</span><span>妈妈想吃番茄牛腩</span></div>
-        <div class="memory-row last"><span class="memory-date">今天</span><span>和小林聊开了 <em class="mind">松了口气</em></span></div>
-      </div>
-      <h3>记得你的一切</h3>
-      <p>大事小事它都记着，聊天时自然地想起来。所有记忆只存在你自己的设备里。</p>
-    </div>
-
-    <div class="feature">
-      <div class="card card-energy">
-        <div class="energy-cell">
-          <span class="energy-label">心理能量</span>
-          <span class="energy-num">72</span>
-          <span class="bar"><span class="fill fill-mind" style="width:72%"></span></span>
-        </div>
-        <div class="energy-divider"></div>
-        <div class="energy-cell">
-          <span class="energy-label">生理能量</span>
-          <span class="energy-num">45</span>
-          <span class="bar"><span class="fill fill-body" style="width:45%"></span></span>
-        </div>
-      </div>
-      <h3>两条能量刻度</h3>
-      <p>心理能量和生理能量，轻轻记着你的状态。掉下去了，它会想办法帮你充回来。</p>
-    </div>
-
-    <div class="feature">
-      <div class="card card-nudge">
-        <div class="nudge">
-          <div class="cat cat-mini" aria-hidden="true">
-            <div class="ear ear-l"></div>
-            <div class="ear ear-r"></div>
-            <div class="head">
-              <div class="eye eye-l"></div>
-              <div class="eye eye-r"></div>
-            </div>
-          </div>
-          <div class="nudge-text">窗外晚霞正烧得好看，去阳台看两分钟？</div>
-        </div>
-      </div>
-      <h3>在你需要时出现</h3>
-      <p>坐太久了、该睡了、答应自己的事快忘了——它会主动来找你，轻轻的，不吵。</p>
-    </div>
+<!-- ======== 第一回 ======== -->
+<section id="ch1" class="chapter">
+  <div class="chapter-no">第一回</div>
+  <h2 class="chapter-title">它搬进了桌面的角落</h2>
+  <div class="prose">
+    <p>它来的那天没有仪式，就趴在屏幕右下角，随着呼吸轻轻起伏，偶尔眨一下眼。</p>
+    <p>我很快发现它自己就是一块能量表：我坐得越久，它越蔫；我熬夜，它跟着睡不好；我出门走一圈回来，它高兴得耳朵都竖起来。数字被藏了起来——只有把鼠标停在它身上，两条能量才肯出来见人。</p>
   </div>
+  <figure class="fig fig-narrow">
+    <img src="assets/shots/pet.png" alt="悬停在懒猫身上时出现的能量胶囊：心理 72、生理 45" width="293" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>设计理念：猫本身就是能量表。身体和表情反映状态，数字只在悬停和菜单栏出现，平时不打扰。</div>
 </section>
 
-<section id="night" class="night">
+<!-- ======== 第二回 ======== -->
+<section id="ch2" class="chapter">
+  <div class="chapter-no">第二回</div>
+  <h2 class="chapter-title">它记得我忘了的</h2>
+  <div class="prose">
+    <p>上次牙疼是什么时候？和小林的合照放在哪个文件夹？以前，这些问题的答案叫「算了」。</p>
+    <p>现在我按下 ⌥ 空格，直接问它。它翻它的小本子——我的倾诉、时间笔记、本机文件——把线索一条条摆出来，末了顺口补一句：要不要我帮你记个复查提醒？</p>
+  </div>
+  <figure class="fig">
+    <img src="assets/shots/search.png" alt="Search Everything：搜回忆、时间笔记、本机文件，或直接问" width="680" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>设计理念：回忆和文件搜索都在本机完成，不上传。</div>
+</section>
+
+<!-- ======== 第三回 ======== -->
+<section id="ch3" class="chapter">
+  <div class="chapter-no">第三回</div>
+  <h2 class="chapter-title">它听我说完</h2>
+  <div class="prose">
+    <p>方案第三次被打回那天，我点开它，只说了一句「好烦」。</p>
+    <p>它没有替我复盘，也没有背打气模板，只说：先不想它——你从中午到现在还没喝过水。后来我在它的小本子里看到一行小字：<em>这个项目最近让你很耗。</em></p>
+    <p>有些话，只需要被记住。</p>
+  </div>
+  <figure class="fig fig-mid">
+    <img src="assets/shots/chat.png" alt="对话 widget：点猫猫展开，它记下了值得记住的小事" width="380" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>设计理念：聊天里值得记住的小事轻轻存进小传，它不声张。</div>
+</section>
+
+<!-- ======== 第四回 ======== -->
+<section id="ch4" class="chapter">
+  <div class="chapter-no">第四回</div>
+  <h2 class="chapter-title">它替我管账</h2>
+  <div class="prose">
+    <p>它管我的能量，像管一份资产：日历看长期，K 线看当天，回血清单是我的「加仓」动作。</p>
+    <p>傍晚散步 20 分钟，做过 23 次，平均回 +12；给妈妈打电话，+15。它还会提前把明天的回血排进计划，末了补一句：按这个走，明晚收盘生理能量大约 81。</p>
+  </div>
+  <figure class="fig fig-wide">
+    <img src="assets/shots/energy.png" alt="能量 widgets：能量日历、日内 K 线、回血清单、明日计划" width="900" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>设计理念：把能量当成可以经营的资产——消耗要认，回血要排。</div>
+</section>
+
+<!-- ======== 第五回 ======== -->
+<section id="ch5" class="chapter">
+  <div class="chapter-no">第五回</div>
+  <h2 class="chapter-title">它在写我</h2>
+  <div class="prose">
+    <p>后来我发现它在写一本书，写的是我。数据是素材，日子是章节，每月初一更新一回。</p>
+    <p>目录里每一回都有它的批注。比如《智齿记》那回：「缓缓再说」已缓两月有余，本猫持续观望。更新那天，它会把新的一回递到桌面上来，问我现在读，还是睡前再读。</p>
+  </div>
+  <figure class="fig fig-wide fig-duo">
+    <img class="fig-duo-main" src="assets/shots/book.png" alt="《传》正文书页：竖排书名 + 当前连载的一回" width="760" loading="lazy">
+    <img class="fig-duo-side" src="assets/shots/booknews.png" alt="桌面小件：第十四回开笔了，读这一回 / 睡前再读" width="340" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>设计理念：《传》——你忙着过日子，它替你把日子写下来。</div>
+</section>
+
+<!-- ======== 插页 ======== -->
+<section class="interlude">
+  <div class="chapter-no">插页</div>
+  <h2 class="chapter-title">它的八种样子</h2>
+  <div class="prose prose-center">
+    <p>打盹是默认。你熬夜，它担心你；你没电，它整只摊平；你好几个小时不理它，它歪着头蹭过来。<br>不用看数字也知道你怎么样——它替你演出来。</p>
+  </div>
+  <figure class="fig fig-wide">
+    <img src="assets/shots/moods.png" alt="猫猫的八种状态：打盹、睡着了、开心、好奇、担心你、没电了、陪你呼吸、想你了" width="900" loading="lazy">
+  </figure>
+</section>
+
+<!-- ======== 尾声 ======== -->
+<section id="ending" class="night">
   <div class="night-inner">
     <div class="night-copy">
-      <div class="kicker kicker-night">睡前模式</div>
-      <h2>一天的最后，<br>它陪你收个尾。</h2>
-      <p class="night-sub">23 点以后，屏幕慢慢暗下来。它数给你听今天做到的三件小事，陪你呼吸三分钟，然后说晚安。明早再轻轻叫你。</p>
+      <div class="kicker kicker-night">尾声</div>
+      <h2>一天的最后，<br>它陪我收个尾。</h2>
+      <p class="night-sub">23 点以后，屏幕慢慢暗下来。它数给我听今天做到的三件小事，陪我呼吸三分钟，然后说晚安。明早，再轻轻叫我。</p>
       <div class="recap-row"><span>01</span>鼓起勇气见了小林，还聊开了</div>
       <div class="recap-row"><span>02</span>难过的时候没有硬扛，出门走了一圈</div>
       <div class="recap-row last"><span>03</span>喝够了 8 杯水，第一次</div>
@@ -143,78 +161,21 @@
   </div>
 </section>
 
-<section id="platforms" class="platforms">
-  <div class="kicker">桌面与手机</div>
-  <div class="platform-grid">
-
-    <div class="platform">
-      <div class="card desktop-mock">
-        <div class="menubar"><span class="menubar-app">访达</span><span>文件</span><span class="menubar-right"><span class="dot-coral"></span>懒猫 45% · 15:24</span></div>
-        <div class="doc-window">
-          <span class="line" style="width:56%;background:#EDECE8"></span>
-          <span class="line" style="width:92%"></span>
-          <span class="line" style="width:86%"></span>
-        </div>
-        <div class="desktop-pet">
-          <div class="bubble">写完这段，去接杯水回血？</div>
-          <div class="cat cat-desk" aria-hidden="true">
-            <div class="ear ear-l"></div>
-            <div class="ear ear-r"></div>
-            <div class="head">
-              <div class="eye eye-l blink"></div>
-              <div class="eye eye-r blink"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <h3>桌面端 · 安静地待在角落</h3>
-      <p>它坐在屏幕角落陪你干活，坐太久会提醒你，到点了整个桌面轻轻暗下来。</p>
-    </div>
-
-    <div class="platform">
-      <div class="card phone-frame-wrap">
-        <div class="phone">
-          <div class="phone-hero">
-            <div class="cat cat-phone" aria-hidden="true">
-              <div class="ear ear-l"></div>
-              <div class="ear ear-r"></div>
-              <div class="head">
-                <div class="eye eye-l"></div>
-                <div class="eye eye-r"></div>
-              </div>
-            </div>
-            <span class="phone-greeting">下午好呀</span>
-          </div>
-          <div class="phone-energy">
-            <div class="pe-cell"><span class="pe-label">心理</span><span class="pe-num">72</span><span class="pe-bar"><span style="width:72%;background:#7C8DB5"></span></span></div>
-            <div class="pe-cell"><span class="pe-label">生理</span><span class="pe-num">45</span><span class="pe-bar"><span style="width:45%;background:#FF8A75"></span></span></div>
-          </div>
-          <div class="phone-list">
-            <span><i class="li-dot" style="background:#7C8DB5"></i>喝水 4/8 杯</span>
-            <span><i class="li-dot" style="background:#FF8A75"></i>傍晚散步 18:30</span>
-          </div>
-        </div>
-      </div>
-      <h3>手机端 · 装进口袋</h3>
-      <p>倾诉、记忆、回顾都在手机里。锁屏上它也会主动来找你，轻轻的。</p>
-    </div>
-  </div>
-</section>
-
 <section class="cta">
-  <h2>今晚就早点睡吧。</h2>
+  <div class="kicker">这个故事还在连载</div>
+  <h2>下一回的主角，可以是你。</h2>
   <div class="cta-platforms">macOS · Windows · iOS · Android</div>
   <a class="btn btn-coral btn-lg" href="https://github.com/dozycat/dozycat">领养一只懒猫</a>
-  <div class="cta-note">免费 · 记忆只存在你自己的设备里</div>
+  <div class="cta-note">免费 · 自带钥匙（BYOK）· 记忆只存在你自己的设备里</div>
 </section>
 
 <footer class="footer">
   <div class="footer-inner">
     <span>dozycat<span class="dot">.</span> 懒猫 © 2026</span>
     <span class="footer-links">
-      <a href="#features">它会什么</a>
-      <a href="#night">睡前模式</a>
-      <a href="#platforms">桌面与手机</a>
+      <a href="#ch1">第一回</a>
+      <a href="#ch5">第五回</a>
+      <a href="#ending">尾声</a>
     </span>
   </div>
 </footer>

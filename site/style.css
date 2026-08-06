@@ -350,6 +350,61 @@ h1, h2, h3, p { margin: 0; }
 .footer-links a { color: var(--muted); }
 .footer-links a:hover { color: var(--coral); }
 
+/* ---- 懒猫君小传（章回体主页） ---- */
+.story-hero .hero-sub { max-width: 560px; }
+.hero-turn { color: var(--ink); }
+.hero-turn strong { font-weight: 500; }
+.scroll-hint { margin-top: 56px; font-size: 12px; color: var(--faint); letter-spacing: .1em; }
+
+.chapter, .interlude {
+  max-width: 1000px; margin: 0 auto;
+  padding: 130px 32px 0;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+.chapter-no {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px; letter-spacing: .5em; color: var(--coral);
+  padding-left: .5em; /* 抵消末字距，保持居中 */
+}
+.chapter-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 34px; font-weight: 600; letter-spacing: .02em;
+  margin-top: 14px;
+}
+.prose {
+  max-width: 620px; margin-top: 26px;
+  display: flex; flex-direction: column; gap: 18px;
+  text-align: left;
+}
+.prose p {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px; line-height: 2.3; color: #43423E;
+  text-wrap: pretty;
+}
+.prose em { font-style: normal; color: var(--blue); }
+.prose-center { text-align: center; }
+
+.fig { margin: 44px 0 0; display: flex; justify-content: center; align-items: flex-end; gap: 28px; }
+.fig img {
+  max-width: 100%; height: auto;
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(46,46,51,.18);
+}
+.fig-narrow img { border-radius: 0; box-shadow: none; } /* 透明底的桌宠截图 */
+.fig-duo .fig-duo-side { flex-shrink: 0; }
+.fig-note {
+  margin-top: 26px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--blue);
+}
+.fig-note-dash { width: 14px; height: 1px; background: var(--blue); flex-shrink: 0; }
+
+.interlude .fig img { box-shadow: 0 24px 60px rgba(46,46,51,.12); }
+
+/* 尾声接夜色带 */
+#ending.night { margin-top: 150px; }
+
 /* ---- responsive ---- */
 @media (max-width: 960px) {
   .nav { padding: 20px 24px; }
@@ -357,6 +412,12 @@ h1, h2, h3, p { margin: 0; }
   .nav-links a:not(.btn):not(.lang-switch) { display: none; }
   .hero { padding-top: 48px; }
   .hero h1 { font-size: 40px; }
+  .chapter, .interlude { padding: 88px 20px 0; }
+  .chapter-title { font-size: 26px; }
+  .prose p { font-size: 15px; }
+  .fig { margin-top: 32px; }
+  .fig-duo { flex-direction: column; align-items: center; }
+  #ending.night { margin-top: 100px; }
   .statement { padding: 80px 24px 0; }
   .statement p { font-size: 21px; }
   .features, .platforms { padding: 80px 24px 0; }

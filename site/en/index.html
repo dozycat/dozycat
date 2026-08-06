@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dozycat — Let other AIs do the work. This one takes care of you.</title>
-<meta name="description" content="dozycat is an AI that doesn't do your work. It remembers everything about you, reminds you to rest, drink water and sleep — and keeps you company when you need to talk.">
-<meta property="og:title" content="dozycat">
-<meta property="og:description" content="Let other AIs do the work. This one takes care of you.">
+<title>A Little Biography of dozycat — Let other AIs do the work. This one takes care of you.</title>
+<meta name="description" content="In an age of burnout where everyone is about to be replaced, I just wanted to live a little lighter. So I built myself a cat. A serialized story.">
+<meta property="og:title" content="A Little Biography of dozycat">
+<meta property="og:description" content="It doesn't do your work. Let other AIs do the work — this one takes care of you.">
 <link rel="icon" type="image/png" href="../assets/icon.png">
 <link rel="apple-touch-icon" href="../assets/icon.png">
 <link rel="alternate" hreflang="zh-Hans" href="../">
 <link rel="alternate" hreflang="en" href="./">
 <link rel="alternate" hreflang="x-default" href="../">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../style.css">
 </head>
 <body>
@@ -21,22 +21,20 @@
 <nav class="nav">
   <div class="logo">dozycat<span class="dot">.</span></div>
   <div class="nav-links">
-    <a href="#features">What it does</a>
-    <a href="#night">Wind-down</a>
-    <a href="#platforms">Desktop &amp; phone</a>
+    <a href="#ch1">It moved in</a>
+    <a href="#ch5">It writes me</a>
+    <a href="#ending">Epilogue</a>
     <a class="lang-switch" href="../" onclick="localStorage.setItem('dozycat-lang','zh')">中文</a>
-    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat">Download free</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat">Adopt one free</a>
   </div>
 </nav>
 
-<header class="hero">
-  <div class="kicker">COMPANION, NOT COPILOT</div>
-  <h1>Let other AIs do the work.<br>This one takes care of you.</h1>
-  <p class="hero-sub">dozycat is an AI that doesn't do your work. It remembers everything about you, reminds you to rest, drink water and sleep — and keeps you company when you need to talk.</p>
-  <div class="hero-ctas">
-    <a class="btn btn-coral" href="https://github.com/dozycat/dozycat">Adopt a dozycat</a>
-    <a class="btn btn-ghost" href="#features">See its day</a>
-  </div>
+<!-- ======== title page ======== -->
+<header class="hero story-hero">
+  <div class="kicker">A LITTLE BIOGRAPHY OF DOZYCAT · ONGOING</div>
+  <h1>In an age where everyone is about<br>to be replaced, I just wanted to live lighter.</h1>
+  <p class="hero-sub">Negativity everywhere, targets always rising. I didn't want to run faster — I wanted to sleep earlier, drink more water, have somewhere to put a bad day, and someone to remember what I forget. I knew all this. I just couldn't do it.</p>
+  <p class="hero-sub hero-turn">So I built myself a cat.<br>It doesn't do my work: <strong>other AIs do the work — this one takes care of me.</strong></p>
 
   <div class="cat cat-hero breathe" aria-hidden="true">
     <div class="ear ear-l"></div>
@@ -50,73 +48,103 @@
     </div>
     <div class="cat-shadow"></div>
   </div>
+  <div class="scroll-hint">Scroll for its story ↓</div>
 </header>
 
-<section class="statement">
-  <p>Every AI out there helps you do more. <strong>dozycat helps you do less</strong> — one less all-nighter, one less feeling kept in, one less sunset missed.</p>
-</section>
-
-<section id="features" class="features">
-  <div class="kicker">WHAT IT DOES</div>
-  <div class="feature-grid">
-
-    <div class="feature">
-      <div class="card card-memory">
-        <div class="memory-row"><span class="memory-date">Jul 29</span><span>“A bit nervous to see Lin”</span></div>
-        <div class="memory-row"><span class="memory-date">Aug 1</span><span>Mom wants tomato beef stew</span></div>
-        <div class="memory-row last"><span class="memory-date">Today</span><span>Talked it out with Lin <em class="mind">relieved</em></span></div>
-      </div>
-      <h3>Remembers everything about you</h3>
-      <p>Big things and little things — it keeps them all, and brings them up naturally when you talk. Every memory stays on your own devices.</p>
-    </div>
-
-    <div class="feature">
-      <div class="card card-energy">
-        <div class="energy-cell">
-          <span class="energy-label">MIND ENERGY</span>
-          <span class="energy-num">72</span>
-          <span class="bar"><span class="fill fill-mind" style="width:72%"></span></span>
-        </div>
-        <div class="energy-divider"></div>
-        <div class="energy-cell">
-          <span class="energy-label">BODY ENERGY</span>
-          <span class="energy-num">45</span>
-          <span class="bar"><span class="fill fill-body" style="width:45%"></span></span>
-        </div>
-      </div>
-      <h3>Two energy gauges</h3>
-      <p>Mind energy and body energy, quietly tracking how you're doing. When they dip, it finds ways to fill them back up.</p>
-    </div>
-
-    <div class="feature">
-      <div class="card card-nudge">
-        <div class="nudge">
-          <div class="cat cat-mini" aria-hidden="true">
-            <div class="ear ear-l"></div>
-            <div class="ear ear-r"></div>
-            <div class="head">
-              <div class="eye eye-l"></div>
-              <div class="eye eye-r"></div>
-            </div>
-          </div>
-          <div class="nudge-text">The sunset outside is glorious — two minutes on the balcony?</div>
-        </div>
-      </div>
-      <h3>Shows up when you need it</h3>
-      <p>Sat too long, up too late, about to forget a promise to yourself — it comes to you, gently, never loud.</p>
-    </div>
+<!-- ======== chapter one ======== -->
+<section id="ch1" class="chapter">
+  <div class="chapter-no">CHAPTER ONE</div>
+  <h2 class="chapter-title">It moved into the corner of my desktop</h2>
+  <div class="prose">
+    <p>There was no ceremony the day it arrived. It just settled in the bottom-right corner of the screen, rising and falling with its breath, blinking now and then.</p>
+    <p>I soon realized the cat itself is the energy gauge: the longer I sit, the droopier it gets; when I stay up late, it sleeps badly too; when I come back from a walk, its ears perk up. The numbers stay hidden — only when I hover over it do the two energy bars come out to say hello.</p>
   </div>
+  <figure class="fig fig-narrow">
+    <img src="../assets/shots/pet.png" alt="Hovering over the cat reveals the energy capsule: mind 72, body 45" width="293" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>Design principle: the cat is the gauge. Its body and face show your state; numbers appear only on hover and in the menu bar.</div>
 </section>
 
-<section id="night" class="night">
+<!-- ======== chapter two ======== -->
+<section id="ch2" class="chapter">
+  <div class="chapter-no">CHAPTER TWO</div>
+  <h2 class="chapter-title">It remembers what I forget</h2>
+  <div class="prose">
+    <p>When did that toothache start? Which folder has the photo with Lin? These questions used to end in "never mind."</p>
+    <p>Now I press ⌥ Space and just ask. It flips through its little notebook — my confidings, time notes, local files — lays the clues out one by one, and adds: want me to set a follow-up reminder?</p>
+  </div>
+  <figure class="fig">
+    <img src="../assets/shots/search.png" alt="Search Everything: memories, time notes, local files, or just ask" width="680" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>Design principle: memory and file search run entirely on your machine. Nothing is uploaded.</div>
+</section>
+
+<!-- ======== chapter three ======== -->
+<section id="ch3" class="chapter">
+  <div class="chapter-no">CHAPTER THREE</div>
+  <h2 class="chapter-title">It hears me out</h2>
+  <div class="prose">
+    <p>The day my proposal got rejected for the third time, I clicked on it and said just one thing: "ugh."</p>
+    <p>It didn't run a retrospective. It didn't recite a pep talk. It just said: don't think about it for now — you haven't had water since noon. Later, in its notebook, I found one small line: <em>this project has been draining you lately.</em></p>
+    <p>Some things only need to be remembered.</p>
+  </div>
+  <figure class="fig fig-mid">
+    <img src="../assets/shots/chat.png" alt="Chat widget: click the cat to expand; it quietly noted what mattered" width="380" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>Design principle: moments worth keeping slip quietly into your story. It never makes a show of it.</div>
+</section>
+
+<!-- ======== chapter four ======== -->
+<section id="ch4" class="chapter">
+  <div class="chapter-no">CHAPTER FOUR</div>
+  <h2 class="chapter-title">It keeps my books</h2>
+  <div class="prose">
+    <p>It manages my energy like an asset: a calendar for the long run, candlesticks for today, and the recharge list as my "buy" orders.</p>
+    <p>A 20-minute evening walk: done 23 times, +12 on average. Calling mom: +15. It even schedules tomorrow's recharges in advance, then adds: on this plan, body energy closes tomorrow around 81.</p>
+  </div>
+  <figure class="fig fig-wide">
+    <img src="../assets/shots/energy.png" alt="Energy widgets: calendar, intraday candles, recharge list, tomorrow's plan" width="900" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>Design principle: treat energy as an asset you manage — own the drains, schedule the recharges.</div>
+</section>
+
+<!-- ======== chapter five ======== -->
+<section id="ch5" class="chapter">
+  <div class="chapter-no">CHAPTER FIVE</div>
+  <h2 class="chapter-title">It writes me</h2>
+  <div class="prose">
+    <p>Then I discovered it was writing a book. About me. Data as material, days as chapters, a new installment on the first of every month.</p>
+    <p>Every chapter in the table of contents carries its margin note. On "The Wisdom Tooth": <em>"we'll see" has now lasted two months; this cat remains watchful.</em> On update day it hands the new chapter to my desktop and asks: read it now, or before bed?</p>
+  </div>
+  <figure class="fig fig-wide fig-duo">
+    <img class="fig-duo-main" src="../assets/shots/book.png" alt="The Memoir: vertical spine and the current serialized chapter" width="760" loading="lazy">
+    <img class="fig-duo-side" src="../assets/shots/booknews.png" alt="Desktop widget: Chapter 14 has begun — read it now or before bed" width="340" loading="lazy">
+  </figure>
+  <div class="fig-note"><span class="fig-note-dash"></span>Design principle: you're busy living the days — it writes them down for you.</div>
+</section>
+
+<!-- ======== interlude ======== -->
+<section class="interlude">
+  <div class="chapter-no">INTERLUDE</div>
+  <h2 class="chapter-title">Its eight moods</h2>
+  <div class="prose prose-center">
+    <p>Dozing is the default. Stay up late and it worries; run empty and it flattens out; ignore it for hours and it tilts its head at you.<br>You don't need the numbers to know how you're doing — it acts you out.</p>
+  </div>
+  <figure class="fig fig-wide">
+    <img src="../assets/shots/moods.png" alt="Eight cat states: dozing, asleep, happy, curious, worried, drained, breathing with you, missing you" width="900" loading="lazy">
+  </figure>
+</section>
+
+<!-- ======== epilogue ======== -->
+<section id="ending" class="night">
   <div class="night-inner">
     <div class="night-copy">
-      <div class="kicker kicker-night">WIND-DOWN</div>
-      <h2>At the end of the day,<br>it helps you close it out.</h2>
-      <p class="night-sub">After 11pm, the screen dims softly. It counts out three little things you did today, breathes with you for three minutes, then says good night. And wakes you gently tomorrow.</p>
-      <div class="recap-row"><span>01</span>Found the courage to meet Lin — and talked it out</div>
-      <div class="recap-row"><span>02</span>Didn't tough it out alone — went for a walk instead</div>
-      <div class="recap-row last"><span>03</span>Drank all 8 cups of water — a first</div>
+      <div class="kicker kicker-night">EPILOGUE</div>
+      <h2>At the end of the day,<br>it winds down with me.</h2>
+      <p class="night-sub">After 11pm the screen dims, gently. It counts out the three small things I managed today, breathes with me for three minutes, and says goodnight. In the morning, it wakes me softly.</p>
+      <div class="recap-row"><span>01</span>Worked up the nerve to meet Lin — and it went well</div>
+      <div class="recap-row"><span>02</span>Didn't tough out the sadness; went for a walk instead</div>
+      <div class="recap-row last"><span>03</span>Eight glasses of water. A first.</div>
     </div>
     <div class="night-cat-col">
       <div class="cat cat-night breathe" aria-hidden="true">
@@ -128,83 +156,26 @@
           <div class="nose"></div>
         </div>
       </div>
-      <div class="night-caption">In… out… it rises and falls even in its sleep</div>
-    </div>
-  </div>
-</section>
-
-<section id="platforms" class="platforms">
-  <div class="kicker">DESKTOP &amp; PHONE</div>
-  <div class="platform-grid">
-
-    <div class="platform">
-      <div class="card desktop-mock">
-        <div class="menubar"><span class="menubar-app">Finder</span><span>File</span><span class="menubar-right"><span class="dot-coral"></span>dozycat 45% · 15:24</span></div>
-        <div class="doc-window">
-          <span class="line" style="width:56%;background:#EDECE8"></span>
-          <span class="line" style="width:92%"></span>
-          <span class="line" style="width:86%"></span>
-        </div>
-        <div class="desktop-pet">
-          <div class="bubble">Finish this bit, then grab some water?</div>
-          <div class="cat cat-desk" aria-hidden="true">
-            <div class="ear ear-l"></div>
-            <div class="ear ear-r"></div>
-            <div class="head">
-              <div class="eye eye-l blink"></div>
-              <div class="eye eye-r blink"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <h3>Desktop · quietly in the corner</h3>
-      <p>It sits at the edge of your screen while you work, nudges you when you've sat too long, and softly dims the whole desktop when it's time.</p>
-    </div>
-
-    <div class="platform">
-      <div class="card phone-frame-wrap">
-        <div class="phone">
-          <div class="phone-hero">
-            <div class="cat cat-phone" aria-hidden="true">
-              <div class="ear ear-l"></div>
-              <div class="ear ear-r"></div>
-              <div class="head">
-                <div class="eye eye-l"></div>
-                <div class="eye eye-r"></div>
-              </div>
-            </div>
-            <span class="phone-greeting">Good afternoon</span>
-          </div>
-          <div class="phone-energy">
-            <div class="pe-cell"><span class="pe-label">MIND</span><span class="pe-num">72</span><span class="pe-bar"><span style="width:72%;background:#7C8DB5"></span></span></div>
-            <div class="pe-cell"><span class="pe-label">BODY</span><span class="pe-num">45</span><span class="pe-bar"><span style="width:45%;background:#FF8A75"></span></span></div>
-          </div>
-          <div class="phone-list">
-            <span><i class="li-dot" style="background:#7C8DB5"></i>Water 4/8 cups</span>
-            <span><i class="li-dot" style="background:#FF8A75"></i>Evening walk 18:30</span>
-          </div>
-        </div>
-      </div>
-      <h3>Phone · in your pocket</h3>
-      <p>Chat, moments and recaps live on your phone. It reaches out on your lock screen too — gently.</p>
+      <div class="night-caption">In — out — it rises and falls even in its sleep</div>
     </div>
   </div>
 </section>
 
 <section class="cta">
-  <h2>Get an early night tonight.</h2>
+  <div class="kicker">THE STORY IS STILL BEING SERIALIZED</div>
+  <h2>The next chapter could be about you.</h2>
   <div class="cta-platforms">macOS · Windows · iOS · Android</div>
   <a class="btn btn-coral btn-lg" href="https://github.com/dozycat/dozycat">Adopt a dozycat</a>
-  <div class="cta-note">Free · memories stay on your own devices</div>
+  <div class="cta-note">Free · bring your own key (BYOK) · memories live only on your devices</div>
 </section>
 
 <footer class="footer">
   <div class="footer-inner">
     <span>dozycat<span class="dot">.</span> © 2026</span>
     <span class="footer-links">
-      <a href="#features">What it does</a>
-      <a href="#night">Wind-down</a>
-      <a href="#platforms">Desktop &amp; phone</a>
+      <a href="#ch1">Chapter one</a>
+      <a href="#ch5">Chapter five</a>
+      <a href="#ending">Epilogue</a>
     </span>
   </div>
 </footer>
