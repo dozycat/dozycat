@@ -65,11 +65,22 @@ struct PetView: View {
                                 panels.append(("booknews", AnyView(BookNewsCard(chapter: chapter))))
                             }
                             for (name, view) in panels {
-                                // NSHostingView 快照：ScrollView 里的内容也能画出来
+                                // NSHostingView 快照：ScrollView 里的内容也能画出来。
+                                // 离屏视图没有窗口、backing scale 是 1x，得手动给 2x 位图。
                                 let host = NSHostingView(rootView: view)
-                                host.frame = NSRect(origin: .zero, size: host.fittingSize)
-                                guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)
-                                else { continue }
+                                let size = host.fittingSize
+                                host.frame = NSRect(origin: .zero, size: size)
+                                let scale: CGFloat = 3
+                                guard let rep = NSBitmapImageRep(
+                                    bitmapDataPlanes: nil,
+                                    pixelsWide: Int(size.width * scale),
+                                    pixelsHigh: Int(size.height * scale),
+                                    bitsPerSample: 8, samplesPerPixel: 4,
+                                    hasAlpha: true, isPlanar: false,
+                                    colorSpaceName: .deviceRGB,
+                                    bytesPerRow: 0, bitsPerPixel: 0
+                                ) else { continue }
+                                rep.size = size
                                 host.cacheDisplay(in: host.bounds, to: rep)
                                 if let png = rep.representation(using: .png, properties: [:]) {
                                     try? png.write(to: URL(fileURLWithPath: dir)

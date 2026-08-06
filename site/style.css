@@ -402,6 +402,35 @@ h1, h2, h3, p { margin: 0; }
 
 .interlude .fig img { box-shadow: 0 24px 60px rgba(46,46,51,.12); }
 
+/* 脚注 */
+sup.fn { font-size: 11px; line-height: 0; }
+sup.fn a { color: var(--coral); padding: 0 2px; }
+.footnotes {
+  max-width: 1000px; margin: 0 auto;
+  padding: 0 32px 40px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.footnotes-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px; letter-spacing: .5em; padding-left: .5em;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 40px; margin-bottom: 18px;
+  width: 620px; max-width: 100%; text-align: center;
+}
+.footnotes ol {
+  margin: 0; padding-left: 20px;
+  max-width: 620px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.footnotes li {
+  font-size: 12.5px; line-height: 2;
+  color: var(--muted);
+}
+.footnotes li a { color: var(--ink-soft); border-bottom: 1px solid var(--line-strong); }
+.footnotes li a:hover { color: var(--coral); border-color: var(--coral); }
+.fn-back { border-bottom: none !important; margin-left: 4px; }
+
 /* 尾声接夜色带 */
 #ending.night { margin-top: 150px; }
 
