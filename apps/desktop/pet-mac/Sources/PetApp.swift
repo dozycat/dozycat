@@ -230,5 +230,23 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         })
 
         SenseFeed.shared.start()
+        startAgents()
+    }
+
+    /// sequence agent 定时跑（默认 5 分钟），每 12 次 sequence 后做一次梦。
+    private func startAgents() {
+        let seqSecs = UInt64(ProcessInfo.processInfo.environment["DOZYCAT_SEQ_SECS"]
+            .flatMap(UInt64.init) ?? 300)
+        Task { @MainActor in
+            var runs = 0
+            while true {
+                try? await Task.sleep(nanoseconds: seqSecs * 1_000_000_000)
+                _ = await SequenceAgent.run()
+                runs += 1
+                if runs % 12 == 0 {
+                    NSLog("DreamAgent: %@", await DreamAgent.run())
+                }
+            }
+        }
     }
 }

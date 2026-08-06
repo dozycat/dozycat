@@ -17,6 +17,7 @@ targets:
       - path: ../../ios/Dozycat/DesignSystem/DS.swift
       - path: ../../ios/Dozycat/Models/SettingsStore.swift
       - path: ../../ios/Dozycat/Models/LLMClient.swift
+      - path: ../../ios/Dozycat/Models/PiAgent.swift
       - path: ../../ios/Dozycat/Core/dozycat_core.swift
     dependencies:
       - framework: ../../ios/Vendor/DozycatCore.xcframework

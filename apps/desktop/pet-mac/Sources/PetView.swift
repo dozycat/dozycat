@@ -35,6 +35,12 @@ struct PetView: View {
                             SearchModel.shared.submit()
                         }
                     }
+                    if defaults.bool(forKey: "runSequence") {
+                        Task { _ = await SequenceAgent.run() }
+                    }
+                    if defaults.bool(forKey: "runDream") {
+                        Task { NSLog("DreamAgent: %@", await DreamAgent.run()) }
+                    }
                 }
                 #endif
             }

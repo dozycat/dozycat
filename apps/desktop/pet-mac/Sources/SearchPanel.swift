@@ -208,9 +208,12 @@ final class SearchModel: ObservableObject {
 
     var isQuestion: Bool {
         let q = query.trimmingCharacters(in: .whitespaces)
-        if q.hasSuffix("？") || q.hasSuffix("?") { return true }
-        let prefixes = ["什么", "怎么", "多少", "上次", "哪", "为什么", "when", "what", "how", "where"]
-        return prefixes.contains { q.lowercased().hasPrefix($0) } && q.count > 4
+        guard q.count > 4 else { return false }
+        if q.contains("？") || q.contains("?") { return true }
+        if ["吗", "呢", "没", "了没", "来着"].contains(where: { q.hasSuffix($0) }) { return true }
+        let markers = ["什么", "怎么", "多少", "上次", "哪", "为什么", "是不是", "有没有", "记得",
+                       "when", "what", "how", "where", "did i", "do i"]
+        return markers.contains { q.lowercased().contains($0) }
     }
 
     private func queryChanged() {
@@ -232,46 +235,34 @@ final class SearchModel: ObservableObject {
         }
     }
 
-    /// 回车：问题走 RAG，普通词维持列表。
+    /// 回车：问题交给 searcher agent（agentic RAG——多轮翻小传/笔记/人物卡/文件找线索）。
     func submit() {
         guard isQuestion, !answering else { return }
         let q = query
-        let context = relevantMemories(for: q)
-        answerSources = context
+        answerSources = []
         answering = true
         Task {
             defer { answering = false }
-            guard let config = SettingsStore.shared.llmConfig else {
-                answer = String(localized: "（要先在设置里配一个模型，我才能翻着回忆回答你。）")
-                return
-            }
-            let contextText = context.map { "\($0.source)：\($0.text)" }.joined(separator: "\n")
-            let prompt = String(
-                localized: "以下是用户的小传片段：\n\(contextText)\n\n用户问：\(q)\n只根据片段回答，短一点，口语化；片段里没有就说不记得。"
-            )
             do {
-                answer = try await LLMClient.reply(history: [(role: "user", content: prompt)],
-                                                   config: config)
+                let result = try await SearcherAgent.run(question: q) { step in
+                    NSLog("SearcherAgent step: \(step)")
+                }
+                answer = result.answer
+                answerSources = result.sources
+                if let out = ProcessInfo.processInfo.environment["DOZYCAT_DEBUG_OUT"] {
+                    let sources = result.sources.map { "  - \($0.source)：\($0.text)" }.joined(separator: "\n")
+                    try? "Q: \(q)\nA: \(result.answer)\nSOURCES:\n\(sources)\n"
+                        .write(toFile: out, atomically: true, encoding: .utf8)
+                }
             } catch {
                 answer = String(localized: "（模型连不上了…先翻给你看我记得的，在下面。）")
+                answerSources = Array(PetStore.shared.recent(limit: 5))
             }
         }
     }
 
-    /// RAG 上下文：先按词命中，命不中就取最近的小传。
-    private func relevantMemories(for q: String) -> [PetStore.MemoryHit] {
-        var hits = PetStore.shared.search(q)
-        if hits.isEmpty {
-            // 逐字命中（中文问句里的关键词往往不是完整子串）
-            let chars = q.filter { !"？?，。的了是什么时候怎么上次我你 ".contains($0) }
-            let recent = PetStore.shared.recent(limit: 100)
-            hits = recent.filter { hit in chars.contains { hit.text.contains($0) } }
-        }
-        return hits.isEmpty ? Array(PetStore.shared.recent(limit: 5)) : Array(hits.prefix(6))
-    }
-
-    /// Spotlight 文件搜索（mdfind，本机完成）。
-    nonisolated private static func mdfind(_ q: String) async -> [FileHit] {
+    /// Spotlight 文件搜索（mdfind，本机完成）。searcher agent 也用它。
+    nonisolated static func mdfind(_ q: String) async -> [FileHit] {
         await withCheckedContinuation { continuation in
             DispatchQueue.global().async {
                 let proc = Process()

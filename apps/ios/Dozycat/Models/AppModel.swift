@@ -270,14 +270,32 @@ final class AppModel: ObservableObject {
         quickReplies = nil
         messages.append(ChatMessage(role: .me, text: trimmed))
 
-        // BYOK 配好就走真模型，否则内置回复
+        // BYOK 配好就走 pi agent（带小传上下文 + save_moment 工具），否则内置回复
         if let config = SettingsStore.shared.llmConfig {
             let history = messages.suffix(12).map {
                 (role: $0.role == .cat ? "assistant" : "user", content: $0.text)
             }
+            let memoryContext = memories.prefix(8)
+                .map { "\($0.dateLabel)：\($0.text)" }
+                .joined(separator: "\n")
+            var system = LLMClient.persona
+            if !memoryContext.isEmpty {
+                system += "\n\n你记得的关于用户的小传（可自然引用，不要逐条复述）：\n" + memoryContext
+            }
+            system += "\n\n如果这轮聊到了值得记进小传的一件小事（事实、情绪或约定），调用 save_moment 存下来（白描 ≤40 字 + 两三个字的情绪 note），不用告诉用户你存了。闲聊不存。"
+            let saveTool = AgentTool(
+                name: "save_moment",
+                description: "把这轮对话里值得记住的一件小事存进用户的小传",
+                parameters: ["text": ["type": "string"], "note": ["type": "string"]]
+            ) { [weak self] args in
+                guard let text = args["text"] as? String, !text.isEmpty else { return "text 缺失" }
+                self?.addMemory(text, note: args["note"] as? String)
+                return "已记下"
+            }
             Task {
                 do {
-                    let reply = try await LLMClient.reply(history: history, config: config)
+                    let reply = try await PiAgent.run(system: system, history: history,
+                                                      tools: [saveTool], config: config, maxSteps: 4)
                     messages.append(ChatMessage(role: .cat, text: reply))
                 } catch {
                     messages.append(ChatMessage(

@@ -256,44 +256,33 @@ final class PetChat: ObservableObject {
         let memoryContext = PetStore.shared.recent(limit: 8)
             .map { "\($0.source)：\($0.text)" }
             .joined(separator: "\n")
+        var system = LLMClient.persona
+        if !memoryContext.isEmpty {
+            system += "\n\n你记得的关于用户的小传（可自然引用，不要逐条复述）：\n" + memoryContext
+        }
+        system += "\n\n如果这轮聊到了值得记进小传的一件小事（事实、情绪或约定），调用 save_moment 存下来（白描 ≤40 字 + 两三个字的情绪 note），不用告诉用户你存了。闲聊不存。"
+
+        let saveTool = AgentTool(
+            name: "save_moment",
+            description: "把这轮对话里值得记住的一件小事存进用户的小传",
+            parameters: ["text": ["type": "string"], "note": ["type": "string"]]
+        ) { [weak self] args in
+            guard let text = args["text"] as? String, !text.isEmpty else { return "text 缺失" }
+            PetStore.shared.addMemory(text: text, note: args["note"] as? String)
+            self?.memoryNote = String(localized: "它记下了：\(text)")
+            return "已记下"
+        }
+
         Task {
             do {
-                let reply = try await LLMClient.reply(history: history, config: config,
-                                                      memoryContext: memoryContext)
+                let reply = try await PiAgent.run(system: system, history: history,
+                                                  tools: [saveTool], config: config, maxSteps: 4)
                 messages.append(ChatMessage(role: .cat, text: reply))
-                extractMemory(userText: trimmed, catReply: reply, config: config)
             } catch {
                 messages.append(ChatMessage(
                     role: .cat,
                     text: String(localized: "（模型连不上了…没关系，我自己也能陪你。）")))
             }
-        }
-    }
-
-    /// 小传抽取：这轮对话里有没有值得记住的一件小事。
-    private func extractMemory(userText: String, catReply: String, config: LLMClient.Config) {
-        let prompt = """
-        从这轮对话判断有没有值得记进用户小传的一件小事（事实、情绪或约定）。
-        用户：\(userText)
-        懒猫：\(catReply)
-        只输出 JSON，不要多余文字：
-        {"save": true, "text": "第三人称白描，≤40字", "note": "两三个字的情绪词，可选 · 跟进动作"}
-        或 {"save": false}
-        """
-        Task {
-            guard let raw = try? await LLMClient.reply(
-                history: [(role: "user", content: prompt)], config: config) else { return }
-            let cleaned = raw
-                .replacingOccurrences(of: "```json", with: "")
-                .replacingOccurrences(of: "```", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let data = cleaned.data(using: .utf8),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  obj["save"] as? Bool == true,
-                  let text = obj["text"] as? String, !text.isEmpty else { return }
-            let note = obj["note"] as? String
-            PetStore.shared.addMemory(text: text, note: note)
-            memoryNote = String(localized: "它记下了：\(text)")
         }
     }
 }
