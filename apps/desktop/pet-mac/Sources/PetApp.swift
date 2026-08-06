@@ -241,6 +241,8 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             var runs = 0
             while true {
                 try? await Task.sleep(nanoseconds: seqSecs * 1_000_000_000)
+                // 人不在就不记（省 token 也省隐私）：上一分钟无输入即视为空闲
+                guard SenseFeed.shared.activeStreakMin > 0 else { continue }
                 _ = await SequenceAgent.run()
                 runs += 1
                 if runs % 12 == 0 {
