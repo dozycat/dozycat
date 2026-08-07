@@ -32,7 +32,7 @@ struct BookPanelView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(width: 760, height: 520)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(DS.paper))
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(DS.paper.opacity(0.82)))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
             .strokeBorder(DS.lineStrong, lineWidth: 1))
@@ -48,7 +48,7 @@ struct BookPanelView: View {
                              color: Color(hex: 0x8B8B93))
                     .padding(.top, 6)
                 verticalText(bio.bookTitle ?? String(localized: "还没有名字的一本"),
-                             font: serif(30, weight: .semibold), spacing: 10, color: DS.bg)
+                             font: serif(30, weight: .semibold), spacing: 10, color: DS.nightInk)
             }
             .padding(.top, 36)
             Spacer()
@@ -71,7 +71,8 @@ struct BookPanelView: View {
         }
         .frame(width: 176)
         .frame(maxHeight: .infinity)
-        .background(DS.ink)
+        // 书脊是深色书皮的固有色，不随外观反色（暗色下反白会变成一条亮带）
+        .background(DS.night)
     }
 
     private var volumeLine: String {
@@ -118,7 +119,7 @@ struct BookPanelView: View {
             ScrollView {
                 Text(verbatim: chapter.body)
                     .font(serif(15))
-                    .foregroundStyle(Color(hex: 0x43423E))
+                    .foregroundStyle(Color(light: 0x43423E, dark: 0xC9C8C2))
                     .lineSpacing(15)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 20)

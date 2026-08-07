@@ -137,7 +137,7 @@ struct ChatPanelView: View {
             inputBar
         }
         .frame(width: 380, height: 480)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(DS.paper))
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(DS.paper.opacity(0.82)))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
             .strokeBorder(DS.lineStrong, lineWidth: 1))
         .onAppear { focused = true }

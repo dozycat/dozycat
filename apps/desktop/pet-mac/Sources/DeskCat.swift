@@ -27,13 +27,20 @@ struct DeskCat: View {
 
     var body: some View {
         canvas
+            // 整棵形状树（三层离屏阴影）压成一张纹理再参与呼吸动画：
+            // 动画帧里只变换纹理，不逐帧重新光栅化阴影。
+            .drawingGroup()
             .scaleEffect(s, anchor: .topLeading)
             .frame(width: 110 * s, height: 96 * s, alignment: .topLeading)
             .rotationEffect(.degrees(mood == .missYou ? -5 : 0))
             .scaleEffect(breathes && breatheUp ? 1.02 : 1)
             .offset(y: breathes && breatheUp ? -5 * s : 0)
-            .onAppear {
-                guard breathes else { return }
+            // 跟着 breathes 走而不是 onAppear：睡着/没电再醒来时呼吸要能重启
+            .task(id: breathes) {
+                guard breathes else {
+                    breatheUp = false
+                    return
+                }
                 withAnimation(.easeInOut(duration: breatheDuration).repeatForever(autoreverses: true)) {
                     breatheUp = true
                 }
@@ -79,7 +86,7 @@ struct DeskCat: View {
             style: .continuous
         )
         .fill(.white)
-        .shadow(color: DS.ink.opacity(shadow), radius: 6, y: 4)
+        .shadow(color: DS.catInk.opacity(shadow), radius: 6, y: 4)
         .frame(width: 29, height: 27)
         .rotationEffect(.degrees(rotate))
         .opacity(opacity)
@@ -93,7 +100,7 @@ struct DeskCat: View {
             Ellipse()
                 .fill(LinearGradient(colors: [.white, .white, DS.headShade],
                                      startPoint: .top, endPoint: .bottom))
-                .shadow(color: DS.ink.opacity(0.12), radius: 12, y: 10)
+                .shadow(color: DS.catInk.opacity(0.12), radius: 12, y: 10)
                 .shadow(color: glow ? DS.blue.opacity(0.25) : .clear, radius: 20)
             face()
         }
@@ -106,14 +113,14 @@ struct DeskCat: View {
         UnevenRoundedRectangle(topLeadingRadius: 2, bottomLeadingRadius: 5.5,
                                bottomTrailingRadius: 5.5, topTrailingRadius: 2,
                                style: .continuous)
-            .fill(DS.ink)
+            .fill(DS.catInk)
             .frame(width: 11, height: 6)
             .scaleEffect(y: eyesClosed ? 0.2 : 1)
             .position(x: x, y: y)
     }
 
     private func eyeLine(x: CGFloat, y: CGFloat, w: CGFloat = 12, rotate: CGFloat = 0) -> some View {
-        Capsule().fill(DS.ink)
+        Capsule().fill(DS.catInk)
             .frame(width: w, height: 2.5)
             .rotationEffect(.degrees(rotate))
             .position(x: x, y: y)
@@ -121,7 +128,7 @@ struct DeskCat: View {
 
     private func eyeRound(x: CGFloat, y: CGFloat, d: CGFloat, highlight: Bool = false) -> some View {
         ZStack {
-            Circle().fill(DS.ink).frame(width: d, height: d)
+            Circle().fill(DS.catInk).frame(width: d, height: d)
             if highlight {
                 Circle().fill(.white).frame(width: 3, height: 3).offset(x: -d * 0.2, y: -d * 0.2)
             }
@@ -133,7 +140,7 @@ struct DeskCat: View {
     private func eyeArc(x: CGFloat, y: CGFloat) -> some View {
         Circle()
             .trim(from: 0.5, to: 1.0)
-            .stroke(DS.ink, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+            .stroke(DS.catInk, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
             .frame(width: 12, height: 12)
             .position(x: x, y: y)
     }
@@ -165,9 +172,9 @@ struct DeskCat: View {
     private var asleep: some View {
         ZStack(alignment: .topLeading) {
             Text(verbatim: "z").font(.system(size: 13, weight: .light))
-                .foregroundStyle(DS.faint).position(x: 104, y: 4)
+                .foregroundStyle(Color(hex: 0xB9B6AE)).position(x: 104, y: 4)
             Text(verbatim: "z").font(.system(size: 16, weight: .light))
-                .foregroundStyle(DS.lineStrong).position(x: 116, y: -8)
+                .foregroundStyle(Color(hex: 0xDEDCD5)).position(x: 116, y: -8)
             ear(left: true, x: 26.5, y: 23.5, rotate: -8)
             ear(left: false, x: 83.5, y: 23.5, rotate: 8)
             head(top: 22, inset: 2) {
@@ -188,7 +195,7 @@ struct DeskCat: View {
                 eyeArc(x: 72.5, y: 39)
                 UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 9,
                                        bottomTrailingRadius: 9, topTrailingRadius: 0)
-                    .fill(DS.ink).frame(width: 9, height: 6).position(x: 51, y: 49)
+                    .fill(DS.catInk).frame(width: 9, height: 6).position(x: 51, y: 49)
                 cheek(x: 19.5, y: 45)
                 cheek(x: 82.5, y: 45)
             }
@@ -233,7 +240,7 @@ struct DeskCat: View {
                 Ellipse()
                     .fill(LinearGradient(colors: [.white, Color(hex: 0xECEBE7)],
                                          startPoint: .top, endPoint: .bottom))
-                    .shadow(color: DS.ink.opacity(0.10), radius: 10, y: 8)
+                    .shadow(color: DS.catInk.opacity(0.10), radius: 10, y: 8)
                 eyeSleepyStatic(x: 32, y: 28)
                 eyeSleepyStatic(x: 78, y: 28)
                 eyeLine(x: 55, y: 37, w: 8, rotate: -6)
@@ -247,7 +254,7 @@ struct DeskCat: View {
     private func eyeSleepyStatic(x: CGFloat, y: CGFloat) -> some View {
         UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 6,
                                bottomTrailingRadius: 6, topTrailingRadius: 0)
-            .fill(DS.ink).frame(width: 12, height: 4).position(x: x, y: y)
+            .fill(DS.catInk).frame(width: 12, height: 4).position(x: x, y: y)
     }
 
     private var breathing: some View {
@@ -257,7 +264,7 @@ struct DeskCat: View {
             head(top: 13, glow: true) {
                 eyeLine(x: 30, y: 35.5)
                 eyeLine(x: 76, y: 35.5)
-                Circle().stroke(DS.ink, lineWidth: 2.5)
+                Circle().stroke(DS.catInk, lineWidth: 2.5)
                     .frame(width: 9, height: 9).position(x: 51, y: 48.5)
             }
         }

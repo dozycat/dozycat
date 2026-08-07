@@ -77,7 +77,7 @@ struct MenuBarDropdown: View {
                     Spacer()
                     Text(verbatim: "18:30").font(.system(size: 13)).foregroundStyle(DS.faint)
                 }
-                .padding(.vertical, 11).padding(.horizontal, 2)
+                .padding(.vertical, 11).padding(.horizontal, 8)
             }
             .overlay(alignment: .top) { DS.lineSoft.frame(height: 1) }
 
@@ -92,7 +92,7 @@ struct MenuBarDropdown: View {
         }
         .padding(16)
         .frame(width: 300)
-        .background(DS.paper)
+        // 不铺不透明纸底：让 MenuBarExtra 的 popover 材质自己透出来
     }
 
     private var bookRowLabel: LocalizedStringKey {
@@ -123,16 +123,33 @@ struct MenuBarDropdown: View {
 
     private func actionRow(_ label: LocalizedStringKey, shortcut: String,
                            action: @escaping () -> Void) -> some View {
+        MenuActionRow(label: label, shortcut: shortcut, action: action)
+    }
+}
+
+/// 菜单动作行：悬停有底色反馈——原生菜单的最低礼仪。
+private struct MenuActionRow: View {
+    let label: LocalizedStringKey
+    let shortcut: String
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
         Button(action: action) {
             HStack {
                 Text(label).font(.system(size: 13)).foregroundStyle(DS.ink)
                 Spacer()
                 Text(verbatim: shortcut).font(.system(size: 13)).foregroundStyle(DS.faint)
             }
-            .padding(.vertical, 11).padding(.horizontal, 2)
+            .padding(.vertical, 11).padding(.horizontal, 8)
             .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(hovering ? DS.lineSoft : Color.clear)
+            )
         }
         .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }
 
@@ -144,17 +161,20 @@ final class PetPanels {
     /// 桌宠窗——对话面板往猫旁边靠时用它定位。
     weak var petWindow: NSWindow?
 
-    private var searchPanel: NSPanel?
-    private var chatPanel: NSPanel?
-    private var energyPanel: NSPanel?
-    private var bookPanel: NSPanel?
-    private lazy var escMonitor: Any? = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-        guard event.keyCode == 53, let self else { return event } // esc
-        if self.searchVisible { self.closeSearch(); return nil }
-        if self.energyVisible { self.closeEnergy(); return nil }
-        if self.bookVisible { self.closeBook(); return nil }
-        if self.chatVisible { self.closeChat(); return nil }
-        return event
+    private var searchPanel: CardPanel?
+    private var chatPanel: CardPanel?
+    private var energyPanel: CardPanel?
+    private var bookPanel: CardPanel?
+
+    /// 面板收起后的收尾统一走 CardPanel.onClose（esc、失焦、显式 close 同一条路）。
+    private func adopt(_ panel: CardPanel, into slot: ReferenceWritableKeyPath<PetPanels, CardPanel?>) {
+        self[keyPath: slot] = panel
+        SenseFeed.shared.panelsOpen = true
+        panel.onClose = { [weak self] in
+            guard let self, self[keyPath: slot] === panel else { return }
+            self[keyPath: slot] = nil
+            self.syncPanelMood()
+        }
     }
 
     func toggleSearch() {
@@ -162,19 +182,15 @@ final class PetPanels {
             closeSearch()
             return
         }
-        _ = escMonitor
-        let panel = FloatingPanel(content: SearchPanelView(), width: 640)
-        searchPanel = panel
-        SenseFeed.shared.panelsOpen = true
+        let panel = CardPanel(content: SearchPanelView(), width: 640)
+        adopt(panel, into: \.searchPanel)
         panel.showCentered()
     }
 
     private var searchVisible: Bool { searchPanel?.isVisible ?? false }
 
     func closeSearch() {
-        searchPanel?.orderOut(nil)
-        searchPanel = nil
-        syncPanelMood()
+        searchPanel?.dismiss()
     }
 
     /// 对话 · 点猫猫展开（设计稿「对话」）。
@@ -183,19 +199,15 @@ final class PetPanels {
             closeChat()
             return
         }
-        _ = escMonitor
-        let panel = FloatingPanel(content: ChatPanelView(), width: 380)
-        chatPanel = panel
-        SenseFeed.shared.panelsOpen = true
+        let panel = CardPanel(content: ChatPanelView(), width: 380, cornerRadius: 20)
+        adopt(panel, into: \.chatPanel)
         panel.show(near: petWindow)
     }
 
     private var chatVisible: Bool { chatPanel?.isVisible ?? false }
 
     func closeChat() {
-        chatPanel?.orderOut(nil)
-        chatPanel = nil
-        syncPanelMood()
+        chatPanel?.dismiss()
     }
 
     /// 能量 widgets：日历、K 线、回血清单、明日计划（设计稿「能量 WIDGETS」）。
@@ -204,20 +216,16 @@ final class PetPanels {
             closeEnergy()
             return
         }
-        _ = escMonitor
         RechargeStore.shared.refreshRecommendation()
-        let panel = FloatingPanel(content: EnergyPanelView(), width: 900)
-        energyPanel = panel
-        SenseFeed.shared.panelsOpen = true
+        let panel = CardPanel(content: EnergyPanelView(), width: 900, cornerRadius: 24)
+        adopt(panel, into: \.energyPanel)
         panel.showCentered(yRatio: 0.54)
     }
 
     private var energyVisible: Bool { energyPanel?.isVisible ?? false }
 
     func closeEnergy() {
-        energyPanel?.orderOut(nil)
-        energyPanel = nil
-        syncPanelMood()
+        energyPanel?.dismiss()
     }
 
     /// 《传》——正文书页（书脊上的「传」印切目录）。
@@ -226,19 +234,15 @@ final class PetPanels {
             closeBook()
             return
         }
-        _ = escMonitor
-        let panel = FloatingPanel(content: BookPanelView(), width: 760)
-        bookPanel = panel
-        SenseFeed.shared.panelsOpen = true
+        let panel = CardPanel(content: BookPanelView(), width: 760, cornerRadius: 20)
+        adopt(panel, into: \.bookPanel)
         panel.showCentered(yRatio: 0.56)
     }
 
     private var bookVisible: Bool { bookPanel?.isVisible ?? false }
 
     func closeBook() {
-        bookPanel?.orderOut(nil)
-        bookPanel = nil
-        syncPanelMood()
+        bookPanel?.dismiss()
     }
 
     private func syncPanelMood() {
@@ -265,8 +269,8 @@ final class PetPanels {
         }
         .padding(28)
         .background(DS.bg)
-        let panel = FloatingPanel(content: grid, width: 900)
-        searchPanel = panel
+        let panel = CardPanel(content: grid, width: 900)
+        adopt(panel, into: \.searchPanel)
         panel.showCentered(yRatio: 0.5)
     }
     #endif
@@ -288,6 +292,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        Self.applyAppearancePreference()
 
         let hosting = NSHostingView(rootView: PetView())
         let window = NSWindow(
@@ -322,6 +327,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         })
 
         SenseFeed.shared.start()
+        SenseHintsPump.shared.start()
         startAgents()
         // 《传》：启动后看看是不是该写了（月初定稿上一回 / 本月开新的一回）
         Task { @MainActor in
@@ -358,6 +364,16 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         #endif
+    }
+
+    /// 外观：默认跟系统；设置里可锁「亮 / 暗」。一行 NSApp.appearance 全局生效，
+    /// DS 的动态色和 CardPanel 的 vibrancy 都会跟着走（做法同 sheru AppearanceManager）。
+    static func applyAppearancePreference() {
+        switch UserDefaults.standard.string(forKey: "uiAppearance") ?? "system" {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: NSApp.appearance = nil
+        }
     }
 
     /// sequence agent 定时跑（默认 5 分钟），每 12 次 sequence 后做一次梦。

@@ -9,37 +9,61 @@ extension Color {
             blue: Double(hex & 0xFF) / 255
         )
     }
+
+    /// 亮/暗双值动态色。macOS 面板要跟系统外观走（vibrancy 底下亮色纸面会刺眼）；
+    /// iOS 端暂时锁亮色（界面围绕纸面设计，暗色适配另起炉灶时再放开）。
+    init(light: UInt32, dark: UInt32) {
+        #if os(macOS)
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let hex = isDark ? dark : light
+            return NSColor(
+                srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+                green: CGFloat((hex >> 8) & 0xFF) / 255,
+                blue: CGFloat(hex & 0xFF) / 255,
+                alpha: 1
+            )
+        })
+        #else
+        self.init(hex: light)
+        #endif
+    }
 }
 
-/// Design tokens from `dozycat v2.dc.html` (Claude Design).
+/// Design tokens from `dozycat v2.dc.html` (Claude Design)。
+/// 中性色带暗色档（夜里纸面变墨面，字反白），品牌色与猫的固有色不随外观变。
 enum DS {
     // Surfaces
-    static let paper = Color(hex: 0xFAFAF8)      // app background
-    static let bg = Color(hex: 0xEDECE8)         // page / bar track
-    static let night = Color(hex: 0x232326)      // sleep mode background
+    static let paper = Color(light: 0xFAFAF8, dark: 0x26262A)  // app background
+    static let bg = Color(light: 0xEDECE8, dark: 0x1E1E21)     // page / bar track
+    static let card = Color(light: 0xFFFFFF, dark: 0x303035)   // 抬高一层的卡片面
+    static let night = Color(hex: 0x232326)                    // sleep mode background
 
     // Ink
-    static let ink = Color(hex: 0x2E2E33)
-    static let inkSoft = Color(hex: 0x6E6C66)
-    static let mutedWarm = Color(hex: 0x8B8880)
-    static let muted = Color(hex: 0xA6A39B)
-    static let faint = Color(hex: 0xB9B6AE)
+    static let ink = Color(light: 0x2E2E33, dark: 0xEDECE8)
+    static let inkSoft = Color(light: 0x6E6C66, dark: 0xA7A6AD)
+    static let mutedWarm = Color(light: 0x8B8880, dark: 0x84838B)
+    static let muted = Color(light: 0xA6A39B, dark: 0x8B8B93)
+    static let faint = Color(light: 0xB9B6AE, dark: 0x5E5E66)
     static let nightMuted = Color(hex: 0x8B8B93)
     static let nightInk = Color(hex: 0xEDECE8)
 
     // Lines
-    static let line = Color(hex: 0xE8E6E0)
-    static let lineSoft = Color(hex: 0xF0EEE9)
-    static let lineStrong = Color(hex: 0xDEDCD5)
+    static let line = Color(light: 0xE8E6E0, dark: 0x3A3A40)
+    static let lineSoft = Color(light: 0xF0EEE9, dark: 0x313136)
+    static let lineStrong = Color(light: 0xDEDCD5, dark: 0x44444B)
 
-    // Accents — 生理 coral / 心理 blue
+    // Accents — 生理 coral / 心理 blue（两种外观通用）
     static let coral = Color(hex: 0xFF8A75)
     static let coralDeep = Color(hex: 0xE86F5A)
     static let blush = Color(hex: 0xFFB3A6)
     static let blushSoft = Color(hex: 0xFFD9D1)
-    static let blue = Color(hex: 0x7C8DB5)
+    static let blue = Color(light: 0x7C8DB5, dark: 0x93A3C8)
 
+    // 猫的固有色：脸永远是白的，五官和描边不随外观反色
     static let headShade = Color(hex: 0xF4F3EF)  // bottom of the cat's head gradient
+    static let catInk = Color(hex: 0x2E2E33)     // 五官 / 投影基色
+    static let catLine = Color(hex: 0xE8E6E0)    // 轮廓描边
 }
 
 // MARK: - Shared button styles

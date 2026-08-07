@@ -6,6 +6,8 @@ struct PetSettingsView: View {
     @ObservedObject private var settings = SettingsStore.shared
     @State private var keySaved = false
     @AppStorage("uiLanguage") private var uiLanguage = "zh"
+    @AppStorage("uiAppearance") private var uiAppearance = "system"
+    @AppStorage("presenceSensing") private var presenceSensing = false
     @State private var languageChanged = false
 
     var body: some View {
@@ -24,6 +26,33 @@ struct PetSettingsView: View {
                 if languageChanged {
                     caption("重启懒猫后生效。")
                 }
+            }
+            section(title: "外观") {
+                HStack {
+                    Text("亮暗")
+                        .font(.system(size: 13))
+                        .foregroundStyle(DS.ink)
+                    Spacer()
+                    appearancePill("跟随系统", value: "system")
+                    appearancePill("亮", value: "light")
+                    appearancePill("暗", value: "dark")
+                }
+            }
+            section(title: "感知") {
+                HStack {
+                    Text("摄像头在位感知")
+                        .font(.system(size: 13))
+                        .foregroundStyle(DS.ink)
+                    Spacer()
+                    Toggle("", isOn: $presenceSensing)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .labelsHidden()
+                        .onChange(of: presenceSensing) { _, on in
+                            PresenceSensor.shared.setEnabled(on)
+                        }
+                }
+                caption("开着时它知道你在不在屏幕前：看视频不再被误当成休息，真离开两分钟就开始回血。画面在内存里过一遍人脸检测就丢，不截图不落盘；摄像头指示灯会常亮。")
             }
             section(title: "模型") {
                 providerPicker
@@ -54,7 +83,6 @@ struct PetSettingsView: View {
         .padding(.bottom, 24)
         .frame(width: 380)
         .background(DS.paper)
-        .preferredColorScheme(.light)
     }
 
     // MARK: 组件
@@ -93,6 +121,24 @@ struct PetSettingsView: View {
             uiLanguage = value
             DozycatPetApp.applyLanguagePreference()
             languageChanged = true
+        } label: {
+            Text(label)
+                .font(.system(size: 12, weight: active ? .medium : .regular))
+                .foregroundStyle(active ? DS.paper : DS.inkSoft)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 14)
+                .background(Capsule().fill(active ? DS.ink : Color.clear))
+                .overlay(Capsule().stroke(active ? Color.clear : DS.lineStrong, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func appearancePill(_ label: LocalizedStringKey, value: String) -> some View {
+        let active = uiAppearance == value
+        return Button {
+            guard uiAppearance != value else { return }
+            uiAppearance = value
+            PetAppDelegate.applyAppearancePreference()  // 立即生效，不用重启
         } label: {
             Text(label)
                 .font(.system(size: 12, weight: active ? .medium : .regular))

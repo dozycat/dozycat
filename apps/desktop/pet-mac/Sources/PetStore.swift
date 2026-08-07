@@ -27,6 +27,7 @@ final class PetStore: ObservableObject {
         let text: String
         let source: String
         let note: String?
+        let at: Date
     }
 
     func search(_ query: String) -> [MemoryHit] {
@@ -79,7 +80,7 @@ final class PetStore: ObservableObject {
         }
         return MemoryHit(id: m.id, text: m.text,
                          source: label + String(localized: " · 倾诉"),
-                         note: m.note)
+                         note: m.note, at: date)
     }
 
     // MARK: 能量（sense 的语义流由 pet 落账）

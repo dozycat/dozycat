@@ -42,6 +42,22 @@ struct PetView: View {
                                     memoryRef: "它记下了：这个项目最近让你很耗"),
                         ]
                     }
+                    if defaults.bool(forKey: "demoReport") {
+                        SearchModel.shared.query = "上次牙疼是什么时候来着？"
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            SearchModel.shared.caseReport = .init(
+                                seq: 11, title: "上次牙疼是什么时候",
+                                reasoning: "五月十四日疼过一次（A），医嘱要拔（B）。此后 81 天，你再没提过牙——不是好了，是拖着。",
+                                conclusion: "上次牙疼是 **5月14日**，距今 84 天。智齿还在，复查欠着。要不要我下周替你把这个案子了结？",
+                                sources: [
+                                    .init(id: "d1", text: "「右边智齿疼得没睡好」",
+                                          source: "5月14日 · 倾诉", note: nil, at: Date()),
+                                    .init(id: "d2", text: "「医生建议拔，我说缓缓再说」",
+                                          source: "5月17日 · 倾诉", note: nil, at: Date()),
+                                ],
+                                duration: 0.4, fileURL: nil)
+                        }
+                    }
                     // 无头渲染面板到 PNG（锁屏/CI 下也能核对视觉）
                     if let dir = defaults.string(forKey: "renderPanels") {
                         Task { @MainActor in
@@ -81,7 +97,9 @@ struct PetView: View {
                                 window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) - 1)
                                 window.contentView = host
                                 window.orderBack(nil)
-                                try? await Task.sleep(nanoseconds: 400_000_000) // 等布局与 2x 重光栅化
+                                // 等布局与 2x 重光栅化；搜索面板动画（红线 0.6+0.9s）可调大
+                                let delayMs = max(defaults.integer(forKey: "renderDelayMs"), 400)
+                                try? await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
                                 guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)
                                 else { window.orderOut(nil); continue }
                                 host.cacheDisplay(in: host.bounds, to: rep)

@@ -77,10 +77,10 @@ struct CatFace: View {
         return ZStack {
             if outlined {
                 shape.fill(.white)
-                shape.stroke(DS.line, lineWidth: 2)
+                shape.stroke(DS.catLine, lineWidth: 2)
             } else {
                 shape.fill(.white)
-                    .shadow(color: DS.ink.opacity(0.08), radius: 9, y: 6)
+                    .shadow(color: DS.catInk.opacity(0.08), radius: 9, y: 6)
             }
         }
         .frame(width: 40, height: 38)
@@ -92,14 +92,14 @@ struct CatFace: View {
         ZStack {
             if outlined {
                 Ellipse().fill(.white)
-                Ellipse().stroke(DS.line, lineWidth: 2)
+                Ellipse().stroke(DS.catLine, lineWidth: 2)
             } else {
                 Ellipse()
                     .fill(LinearGradient(
                         colors: [.white, .white, DS.headShade],
                         startPoint: .top, endPoint: .bottom
                     ))
-                    .shadow(color: DS.ink.opacity(0.10), radius: 15, y: 14)
+                    .shadow(color: DS.catInk.opacity(0.10), radius: 15, y: 14)
             }
         }
         .frame(width: 140, height: 114)
@@ -112,7 +112,7 @@ struct CatFace: View {
             bottomTrailingRadius: 7.5, topTrailingRadius: 2,
             style: .continuous
         )
-        .fill(DS.ink)
+        .fill(DS.catInk)
         .frame(width: 15, height: 9)
         .scaleEffect(y: eyesClosed ? 0.15 : 1, anchor: .center)
     }

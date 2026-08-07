@@ -12,7 +12,7 @@
 apps/
   ios/        SwiftUI 原生 app（iOS 优先，目标 App Store 上架）
   desktop/
-    pet-mac/                macOS 桌宠（SwiftUI 壳，与 iOS 共用 CatFace/DS）
+    pet-mac/                macOS 桌宠（AppKit 壳 + SwiftUI 内容，与 iOS 共用 CatFace/DS，见 docs/DESKTOP-UI.md）
     crates/dozycat-sense/   内容盲疲劳感知守护（喂 JSONL 给桌宠，见 docs/FATIGUE.md）
 core/
   dozycat-core/   小传+能量共享内核（CRDT 同步，见 docs/MEMORY-SYNC.md）
@@ -20,6 +20,7 @@ docs/
   MEMORY-SYNC.md        多端同步选型（Loro + E2EE + CloudKit）
   FATIGUE.md            疲劳模型（内容盲感知 → 能量 → 补血）
   MOMENTS-PIPELINE.md   桌面观屏 → 小传管线（5min sequence → 每日 ≤3 条蒸馏）
+  DESKTOP-UI.md         桌面 UI 选型与手艺（学 sheru：AppKit 壳 + SwiftUI 内容）
   RELEASE.md            发布与审核选型（iOS App Store / macOS 直发公证）
 site/         官网（静态页，中文根路径 + /en/，实现自「dozycat 官网.dc.html」）
 design/       设计稿指针（源在 Claude Design）

@@ -15,7 +15,7 @@ struct EnergyPanelView: View {
             }
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(DS.bg))
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(DS.bg.opacity(0.82)))
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous)
             .strokeBorder(DS.lineStrong, lineWidth: 1))
     }
@@ -86,7 +86,13 @@ struct EnergyCalendarCard: View {
             .overlay(alignment: .top) { DS.lineSoft.frame(height: 1) }
             .padding(.top, 12)
         }
-        .onAppear { averages = EnergyLog.dailyAverages(month: Date()) }
+        .onAppear {
+            Task {
+                averages = await Task.detached(priority: .userInitiated) {
+                    EnergyLog.dailyAverages(month: Date())
+                }.value
+            }
+        }
     }
 
     private func dayCell(_ day: Int) -> some View {
@@ -107,7 +113,7 @@ struct EnergyCalendarCard: View {
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(isToday ? DS.lineSoft : Color.white))
+            .fill(isToday ? DS.lineSoft : DS.paper))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
             .stroke(isToday ? DS.ink : DS.lineSoft, lineWidth: isToday ? 1.5 : 1))
     }
@@ -189,8 +195,10 @@ struct EnergyCalendarCard: View {
 struct EnergyKLineCard: View {
     @ObservedObject private var feed = SenseFeed.shared
     @State private var samples: [EnergyLog.Sample] = []
+    /// 蜡烛与笔记 app 标注都在 reload() 的后台任务里算好——body 里零 IO 零分桶
+    @State private var candles: [EnergyLog.Candle] = []
+    @State private var noteApps: [(at: Date, app: String)] = []
 
-    private var candles: [EnergyLog.Candle] { EnergyLog.candles(from: samples) }
     private var dayOpen: Int? { samples.first.map { Int($0.phys.rounded()) } }
 
     var body: some View {
@@ -243,7 +251,16 @@ struct EnergyKLineCard: View {
     }
 
     private func reload() {
-        samples = EnergyLog.samples(on: Date())
+        Task {
+            let loaded = await Task.detached(priority: .userInitiated) {
+                () -> ([EnergyLog.Sample], [EnergyLog.Candle], [(at: Date, app: String)]) in
+                let samples = EnergyLog.samples(on: Date())
+                return (samples, EnergyLog.candles(from: samples), NoteContext.apps(for: Date()))
+            }.value
+            samples = loaded.0
+            candles = loaded.1
+            noteApps = loaded.2
+        }
     }
 
     private var chart: some View {
@@ -308,7 +325,7 @@ struct EnergyKLineCard: View {
 
     /// 今天最大的几段涨跌，用时间笔记里的前台 app 当上下文标注。
     private var movers: some View {
-        let apps = NoteContext.apps(for: Date())
+        let apps = noteApps
         let top = candles.filter { abs($0.delta) >= 3 }
             .sorted { abs($0.delta) > abs($1.delta) }
             .prefix(3)
@@ -697,11 +714,23 @@ struct RechargeListCard: View {
 struct TomorrowPlanCard: View {
     @ObservedObject private var feed = SenseFeed.shared
     @ObservedObject private var store = RechargeStore.shared
+    @State private var monthAverages: [Int: (phys: Double, mind: Double)] = [:]
 
     private var calendar: Calendar { Calendar.current }
     private var tomorrow: Date { calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date() }
 
     var body: some View {
+        content
+            .onAppear {
+                Task {
+                    monthAverages = await Task.detached(priority: .userInitiated) {
+                        EnergyLog.dailyAverages(month: Date())
+                    }.value
+                }
+            }
+    }
+
+    private var content: some View {
         EnergyCard {
             HStack(alignment: .firstTextBaseline) {
                 Text(verbatim: title)
@@ -788,8 +817,9 @@ struct TomorrowPlanCard: View {
     }
 
     /// 副标题从日历数据里来：明天这个星期几要是最近的低谷，就提前说一声。
+    /// 数据由 loadMonthAverages() 在后台备好，body 里不读盘。
     private var subtitle: String {
-        let averages = EnergyLog.dailyAverages(month: Date())
+        let averages = monthAverages
         guard averages.count >= 5 else { return String(localized: "按你的回血习惯排的") }
         var byWeekday: [Int: [Double]] = [:]
         for (day, value) in averages {
