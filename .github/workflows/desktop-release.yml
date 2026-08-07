@@ -1,0 +1,311 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-and-submit:
+    name: Sign and submit
+    runs-on: macos-15
+    timeout-minutes: 60
+    outputs:
+      dmg_name: ${{ steps.package.outputs.dmg_name }}
+      submission_id: ${{ steps.submit.outputs.submission_id }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Resolve version
+        id: version
+        run: |
+          version=$(awk -F'"' '/MARKETING_VERSION:/ { print $2; exit }' apps/desktop/pet-mac/project.yml)
+          test -n "$version"
+
+          if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
+            tag_version=${GITHUB_REF_NAME#v}
+            if [[ "$tag_version" != "$version" ]]; then
+              echo "Tag $GITHUB_REF_NAME does not match MARKETING_VERSION $version" >&2
+              exit 2
+            fi
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify required secrets
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for secret_name in \
+            BUILD_CERTIFICATE_BASE64 \
+            P12_PASSWORD \
+            APPLE_ID \
+            APPLE_APP_SPECIFIC_PASSWORD \
+            APPLE_TEAM_ID; do
+            if [[ -z "${!secret_name:-}" ]]; then
+              echo "Missing GitHub Actions secret: $secret_name" >&2
+              exit 2
+            fi
+          done
+
+      - name: Install build tools
+        run: |
+          test "$(uname -m)" = "arm64"
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          rustup target add \
+            aarch64-apple-ios \
+            aarch64-apple-ios-sim \
+            aarch64-apple-darwin
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/desktop/target
+            core/dozycat-core/target
+          key: desktop-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/desktop/Cargo.lock', 'core/dozycat-core/Cargo.lock') }}
+          restore-keys: |
+            desktop-release-${{ runner.os }}-${{ runner.arch }}-
+            desktop-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install Developer ID certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        run: |
+          certificate_path="$RUNNER_TEMP/developer-id.p12"
+          keychain_path="$RUNNER_TEMP/dozycat-signing.keychain-db"
+          keychain_password=$(openssl rand -hex 32)
+
+          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" \
+            -P "$P12_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$keychain_path"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_password" \
+            "$keychain_path"
+          security default-keychain -d user -s "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+          security find-identity -v -p codesigning "$keychain_path" \
+            | grep -q 'Developer ID Application:'
+
+          echo "DOZYCAT_CI_KEYCHAIN=$keychain_path" >> "$GITHUB_ENV"
+
+      - name: Store temporary notary profile
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool store-credentials dozycat-ci \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --keychain "$DOZYCAT_CI_KEYCHAIN"
+
+      - name: Build signed DMG
+        id: package
+        run: |
+          apps/desktop/pet-mac/scripts/package-dmg.sh \
+            --skip-notarize \
+            --output release-dist
+
+          dmg_path=$(find apps/desktop/pet-mac/release-dist -maxdepth 1 -name 'dozycat-*-arm64.dmg' -print -quit)
+          test -n "$dmg_path"
+          echo "dmg_path=$dmg_path" >> "$GITHUB_OUTPUT"
+          echo "dmg_name=$(basename "$dmg_path")" >> "$GITHUB_OUTPUT"
+
+      - name: Submit to Apple notary service
+        id: submit
+        run: |
+          notary_json=$(xcrun notarytool submit "${{ steps.package.outputs.dmg_path }}" \
+            --keychain-profile dozycat-ci \
+            --keychain "$DOZYCAT_CI_KEYCHAIN" \
+            --output-format json)
+          submission_id=$(python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])' <<< "$notary_json")
+          test -n "$submission_id"
+          echo "Apple notarization submission: $submission_id"
+          echo "submission_id=$submission_id" >> "$GITHUB_OUTPUT"
+
+      - name: Upload signed DMG for notarization
+        uses: actions/upload-artifact@v7
+        with:
+          name: signed-dmg-${{ github.run_id }}
+          path: ${{ steps.package.outputs.dmg_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary signing keychain
+        if: always()
+        run: |
+          if [[ -n "${DOZYCAT_CI_KEYCHAIN:-}" && -f "$DOZYCAT_CI_KEYCHAIN" ]]; then
+            security delete-keychain "$DOZYCAT_CI_KEYCHAIN" || true
+          fi
+
+  wait-and-release:
+    name: Wait, staple, and publish
+    needs: build-and-submit
+    runs-on: macos-15
+    timeout-minutes: 350
+
+    steps:
+      - name: Download signed DMG
+        uses: actions/download-artifact@v6
+        with:
+          name: signed-dmg-${{ github.run_id }}
+          path: release-input
+
+      - name: Store temporary notary profile
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          keychain_path="$RUNNER_TEMP/dozycat-notary.keychain-db"
+          keychain_password=$(openssl rand -hex 32)
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+
+          xcrun notarytool store-credentials dozycat-ci \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --keychain "$keychain_path"
+
+          echo "DOZYCAT_NOTARY_KEYCHAIN=$keychain_path" >> "$GITHUB_ENV"
+
+      - name: Wait for Apple notarization
+        env:
+          SUBMISSION_ID: ${{ needs.build-and-submit.outputs.submission_id }}
+        run: |
+          deadline=$((SECONDS + 5 * 60 * 60))
+
+          while (( SECONDS < deadline )); do
+            if ! info=$(xcrun notarytool info "$SUBMISSION_ID" \
+              --keychain-profile dozycat-ci \
+              --keychain "$DOZYCAT_NOTARY_KEYCHAIN" 2>&1); then
+              echo "Notary status query failed; retrying in 60 seconds."
+              sleep 60
+              continue
+            fi
+
+            submission_status=$(awk -F': ' '/  status:/ { print $2; exit }' <<< "$info")
+            echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') $SUBMISSION_ID $submission_status"
+
+            case "$submission_status" in
+              Accepted)
+                break
+                ;;
+              Invalid|Rejected)
+                xcrun notarytool log "$SUBMISSION_ID" \
+                  --keychain-profile dozycat-ci \
+                  --keychain "$DOZYCAT_NOTARY_KEYCHAIN"
+                exit 1
+                ;;
+            esac
+
+            sleep 60
+          done
+
+          if [[ "${submission_status:-}" != "Accepted" ]]; then
+            echo "Apple notarization is still pending after five hours." >&2
+            echo "Re-run only the failed wait-and-release job later; do not rebuild or resubmit." >&2
+            exit 124
+          fi
+
+      - name: Staple and verify release
+        id: final
+        run: |
+          source_dmg="release-input/${{ needs.build-and-submit.outputs.dmg_name }}"
+          test -f "$source_dmg"
+          mkdir -p release-output
+          final_dmg="release-output/${{ needs.build-and-submit.outputs.dmg_name }}"
+          cp "$source_dmg" "$final_dmg"
+
+          xcrun stapler staple "$final_dmg"
+          xcrun stapler validate "$final_dmg"
+          hdiutil verify "$final_dmg" >/dev/null
+          codesign --verify --strict --verbose=2 "$final_dmg"
+          spctl --assess \
+            --type open \
+            --context context:primary-signature \
+            --verbose=4 \
+            "$final_dmg"
+          shasum -a 256 "$final_dmg" > "$final_dmg.sha256"
+
+          echo "dmg_path=$final_dmg" >> "$GITHUB_OUTPUT"
+          echo "checksum_path=$final_dmg.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload notarized release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dozycat-macos-${{ needs.build-and-submit.outputs.version }}
+          path: |
+            ${{ steps.final.outputs.dmg_path }}
+            ${{ steps.final.outputs.checksum_path }}
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DMG_PATH: ${{ steps.final.outputs.dmg_path }}
+          CHECKSUM_PATH: ${{ steps.final.outputs.checksum_path }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" \
+              "$DMG_PATH" \
+              "$CHECKSUM_PATH" \
+              --clobber \
+              --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "$DMG_PATH" \
+              "$CHECKSUM_PATH" \
+              --verify-tag \
+              --generate-notes \
+              --title "dozycat ${{ needs.build-and-submit.outputs.version }}" \
+              --repo "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Remove temporary notary keychain
+        if: always()
+        run: |
+          if [[ -n "${DOZYCAT_NOTARY_KEYCHAIN:-}" && -f "$DOZYCAT_NOTARY_KEYCHAIN" ]]; then
+            security delete-keychain "$DOZYCAT_NOTARY_KEYCHAIN" || true
+          fi

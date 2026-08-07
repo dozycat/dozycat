@@ -1,0 +1,102 @@
+name: Desktop CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "apps/ios/scripts/build-core.sh"
+      - "core/dozycat-core/**"
+      - ".github/workflows/desktop-*.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/desktop/**"
+      - "apps/ios/scripts/build-core.sh"
+      - "core/dozycat-core/**"
+      - ".github/workflows/desktop-*.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build arm64 DMG
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Verify runner
+        run: |
+          test "$(uname -m)" = "arm64"
+          xcodebuild -version
+          swift --version
+          rustc --version
+
+      - name: Install build tools
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          rustup target add \
+            aarch64-apple-ios \
+            aarch64-apple-ios-sim \
+            aarch64-apple-darwin
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/desktop/target
+            core/dozycat-core/target
+          key: desktop-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/desktop/Cargo.lock', 'core/dozycat-core/Cargo.lock') }}
+          restore-keys: |
+            desktop-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Build ad-hoc DMG
+        run: |
+          apps/desktop/pet-mac/scripts/package-dmg.sh \
+            --adhoc \
+            --output ci-dist
+
+      - name: Verify CI artifact
+        run: |
+          dmg_path=$(find apps/desktop/pet-mac/ci-dist -maxdepth 1 -name 'dozycat-*-arm64.dmg' -print -quit)
+          test -n "$dmg_path"
+          hdiutil verify "$dmg_path" >/dev/null
+
+          mount_dir=$(mktemp -d "$RUNNER_TEMP/dozycat-ci-mount.XXXXXX")
+          cleanup() {
+            hdiutil detach "$mount_dir" >/dev/null 2>&1 || true
+            rmdir "$mount_dir" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          hdiutil attach "$dmg_path" -readonly -nobrowse -mountpoint "$mount_dir" >/dev/null
+          app_path="$mount_dir/DozycatPet.app"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          file "$app_path/Contents/MacOS/DozycatPet" | grep -q 'arm64'
+          file "$app_path/Contents/Resources/dozycat-sense" | grep -q 'arm64'
+
+      - name: Upload CI DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: dozycat-desktop-ci-${{ github.sha }}
+          path: apps/desktop/pet-mac/ci-dist/*.dmg
+          if-no-files-found: error
+          retention-days: 7

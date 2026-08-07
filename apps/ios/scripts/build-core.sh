@@ -9,6 +9,7 @@ CORE="$ROOT/core/dozycat-core"
 IOS="$ROOT/apps/ios"
 OUT="$CORE/target"
 GEN="$OUT/uniffi-generated"
+MACOS_MIN="${DOZYCAT_MACOS_DEPLOYMENT_TARGET:-14.0}"
 
 echo "▸ building rust (host cdylib for bindgen)"
 cargo build --release --manifest-path "$CORE/Cargo.toml"
@@ -16,7 +17,8 @@ cargo build --release --manifest-path "$CORE/Cargo.toml"
 echo "▸ building rust (iOS device + simulator + macOS staticlibs)"
 cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios
 cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios-sim
-cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-darwin
+MACOSX_DEPLOYMENT_TARGET="$MACOS_MIN" \
+  cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-darwin
 
 echo "▸ generating swift bindings"
 rm -rf "$GEN"
