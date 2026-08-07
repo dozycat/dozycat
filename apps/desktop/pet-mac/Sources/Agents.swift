@@ -2,7 +2,8 @@ import AppKit
 import Vision
 
 /// 花园：agent 们的文件地盘（全部本机、纯 markdown、用户可翻看）。
-/// ~/.dozycat/garden/{notes/<日期>/<HHmm>_note.md, people/<名>.md, journal/<日期>.md}
+/// ~/.dozycat/garden/{notes/<日期>/<HHmm>_note.md, people/<名>.md, journal/<日期>.md,
+/// links/<名>.md 链接卡（指向本机文件或外部网页）, cases/<日期>-<序号>.md 结案报告}
 enum Garden {
     static var root: URL {
         let path = ProcessInfo.processInfo.environment["DOZYCAT_GARDEN"]
@@ -19,9 +20,11 @@ enum Garden {
     static var people: URL { root.appendingPathComponent("people") }
     static var journal: URL { root.appendingPathComponent("journal") }
     static var biography: URL { root.appendingPathComponent("biography") }
+    static var links: URL { root.appendingPathComponent("links") }
+    static var cases: URL { root.appendingPathComponent("cases") }
 
     static func ensure() {
-        for dir in [notes, people, journal, biography] {
+        for dir in [notes, people, journal, biography, links, cases] {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
     }
@@ -48,6 +51,9 @@ enum SequenceAgent {
         let appBundleID = front?.bundleIdentifier == Bundle.main.bundleIdentifier
             ? "" : (front?.bundleIdentifier ?? "")
         let ocr = await screenText()
+        // 活动类别（带 OCR 的精分类）喂给疲劳感知——跨边界的只有类别标签
+        SenseHintsPump.shared.updateActivity(
+            ActivityClass.classify(app: app, bundleID: appBundleID, ocr: ocr))
 
         var body = ""
         if let config = SettingsStore.shared.llmConfig, !ocr.isEmpty {
@@ -150,11 +156,15 @@ enum DreamAgent {
             MomentsBridge.writeSnapshot()
             let system = """
             你是「懒猫」的梦，工作目录就是懒猫的花园（notes/<日期>/ 时间笔记、
-            people/ 人物卡、journal/ 梦记、moments_snapshot.md 小传快照）。
+            people/ 人物卡、journal/ 梦记、links/ 链接卡、moments_snapshot.md 小传快照）。
+            花园是搜索的地基：所有和用户相关的信息都要组织到这里。
             用你的文件和 bash 工具翻今天的笔记，只搞清楚三件事：
             1) 人物——谁反复出现；2) 关系——对用户意味着什么、最近温度（亲近/紧张/疏远）
             及带日期的证据；3) 用户本人——累不累、答应过什么、情绪与身体信号。
             然后：更新/合并 people/<名>.md（保留旧证据）；\(MomentsBridge.howToSave)
+            笔记里出现的、和用户有关的本机文件路径或网页链接，写成 links/<名>.md 链接卡：
+            frontmatter 三行（target: 绝对路径或 URL / date: \(today) / why: 一句话为什么值得留），
+            正文一两句白描。已有同名卡就合并更新，别的机器路径或猜的路径不建卡。
             最后写 journal/\(today).md（≤5 句）。铁律：笔记里没有的不写；不确定的人名不建卡。
             """
             if let out = await PiCLI.run(name: "dozycat·梦 \(today)", system: system,
@@ -173,8 +183,11 @@ enum DreamAgent {
         有新信息就 read_person 后用 write_person 合并更新（保留旧证据，新证据带日期）。
         用 save_moment 存今天真正值得记住的小事——宁缺毋滥，白描 ≤40 字，
         note 是两三个字的情绪词（可加 · 跟进动作）。
+        笔记里出现的、和用户有关的本机文件路径用 link_file 收进花园，
+        网页链接用 link_url——花园是搜索的地基，值得再找到的东西都要留一张链接卡。
         最后 write_journal 写 ≤5 句的今日梦记（人物动态 + 用户状态一句话）。
-        铁律：笔记里没有的不写；不确定的人名不建卡；隐私内容只留白描不留原文。
+        铁律：笔记里没有的不写；不确定的人名不建卡；路径是猜的不建链接卡；
+        隐私内容只留白描不留原文。
         """
         return (try? await PiAgent.run(
             system: system,
@@ -238,6 +251,32 @@ enum DreamAgent {
                 PetStore.shared.addMemory(text: text, note: args["note"] as? String)
                 return "已记下：\(text)"
             },
+            AgentTool(name: "link_file",
+                      description: "把一个和用户相关的本机文件收进花园（links/ 链接卡）。path 绝对路径；why 一句话为什么值得留",
+                      parameters: ["path": ["type": "string"], "why": ["type": "string"]]) { args in
+                let raw = (args["path"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+                let expanded = (raw as NSString).expandingTildeInPath
+                guard !expanded.isEmpty, FileManager.default.fileExists(atPath: expanded) else {
+                    return "（这个路径在本机不存在，不建卡）"
+                }
+                return writeLinkCard(target: expanded,
+                                     name: URL(fileURLWithPath: expanded).lastPathComponent,
+                                     why: args["why"] as? String)
+            },
+            AgentTool(name: "link_url",
+                      description: "把一个和用户相关的网页链接收进花园（links/ 链接卡）。url 完整地址；title 名字；why 一句话",
+                      parameters: ["url": ["type": "string"], "title": ["type": "string"],
+                                   "why": ["type": "string"]]) { args in
+                let raw = (args["url"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+                guard let url = URL(string: raw),
+                      ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+                    return "（只收 http/https 链接）"
+                }
+                let title = (args["title"] as? String)?.trimmingCharacters(in: .whitespaces)
+                return writeLinkCard(target: raw,
+                                     name: (title?.isEmpty == false ? title! : (url.host ?? "链接")),
+                                     why: args["why"] as? String)
+            },
             AgentTool(name: "write_journal",
                       description: "写今天的梦记（≤5 句 markdown）",
                       parameters: ["content": ["type": "string"]]) { args in
@@ -247,6 +286,26 @@ enum DreamAgent {
                 return "梦记已写"
             },
         ]
+    }
+
+    /// 链接卡：links/<名>.md，frontmatter 带 target/date/why，正文可日后追写。
+    static func writeLinkCard(target: String, name: String, why: String?) -> String {
+        Garden.ensure()
+        let slug = name.replacingOccurrences(of: "/", with: "-")
+            .trimmingCharacters(in: .whitespaces)
+        guard !slug.isEmpty else { return "名字不能为空" }
+        let url = Garden.links.appendingPathComponent("\(slug).md")
+        let reason = (why ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let md = """
+        ---
+        target: \(target)
+        date: \(Garden.day())
+        why: \(reason)
+        ---
+        [\(slug)](\(target.hasPrefix("/") ? "file://" + target : target))
+        """
+        try? md.write(to: url, atomically: true, encoding: .utf8)
+        return "已收进花园：links/\(slug).md"
     }
 
     private static func normalized(_ raw: Any?) -> String {
@@ -273,12 +332,14 @@ enum SearcherAgent {
         if PiCLI.available {
             MomentsBridge.writeSnapshot()
             let system = """
-            用户忘了件事，你帮 ta 找线索。工作目录是懒猫的花园：
-            notes/<日期>/ 时间笔记、people/ 人物卡、moments_snapshot.md 小传快照。
+            用户忘了件事，你帮 ta 找线索。工作目录是懒猫的花园（搜索的地基）：
+            notes/<日期>/ 时间笔记、people/ 人物卡、links/ 链接卡、moments_snapshot.md 小传快照。
             用 bash 的 grep -r 翻这些文件（中文关键词用 1-2 字短词、换说法多试几次）；
-            需要搜用户本机文件时用 mdfind -onlyin ~ "kMDItemFSName == '*词*'cd"。
-            找到了：用懒猫的口吻回答，总共不超过两句，顺口说线索来自哪（几号的笔记/小传），
-            不用 emoji。严格按线索原文说，别脑补。实在没有：一句话诚实说没找到 + 猜一个最可能的去处。
+            花园里没有、需要搜用户本机文件时才用 mdfind -onlyin ~ "kMDItemFSName == '*词*'cd"。
+            找到了：用懒猫的口吻输出两行——第一行以「推理：」开头，一句话说线索怎么串起来的
+            （顺口带上来自几号的笔记/小传）；第二行以「结论：」开头，一句话直接回答。
+            不用 emoji。严格按线索原文说，别脑补。
+            实在没有：只输出一行「结论：」——诚实说没找到 + 猜一个最可能的去处。
             """
             if let out = await PiCLI.run(name: "dozycat·找线索", system: system,
                                          prompt: question, cwd: Garden.root, timeout: 240) {
@@ -341,6 +402,27 @@ enum SearcherAgent {
                 let url = Garden.people.appendingPathComponent("\(name).md")
                 return (try? String(contentsOf: url, encoding: .utf8)) ?? "（没有这张卡）"
             },
+            AgentTool(name: "grep_links",
+                      description: "在花园的链接卡（links/）里找关键词，返回卡名和指向",
+                      parameters: ["q": ["type": "string"]]) { args in
+                let q = args["q"] as? String ?? ""
+                guard !q.isEmpty else { return "q 缺失" }
+                var out: [String] = []
+                for file in Garden.listFiles(Garden.links) {
+                    let url = Garden.links.appendingPathComponent(file)
+                    guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                    if file.localizedCaseInsensitiveContains(q)
+                        || text.localizedCaseInsensitiveContains(q) {
+                        let target = text.split(separator: "\n")
+                            .first { $0.hasPrefix("target:") }?
+                            .dropFirst("target:".count)
+                            .trimmingCharacters(in: .whitespaces) ?? ""
+                        out.append("\(file)：\(target)")
+                        if out.count >= 8 { break }
+                    }
+                }
+                return out.isEmpty ? "（没搜到链接卡）" : out.joined(separator: "\n")
+            },
             AgentTool(name: "search_files",
                       description: "按文件名搜本机文件（Spotlight），返回路径",
                       parameters: ["q": ["type": "string"]]) { args in
@@ -351,14 +433,15 @@ enum SearcherAgent {
         ]
 
         let system = """
-        用户忘了件事，你帮 ta 找线索。你有这些地方可以翻：小传（search_moments）、
-        最近的时间笔记（grep_notes / read_note）、人物卡（list_people / read_person）、
-        本机文件名（search_files）。
+        用户忘了件事，你帮 ta 找线索。你有这些地方可以翻（花园是搜索的地基）：
+        小传（search_moments）、最近的时间笔记（grep_notes / read_note）、
+        人物卡（list_people / read_person）、链接卡（grep_links）、本机文件名（search_files）。
         方法：把问题拆成 2-3 个不同说法的关键词，中文用短词（1-2 字）逐个试；
-        小传没有就翻笔记，涉及人就看人物卡。最多试六七次。
-        找到了：用懒猫的口吻回答，总共不超过两句话，顺口说线索来自哪（几号的笔记/小传），
+        小传没有就翻笔记，涉及人就看人物卡，花园里都没有才搜本机文件。最多试六七次。
+        找到了：用懒猫的口吻输出两行——第一行以「推理：」开头，一句话说线索怎么串起来的
+        （顺口带上来自几号的笔记/小传）；第二行以「结论：」开头，一句话直接回答。
         不用 emoji，不给建议清单。严格按线索原文说，别脑补细节。
-        实在没有：一句话诚实说没找到 + 猜一个最可能的去处。不要编造。
+        实在没有：只输出一行「结论：」——诚实说没找到 + 猜一个最可能的去处。不要编造。
         """
         let answer = try await PiAgent.run(
             system: system,

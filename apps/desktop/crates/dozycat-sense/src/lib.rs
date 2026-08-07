@@ -3,7 +3,38 @@
 //! 输入：每分钟一个内容盲采样（计数与布尔，无任何内容）。
 //! 输出：能量刻度更新 + 补血 nudge。数学见 docs/FATIGUE.md。
 
-/// 一分钟的劳动采样。全部是计数/布尔——没有键值、没有窗口内容。
+/// 摄像头在位信号（可选，pet 侧采样后经 hints 文件送进来）。
+/// 只有一个布尔跨过边界——画面帧不出采样器。Unknown = 没开摄像头感知
+/// 或提示过期，模型退回 v0 的纯键鼠语义。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Presence {
+    #[default]
+    Unknown,
+    /// 摄像头里有人脸：人在屏幕前
+    Present,
+    /// 摄像头里没有人脸：人离开了
+    Away,
+}
+
+/// 活动类别（pet 侧从前台 app + OCR 关键词规则分类，5 分钟一档）。
+/// 只有类别标签跨过边界——OCR 文本不出 pet。Unknown 退回 v0 语义。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Activity {
+    #[default]
+    Unknown,
+    /// 深度产出：写代码、写文档
+    Deep,
+    /// 沟通：微信 / Slack / 邮件这类聊天
+    Comms,
+    /// 会议（活动分类到会议时与 app 启发式取并）
+    Meeting,
+    /// 阅读浏览
+    Browse,
+    /// 娱乐：视频、游戏
+    Fun,
+}
+
+/// 一分钟的劳动采样。计数/布尔/类别——没有键值、没有窗口内容、没有画面。
 #[derive(Debug, Clone, Default)]
 pub struct MinuteSample {
     pub keys: u32,
@@ -17,6 +48,10 @@ pub struct MinuteSample {
     pub meeting: bool,
     /// 这一分钟是否空闲（分钟末尾无输入 ≥ 55s）
     pub idle: bool,
+    /// 摄像头在位（v2；Unknown 退回 v0 语义）
+    pub presence: Presence,
+    /// 活动类别（v2；Unknown 退回 v0 语义）
+    pub activity: Activity,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,7 +69,10 @@ pub enum Output {
         phys: f32,
         mind: f32,
         active_streak_min: u32,
+        seated_streak_min: u32,
         meeting: bool,
+        presence: Presence,
+        activity: Activity,
     },
     Nudge {
         kind: NudgeKind,
@@ -60,6 +98,20 @@ pub mod tuning {
     pub const PHYS_RECOVERY: f32 = 0.5; // 每空闲分钟
     pub const MIND_RECOVERY: f32 = 0.3;
 
+    // ---- v2：摄像头在位 + 活动类别 ----
+    /// 摄像头确认离开只要 2 分钟就起算回血（比纯键鼠推断的 3 分钟快，
+    /// 因为「没人脸」比「没输入」证据硬——停下来想事不会被误判成离开）
+    pub const RECOVERY_AFTER_AWAY_MIN: u32 = 2;
+    /// 在座但手不动（读文档、看视频）：不回血，久坐照旧磨损
+    pub const PASSIVE_SITTING_DRAIN: f32 = 0.03; // 每分钟，约合每小时 1.8 点
+    /// 被动娱乐/浏览时心理轻微回血——歇的是脑子，不是身体
+    pub const MIND_PASSIVE_RECOVERY: f32 = 0.05;
+    /// 活动类别对心理损耗的系数（生理损耗只看强度和久坐，不看在干什么）
+    pub const MIND_MULT_DEEP: f32 = 1.2; // 深度产出最费执行功能
+    pub const MIND_MULT_COMMS: f32 = 0.9; // 聊天有社交负荷但执行负荷低
+    pub const MIND_MULT_BROWSE: f32 = 0.8;
+    pub const MIND_MULT_FUN: f32 = 0.5; // 打着游戏刷着视频，脑子在放松
+
     pub const LONG_SITTING_MIN: u32 = 90;
     pub const MEETING_COUNTS_AFTER_MIN: u32 = 20; // 会议 ≥20min 结束才提示补血
     /// 会议态消失后要连续确认这么多分钟才算「会真的结束了」——
@@ -76,6 +128,11 @@ pub struct EnergyModel {
     minute: u64,
     active_streak: u32,
     idle_streak: u32,
+    /// 连续在座分钟数（v2）：输入活跃或摄像头见人都算在座。
+    /// 有了它，看视频那种「手不动但一直坐着」也会累进久坐提醒。
+    seat_streak: u32,
+    /// 摄像头确认离开的连续分钟数（v2 回血起算用）
+    away_streak: u32,
     meeting_streak: u32,
     /// 会议态消失后的连续分钟数（结束确认用，见 MEETING_END_CONFIRM_MIN）
     meeting_gap: u32,
@@ -91,6 +148,8 @@ impl EnergyModel {
             minute: 0,
             active_streak: 0,
             idle_streak: 0,
+            seat_streak: 0,
+            away_streak: 0,
             meeting_streak: 0,
             meeting_gap: 0,
             churn_streak: 0,
@@ -114,13 +173,22 @@ impl EnergyModel {
         use tuning::*;
         self.minute += 1;
         let mut out = Vec::new();
-        let i = Self::intensity(s);
-        let active = !s.idle || s.meeting;
+
+        // 会议 = app 启发式 ∪ 活动分类（OCR 语义那条线也能认出会议界面）
+        let meeting = s.meeting || s.activity == Activity::Meeting;
+        let mut i = Self::intensity(s);
+        if meeting {
+            i = i.max(MEETING_FLOOR);
+        }
+        let active = !s.idle || meeting;
+        // 在座 = 手在动，或摄像头见人。摄像头说人在而手不动（读文档、看视频、
+        // 想事），是「被动在座」——不回血；摄像头没开就退回 v0 的输入推断。
+        let seated = active || s.presence == Presence::Present;
 
         // 会议结束 = 会议态消失并连续确认 MEETING_END_CONFIRM_MIN 分钟。
         // 中途切去别的 app 记一两分钟笔记不算结束（v0 的 app 启发式误差兜底）。
         let mut meeting_ended_after = 0u32;
-        if s.meeting {
+        if meeting {
             self.meeting_streak += 1;
             self.meeting_gap = 0;
         } else if self.meeting_streak > 0 {
@@ -132,14 +200,37 @@ impl EnergyModel {
             }
         }
 
+        if seated {
+            self.seat_streak += 1;
+            self.away_streak = 0;
+        } else {
+            self.seat_streak = 0;
+            if s.presence == Presence::Away {
+                self.away_streak += 1;
+            }
+        }
+
         if active {
             self.active_streak += 1;
             self.idle_streak = 0;
 
+            // 生理损耗只看强度和坐着本身，不看在干什么——身体不在乎你是
+            // 写代码还是刷视频，在乎的是这一小时没起身。
             self.phys -= PHYS_BASE_DRAIN + PHYS_INTENSITY_DRAIN * i;
+
+            // 心理损耗看的是执行功能的开销：切换、会议、连续专注是加项，
+            // 活动类别是系数——同样的键速，写代码比在微信聊天磨脑子。
             let switch_factor = (s.switches as f32 / SWITCHES_FULL).min(1.0);
-            let mut mind_drain = MIND_BASE_DRAIN + MIND_SWITCH_DRAIN * switch_factor;
-            if s.meeting {
+            let activity_mult = match s.activity {
+                Activity::Deep => MIND_MULT_DEEP,
+                Activity::Comms => MIND_MULT_COMMS,
+                Activity::Browse => MIND_MULT_BROWSE,
+                Activity::Fun => MIND_MULT_FUN,
+                Activity::Meeting | Activity::Unknown => 1.0,
+            };
+            let mut mind_drain =
+                (MIND_BASE_DRAIN + MIND_SWITCH_DRAIN * switch_factor) * activity_mult;
+            if meeting {
                 mind_drain += MIND_MEETING_DRAIN;
             }
             if self.active_streak > 60 {
@@ -152,11 +243,28 @@ impl EnergyModel {
             } else {
                 self.churn_streak = 0;
             }
+        } else if seated {
+            // 被动在座（摄像头见人、手不动）：不算离开、不回血。身体还坐着，
+            // 每分钟照磨一点；娱乐或浏览时脑子在歇，心理轻微回血。
+            self.active_streak = 0;
+            self.churn_streak = 0;
+            self.idle_streak += 1;
+            self.phys -= PASSIVE_SITTING_DRAIN;
+            if matches!(s.activity, Activity::Fun | Activity::Browse) {
+                self.mind += MIND_PASSIVE_RECOVERY;
+            }
         } else {
             self.active_streak = 0;
             self.churn_streak = 0;
             self.idle_streak += 1;
-            if self.idle_streak >= RECOVERY_AFTER_IDLE_MIN {
+            // 回血起算：摄像头确认离开 2 分钟就够（证据硬）；
+            // 没有摄像头就沿用「连续无输入 3 分钟」的保守推断。
+            let resting = if s.presence == Presence::Away {
+                self.away_streak >= RECOVERY_AFTER_AWAY_MIN
+            } else {
+                self.idle_streak >= RECOVERY_AFTER_IDLE_MIN
+            };
+            if resting {
                 self.phys += PHYS_RECOVERY;
                 self.mind += MIND_RECOVERY;
             }
@@ -165,17 +273,19 @@ impl EnergyModel {
         self.mind = self.mind.clamp(0.0, 100.0);
 
         // ---- nudges（带冷却，一次只说一句）----
+        // 久坐看 seat_streak：摄像头在位时，刷两小时视频和写两小时代码
+        // 一样会被提醒起身——身体不区分这两件事。
         let nudge = if meeting_ended_after >= MEETING_COUNTS_AFTER_MIN {
             Some((
                 NudgeKind::PostMeeting,
                 "会开完了吧？高强度输出后要补血，起来走两步～".to_string(),
             ))
-        } else if self.active_streak >= LONG_SITTING_MIN {
+        } else if self.seat_streak >= LONG_SITTING_MIN {
             Some((
                 NudgeKind::LongSitting,
-                format!("坐了 {} 分钟啦，去接杯水回血？", self.active_streak),
+                format!("坐了 {} 分钟啦，去接杯水回血？", self.seat_streak),
             ))
-        } else if active && self.phys < LOW_PHYS_THRESHOLD {
+        } else if seated && self.phys < LOW_PHYS_THRESHOLD {
             Some((
                 NudgeKind::LowPhysical,
                 format!(
@@ -209,7 +319,10 @@ impl EnergyModel {
             phys: self.phys,
             mind: self.mind,
             active_streak_min: self.active_streak,
-            meeting: s.meeting,
+            seated_streak_min: self.seat_streak,
+            meeting,
+            presence: s.presence,
+            activity: s.activity,
         });
         out
     }
@@ -371,5 +484,127 @@ mod tests {
         assert!(looks_like_meeting("zoom.us"));
         assert!(looks_like_meeting("腾讯会议"));
         assert!(!looks_like_meeting("Cursor"));
+    }
+
+    // ---- v2：摄像头在位 + 活动类别 ----
+
+    fn watching_video_minute() -> MinuteSample {
+        MinuteSample {
+            idle: true, // 手不动
+            front_app: "Safari".into(),
+            presence: Presence::Present, // 但人在屏幕前
+            activity: Activity::Fun,
+            ..Default::default()
+        }
+    }
+
+    fn away_minute() -> MinuteSample {
+        MinuteSample {
+            idle: true,
+            front_app: "Finder".into(),
+            presence: Presence::Away,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn watching_video_is_not_a_break() {
+        // v0 会把「看视频手不动」误判成离开回血；v2 摄像头见人 → 被动在座：
+        // 生理继续缓慢消耗，心理轻微回血（歇的是脑子不是身体）。
+        let mut m = EnergyModel::new(50.0, 50.0);
+        for _ in 0..30 {
+            m.step(&watching_video_minute());
+        }
+        assert!(m.phys < 50.0, "看视频身体还坐着，不该回血: {}", m.phys);
+        assert!(m.phys > 47.0, "被动在座只是缓慢消耗: {}", m.phys);
+        assert!(m.mind > 50.0, "娱乐时脑子在歇，心理应轻微回血: {}", m.mind);
+    }
+
+    #[test]
+    fn video_marathon_still_counts_as_sitting() {
+        // 久坐看 seat_streak：刷 90 分钟视频和写 90 分钟代码一样提醒起身
+        let mut m = EnergyModel::new(80.0, 80.0);
+        let mut nudged = false;
+        for _ in 0..95 {
+            for o in m.step(&watching_video_minute()) {
+                if matches!(o, Output::Nudge { kind: NudgeKind::LongSitting, .. }) {
+                    nudged = true;
+                }
+            }
+        }
+        assert!(nudged, "摄像头在位下，纯看视频的久坐也应触发提醒");
+    }
+
+    #[test]
+    fn camera_confirmed_leave_recovers_faster() {
+        // 摄像头确认离开：第 2 分钟就起算回血（纯键鼠推断要等 3 分钟）
+        let mut with_camera = EnergyModel::new(40.0, 40.0);
+        let mut without = EnergyModel::new(40.0, 40.0);
+        for _ in 0..3 {
+            with_camera.step(&away_minute());
+            without.step(&idle_minute());
+        }
+        assert!(
+            with_camera.phys > without.phys,
+            "3 分钟后摄像头档应已多回一分钟血: {} vs {}",
+            with_camera.phys,
+            without.phys
+        );
+    }
+
+    #[test]
+    fn wechat_chat_wears_mind_less_than_deep_work() {
+        // 同样的输入量，微信聊天的心理磨损应小于写代码
+        let chat = MinuteSample { activity: Activity::Comms, ..coding_minute() };
+        let deep = MinuteSample { activity: Activity::Deep, ..coding_minute() };
+        let mut chatting = EnergyModel::new(80.0, 80.0);
+        let mut coding = EnergyModel::new(80.0, 80.0);
+        for _ in 0..60 {
+            chatting.step(&chat);
+            coding.step(&deep);
+        }
+        assert!(
+            chatting.mind > coding.mind,
+            "一小时聊天 vs 一小时深度产出: {} vs {}",
+            chatting.mind,
+            coding.mind
+        );
+        assert!(
+            (chatting.phys - coding.phys).abs() < 0.01,
+            "生理损耗不看在干什么，只看强度: {} vs {}",
+            chatting.phys,
+            coding.phys
+        );
+    }
+
+    #[test]
+    fn activity_meeting_counts_as_meeting() {
+        // OCR 语义认出会议界面（app 启发式没认出）也应走会议语义
+        let m_min = MinuteSample {
+            idle: true,
+            front_app: "Arc".into(), // 浏览器里开会，app 名认不出
+            activity: Activity::Meeting,
+            ..Default::default()
+        };
+        let mut m = EnergyModel::new(80.0, 80.0);
+        for _ in 0..30 {
+            m.step(&m_min);
+        }
+        assert!(m.mind < 72.0, "浏览器里的半小时会议也应磨心理能量: {}", m.mind);
+        m.step(&idle_minute());
+        m.step(&idle_minute());
+        assert!(
+            has_post_meeting(&m.step(&idle_minute())),
+            "OCR 认出的会议结束后同样提示补血"
+        );
+    }
+
+    #[test]
+    fn unknown_hints_degrade_to_v0() {
+        // 没开摄像头、没有活动提示：行为必须和 v0 完全一致（老测试就是证明），
+        // 这里只确认 Default 就是 Unknown。
+        let s = MinuteSample::default();
+        assert_eq!(s.presence, Presence::Unknown);
+        assert_eq!(s.activity, Activity::Unknown);
     }
 }

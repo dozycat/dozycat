@@ -29,6 +29,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES   # 菜单栏应用，不占 Dock
         INFOPLIST_KEY_CFBundleDisplayName: 懒猫
+        # 摄像头在位感知（设置里默认关）：帧过一遍人脸检测即弃，只产出在/不在
+        INFOPLIST_KEY_NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前（只产出在/不在，一张画面都不保存）。
         CODE_SIGN_IDENTITY: "-"
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"

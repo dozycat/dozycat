@@ -9,7 +9,7 @@
 //!   DOZYCAT_STORE       LoroStore 路径（默认 ~/.dozycat/store.db；"off" 关闭落账）
 
 use dozycat_core::{EnergyEvent, LoroStore};
-use dozycat_sense::{looks_like_meeting, EnergyModel, MinuteSample, Output};
+use dozycat_sense::{looks_like_meeting, Activity, EnergyModel, MinuteSample, Output, Presence};
 use std::process::Command;
 use std::time::Duration;
 
@@ -65,11 +65,28 @@ fn json_escape(s: &str) -> String {
 
 fn emit(output: &Output, front: &str) {
     match output {
-        Output::Minute { intensity, phys, mind, active_streak_min, meeting } => {
+        Output::Minute {
+            intensity,
+            phys,
+            mind,
+            active_streak_min,
+            seated_streak_min,
+            meeting,
+            presence,
+            activity,
+        } => {
+            let presence = match presence {
+                Presence::Unknown => "unknown",
+                Presence::Present => "present",
+                Presence::Away => "away",
+            };
             println!(
                 "{{\"kind\":\"minute\",\"intensity\":{intensity:.2},\"phys\":{phys:.1},\
                  \"mind\":{mind:.1},\"activeStreakMin\":{active_streak_min},\
-                 \"meeting\":{meeting},\"frontApp\":\"{}\"}}",
+                 \"seatedStreakMin\":{seated_streak_min},\
+                 \"meeting\":{meeting},\"presence\":\"{presence}\",\
+                 \"activity\":\"{}\",\"frontApp\":\"{}\"}}",
+                activity_label(*activity),
                 json_escape(front)
             );
         }
@@ -80,6 +97,88 @@ fn emit(output: &Output, front: &str) {
             );
         }
     }
+}
+
+fn activity_label(a: Activity) -> &'static str {
+    match a {
+        Activity::Unknown => "unknown",
+        Activity::Deep => "deep",
+        Activity::Comms => "comms",
+        Activity::Meeting => "meeting",
+        Activity::Browse => "browse",
+        Activity::Fun => "fun",
+    }
+}
+
+// ---- 语义提示（pet 侧写，摄像头在位 + 活动类别）----
+//
+// pet 在 ~/.dozycat/sense_hints.json（DOZYCAT_HINTS 可改）里维护一行 JSON：
+//   {"present":true,"presentAtMs":...,"activity":"comms","activityAtMs":...}
+// 跨过这道边界的只有一个布尔和一个类别标签——画面帧和 OCR 文本都留在 pet。
+// 各字段带时间戳与保鲜期：在位 90 秒（采样 30s 一次，两个周期没更新就作废），
+// 活动 8 分钟（sequence 5 分钟一跑）。过期即 Unknown，模型退回 v0 语义。
+
+const PRESENT_FRESH_MS: i64 = 90_000;
+const ACTIVITY_FRESH_MS: i64 = 480_000;
+
+fn json_i64(text: &str, key: &str) -> Option<i64> {
+    let pat = format!("\"{key}\":");
+    let at = text.find(&pat)? + pat.len();
+    let rest = &text[at..];
+    let end = rest
+        .find(|c: char| c != '-' && !c.is_ascii_digit())
+        .unwrap_or(rest.len());
+    rest[..end].parse().ok()
+}
+
+fn json_bool(text: &str, key: &str) -> Option<bool> {
+    let pat = format!("\"{key}\":");
+    let at = text.find(&pat)? + pat.len();
+    let rest = &text[at..];
+    if rest.starts_with("true") {
+        Some(true)
+    } else if rest.starts_with("false") {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+fn json_str<'t>(text: &'t str, key: &str) -> Option<&'t str> {
+    let pat = format!("\"{key}\":\"");
+    let at = text.find(&pat)? + pat.len();
+    let rest = &text[at..];
+    let end = rest.find('"')?;
+    Some(&rest[..end])
+}
+
+fn read_hints(path: &str) -> (Presence, Activity) {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return (Presence::Unknown, Activity::Unknown);
+    };
+    let now = now_ms();
+    let presence = match (json_bool(&text, "present"), json_i64(&text, "presentAtMs")) {
+        (Some(p), Some(at)) if now - at <= PRESENT_FRESH_MS => {
+            if p {
+                Presence::Present
+            } else {
+                Presence::Away
+            }
+        }
+        _ => Presence::Unknown,
+    };
+    let activity = match (json_str(&text, "activity"), json_i64(&text, "activityAtMs")) {
+        (Some(a), Some(at)) if now - at <= ACTIVITY_FRESH_MS => match a {
+            "deep" => Activity::Deep,
+            "comms" => Activity::Comms,
+            "meeting" => Activity::Meeting,
+            "browse" => Activity::Browse,
+            "fun" => Activity::Fun,
+            _ => Activity::Unknown,
+        },
+        _ => Activity::Unknown,
+    };
+    (presence, activity)
 }
 
 fn env_u64(name: &str, default: u64) -> u64 {
@@ -134,6 +233,10 @@ fn main() {
     let ticks_per_minute = (env_u64("DOZYCAT_TICKS_PER_MINUTE", 12) as u32).max(1);
     // 「这一分钟是否空闲」= 分钟末尾连续无输入 ≥ 窗口的 90%（默认 60s → 54s）
     let idle_threshold = tick.as_secs_f64() * ticks_per_minute as f64 * 0.9;
+    let hints_path = std::env::var("DOZYCAT_HINTS").unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+        format!("{home}/.dozycat/sense_hints.json")
+    });
     let store = open_store();
 
     // 初始能量：宿主注入（DOZYCAT_INIT_*，pet 持库时由它提供）优先，
@@ -181,6 +284,7 @@ fn main() {
 
         if ticks >= ticks_per_minute {
             acc.idle = idle_seconds() >= idle_threshold && acc.keys == 0 && acc.clicks == 0;
+            (acc.presence, acc.activity) = read_hints(&hints_path);
             let front = acc.front_app.clone();
             for output in model.step(&acc) {
                 emit(&output, &front);
