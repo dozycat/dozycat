@@ -11,6 +11,9 @@ targets:
     platform: macOS
     sources:
       - path: Sources
+      # 安装包图标：site/assets/icon.png（懒猫 logo）生成的 asset catalog，
+      # logo 换了跑 scripts/make-icon.sh 重做
+      - path: Assets/Assets.xcassets
       # 与 iOS 共用：同一只猫、同一套 token、同一份 BYOK 配置与 Keychain 条目，
       # 以及同一个 Rust 内核（UniFFI 绑定）
       - path: ../../ios/Dozycat/Components/CatFace.swift
@@ -29,6 +32,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES   # 菜单栏应用，不占 Dock
         INFOPLIST_KEY_CFBundleDisplayName: 懒猫
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon   # Finder / DMG 里的脸面
         # 摄像头在位感知（设置里默认关）：帧过一遍人脸检测即弃，只产出在/不在
         INFOPLIST_KEY_NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前（只产出在/不在，一张画面都不保存）。
         CODE_SIGN_IDENTITY: "-"

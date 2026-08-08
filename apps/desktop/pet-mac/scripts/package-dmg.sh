@@ -114,8 +114,17 @@ echo "==> dozycat-core (macOS $MIN_MACOS+)"
 DOZYCAT_MACOS_DEPLOYMENT_TARGET="$MIN_MACOS" \
   "$REPO_ROOT/apps/ios/scripts/build-core.sh"
 
-echo "==> xcodegen + xcodebuild (Release)"
+echo "==> 版本号自动 +1（project.yml，patch 位）"
 cd "$PROJECT_DIR"
+CURRENT="$(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)"
+BUILD="$(sed -n 's/.*CURRENT_PROJECT_VERSION: "\(.*\)"/\1/p' project.yml)"
+NEXT="$(echo "$CURRENT" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')"
+NEXT_BUILD=$((BUILD + 1))
+sed -i '' "s/MARKETING_VERSION: \"$CURRENT\"/MARKETING_VERSION: \"$NEXT\"/" project.yml
+sed -i '' "s/CURRENT_PROJECT_VERSION: \"$BUILD\"/CURRENT_PROJECT_VERSION: \"$NEXT_BUILD\"/" project.yml
+echo "    $CURRENT (build $BUILD) → $NEXT (build $NEXT_BUILD)；记得连 project.yml 一起提交"
+
+echo "==> xcodegen + xcodebuild (Release)"
 xcodegen generate >/dev/null
 xcodebuild -project DozycatPet.xcodeproj -scheme DozycatPet -configuration Release \
   -derivedDataPath "$DERIVED" \
