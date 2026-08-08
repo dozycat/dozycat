@@ -1,6 +1,25 @@
 import Foundation
 import AppKit
 
+/// FileHandle 的 readabilityHandler 是 @Sendable；把增量 JSONL 缓冲封进锁里，
+/// 避免 Swift 6 下捕获并修改局部 Data 的并发错误。
+private final class JSONLineBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var data = Data()
+
+    func append(_ incoming: Data) -> [Data] {
+        lock.lock()
+        defer { lock.unlock() }
+        data.append(incoming)
+        var lines: [Data] = []
+        while let newline = data.firstIndex(of: 0x0A) {
+            lines.append(Data(data.prefix(upTo: newline)))
+            data.removeSubrange(...newline)
+        }
+        return lines
+    }
+}
+
 /// 把 dozycat-sense（子进程）的 JSONL 语义流喂给 UI，并推导猫猫状态。
 ///
 /// pb-os 式组合：守护进程持有原始计数与账本（EXCLUSIVE 锁的单写者），
@@ -41,6 +60,7 @@ final class SenseFeed: ObservableObject {
             mind = saved.mind
         }
         refreshMood()
+        RestSession.shared.considerAutoStart(phys: phys)
         guard let bin = Self.senseBinary() else {
             NSLog("SenseFeed: dozycat-sense binary not found; UI runs static")
             return
@@ -57,12 +77,9 @@ final class SenseFeed: ObservableObject {
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
 
-        var buffer = Data()
+        let buffer = JSONLineBuffer()
         pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            buffer.append(handle.availableData)
-            while let nl = buffer.firstIndex(of: 0x0A) {
-                let line = buffer.prefix(upTo: nl)
-                buffer.removeSubrange(...nl)
+            for line in buffer.append(handle.availableData) {
                 if let obj = try? JSONSerialization.jsonObject(with: line) as? [String: Any] {
                     Task { @MainActor in self?.consume(obj) }
                 }
@@ -80,6 +97,7 @@ final class SenseFeed: ObservableObject {
     private func consume(_ obj: [String: Any]) {
         switch obj["kind"] as? String {
         case "minute":
+            let previousPhys = phys
             if let p = obj["phys"] as? Double { phys = Int(p.rounded()) }
             if let m = obj["mind"] as? Double { mind = Int(m.rounded()) }
             if let streak = obj["activeStreakMin"] as? Int { activeStreakMin = streak }
@@ -87,6 +105,9 @@ final class SenseFeed: ObservableObject {
             if let i = obj["intensity"] as? Double { intensity = i }
             PetStore.shared.recordEnergy(phys: Double(phys), mind: Double(mind), kind: "minute")
             refreshMood()
+            if previousPhys >= 30, phys < 30 {
+                RestSession.shared.considerAutoStart(phys: phys)
+            }
         case "nudge":
             let localized = localizedBubble(kind: obj["nudge"] as? String)
             if let text = localized ?? (obj["message"] as? String) {
@@ -132,6 +153,11 @@ final class SenseFeed: ObservableObject {
             try? await Task.sleep(nanoseconds: 180_000_000_000)
             if let text { self?.show(reminder: text) }
         }
+    }
+
+    func showFollowUp(_ text: String) {
+        reminderCount += 1
+        show(reminder: text)
     }
 
     // MARK: 猫猫状态（猫本身就是能量表）

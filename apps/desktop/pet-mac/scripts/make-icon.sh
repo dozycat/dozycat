@@ -1,11 +1,11 @@
 #!/bin/bash
-# 从 site/assets/icon.png（懒猫 logo，512px）重新生成 AppIcon asset catalog。
+# 从 iOS 的 1024px 主图重新生成 AppIcon asset catalog，桌面与手机保持同一张脸。
 # logo 换了跑一次即可；产物进 git，打包脚本不依赖本脚本。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SRC="$PROJECT_DIR/../../../site/assets/icon.png"
+SRC="$PROJECT_DIR/../../ios/Dozycat/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
 SET="$PROJECT_DIR/Assets/Assets.xcassets/AppIcon.appiconset"
 
 [ -f "$SRC" ] || { echo "找不到 logo：$SRC" >&2; exit 1; }
@@ -16,8 +16,8 @@ for s in 16 32 128 256; do
   d=$((s * 2))
   sips -z "$d" "$d" "$SRC" --out "$SET/icon_${s}@2x.png" >/dev/null
 done
-# 源图 512px：512/512@2x 直接用原图，不上采样糊图
-cp "$SRC" "$SET/icon_512.png"
+# 512@1x 缩图，512@2x 保留 1024px 主图；避免 Asset Catalog 的尺寸警告。
+sips -z 512 512 "$SRC" --out "$SET/icon_512.png" >/dev/null
 cp "$SRC" "$SET/icon_512@2x.png"
 
 cat > "$SET/Contents.json" <<'EOF'

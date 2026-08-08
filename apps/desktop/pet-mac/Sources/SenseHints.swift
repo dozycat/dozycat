@@ -1,6 +1,6 @@
 import AppKit
 import AVFoundation
-import Vision
+@preconcurrency import Vision
 
 /// 疲劳感知的语义提示（v2）：pet 侧产出两枚原子——摄像头在位布尔 + 活动类别——
 /// 写进 ~/.dozycat/sense_hints.json，dozycat-sense 每分钟带保鲜期地读。

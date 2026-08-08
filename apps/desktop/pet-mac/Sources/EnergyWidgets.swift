@@ -499,6 +499,13 @@ final class RechargeStore: ObservableObject {
         save()
     }
 
+    func updateSchedule(_ item: RechargeItem, hour: Int, minute: Int) {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[index].hour = min(23, max(0, hour))
+        items[index].minute = min(59, max(0, minute))
+        save()
+    }
+
     /// 「现在做」：计一次数，猫开心一会儿；20 分钟后回来量真实回了多少。
     func markDone(_ item: RechargeItem) {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
@@ -715,6 +722,8 @@ struct TomorrowPlanCard: View {
     @ObservedObject private var feed = SenseFeed.shared
     @ObservedObject private var store = RechargeStore.shared
     @State private var monthAverages: [Int: (phys: Double, mind: Double)] = [:]
+    @State private var editingItemID: UUID?
+    @State private var draftTime = Date()
 
     private var calendar: Calendar { Calendar.current }
     private var tomorrow: Date { calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date() }
@@ -773,11 +782,50 @@ struct TomorrowPlanCard: View {
 
     private func planRow(_ item: RechargeItem) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Text(verbatim: String(format: "%d:%02d", item.hour, item.minute))
+            Button {
+                var comps = Calendar.current.dateComponents([.year, .month, .day], from: tomorrow)
+                comps.hour = item.hour
+                comps.minute = item.minute
+                draftTime = Calendar.current.date(from: comps) ?? tomorrow
+                editingItemID = item.id
+            } label: {
+                HStack(spacing: 3) {
+                    Text(verbatim: String(format: "%d:%02d", item.hour, item.minute))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 7, weight: .bold))
+                }
                 .font(.system(size: 11))
                 .foregroundStyle(item.kind.color)
-                .frame(width: 40, alignment: .leading)
+                .frame(width: 50, alignment: .leading)
                 .padding(.top, 2)
+            }
+            .buttonStyle(.plain)
+            .help("修改时间")
+            .popover(isPresented: Binding(
+                get: { editingItemID == item.id },
+                set: { if !$0 { editingItemID = nil } }
+            ), arrowEdge: .leading) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("把回血排在几点？")
+                        .font(.system(size: 13, weight: .medium))
+                    DatePicker("", selection: $draftTime, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .datePickerStyle(.stepperField)
+                    HStack {
+                        Spacer()
+                        Button("存好") {
+                            let parts = Calendar.current.dateComponents([.hour, .minute],
+                                                                        from: draftTime)
+                            store.updateSchedule(item, hour: parts.hour ?? item.hour,
+                                                 minute: parts.minute ?? item.minute)
+                            editingItemID = nil
+                        }
+                        .buttonStyle(SmallInkPill())
+                    }
+                }
+                .padding(16)
+                .frame(width: 220)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: "☐ \(item.name)")
                     .font(.system(size: 13))
@@ -797,6 +845,10 @@ struct TomorrowPlanCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(alignment: .bottom) {
             if item.id != planItems.last?.id { DS.lineSoft.frame(height: 1) }
+        }
+        .contextMenu {
+            Button("现在做并记一笔") { store.markDone(item) }
+            Button("从清单里去掉", role: .destructive) { store.remove(item) }
         }
     }
 

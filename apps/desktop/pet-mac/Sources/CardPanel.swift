@@ -114,6 +114,17 @@ final class CardPanel: NSPanel {
         present(origin: origin)
     }
 
+    /// 提醒与收尾倒计时贴着右上角出现；保留菜单栏和 20pt 呼吸空间。
+    func showTopRight(margin: CGFloat = 24) {
+        guard let screen = NSScreen.main else { return }
+        let size = hosting.fittingSize
+        setContentSize(size)
+        let f = screen.visibleFrame
+        let origin = NSPoint(x: f.maxX - size.width - margin,
+                             y: f.maxY - size.height - margin)
+        present(origin: origin)
+    }
+
     /// 唤起：从最终位置上方 10pt 淡入落下（对齐设计稿「220ms 弹性下落」的意图，
     /// 但走窗口层 CA 合成）。同时挂上失焦自动收起。
     private func present(origin: NSPoint) {
@@ -161,8 +172,11 @@ final class CardPanel: NSPanel {
     /// 内容尺寸变了（证物板增减、结案报告展开）：锚住顶边动画到新高度。
     func resizeToFitKeepingTop(animated: Bool = true) {
         let size = hosting.fittingSize
-        guard size.height > 0, abs(size.height - frame.height) > 0.5 else { return }
-        let target = NSRect(x: frame.minX, y: frame.maxY - size.height,
+        guard size.width > 0, size.height > 0,
+              abs(size.height - frame.height) > 0.5 || abs(size.width - frame.width) > 0.5
+        else { return }
+        // 搜索三幕会同时改宽高；横向守住中心、纵向守住上沿，切场景时才不会跳边。
+        let target = NSRect(x: frame.midX - size.width / 2, y: frame.maxY - size.height,
                             width: size.width, height: size.height)
         if animated {
             NSAnimationContext.runAnimationGroup { context in
@@ -174,6 +188,12 @@ final class CardPanel: NSPanel {
             setFrame(target, display: true)
         }
     }
+
+    #if DEBUG
+    func writeDebugSnapshot(to path: String) {
+        contentView?.writeDebugPNG(to: path)
+    }
+    #endif
 
     /// 可拉伸的圆角遮罩：用来裁 behind-window blur（cap insets 让四角不变形）。
     private static func roundedCornerMask(radius: CGFloat) -> NSImage {
@@ -188,3 +208,15 @@ final class CardPanel: NSPanel {
         return image
     }
 }
+
+#if DEBUG
+extension NSView {
+    func writeDebugPNG(to path: String) {
+        layoutSubtreeIfNeeded()
+        guard let rep = bitmapImageRepForCachingDisplay(in: bounds) else { return }
+        cacheDisplay(in: bounds, to: rep)
+        guard let png = rep.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: URL(fileURLWithPath: path), options: .atomic)
+    }
+}
+#endif

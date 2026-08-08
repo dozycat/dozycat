@@ -1,6 +1,49 @@
 import SwiftUI
 import AppKit
 
+/// Search Everything 的原稿就是固定白纸。这里不用会随 NSWindow.effectiveAppearance
+/// 翻色的全局 DS，避免系统深色模式把实际浮窗变成墨色。
+private enum SearchDS {
+    static let paper = Color(hex: 0xFAFAF8)
+    static let bg = Color(hex: 0xEDECE8)
+    static let card = Color(hex: 0xFFFFFF)
+    static let ink = Color(hex: 0x2E2E33)
+    static let inkSoft = Color(hex: 0x6E6C66)
+    static let mutedWarm = Color(hex: 0x8B8880)
+    static let muted = Color(hex: 0xA6A39B)
+    static let faint = Color(hex: 0xB9B6AE)
+    static let line = Color(hex: 0xE8E6E0)
+    static let lineSoft = Color(hex: 0xF0EEE9)
+    static let lineStrong = Color(hex: 0xDEDCD5)
+    static let coral = Color(hex: 0xFF8A75)
+    static let blue = Color(hex: 0x7C8DB5)
+    static let headShade = Color(hex: 0xF4F3EF)
+}
+
+private struct SearchInkPill: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13))
+            .foregroundStyle(SearchDS.paper)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 18)
+            .background(Capsule().fill(SearchDS.ink))
+            .opacity(configuration.isPressed ? 0.75 : 1)
+    }
+}
+
+private struct SearchGhostPill: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13))
+            .foregroundStyle(SearchDS.inkSoft)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 18)
+            .background(Capsule().stroke(SearchDS.lineStrong, lineWidth: 1))
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
 /// Search Everything（⌥空格）·「懒猫探案」：每次搜索都是一次小型办案——
 /// 受理（空状态）→ 布线（证物板）→ 结案（报告 + 盖章）。
 /// 证物主要来自花园（~/.dozycat/garden：时间笔记、人物卡、链接卡、小传），
@@ -11,22 +54,59 @@ struct SearchPanelView: View {
     @State private var peeking = false
     @State private var spinnerVisible = false
 
-    private let panelShape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+    private enum Stage: Equatable {
+        case intake, evidence, report
+    }
+
+    private let panelShape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+
+    private var stage: Stage {
+        if model.answering || model.caseReport != nil { return .report }
+        return model.query.isEmpty ? .intake : .evidence
+    }
+
+    /// 原稿是三张不同尺寸的卡，不是一张固定大窗换内容。
+    private var panelWidth: CGFloat {
+        switch stage {
+        case .intake: 680
+        case .evidence: 740
+        case .report: 620
+        }
+    }
+
+    private var contentHeight: CGFloat {
+        switch stage {
+        case .intake: 116
+        case .evidence: 350
+        case .report: 390
+        }
+    }
+
+    private var headerHeight: CGFloat { stage == .intake ? 72 : 60 }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            // 侦探从面板后面探出头（第一幕 · 受理）
-            DeskCat(mood: .curious, size: 60)
-                .offset(x: -44, y: peeking ? -2 : 40)
-                .opacity(peeking ? 1 : 0)
+        ZStack(alignment: .topLeading) {
+            // 侦探躲在纸面后，只从上沿探出头。
+            if stage == .intake {
+                DeskCat(mood: .curious, size: 38)
+                    .offset(x: panelWidth * 0.72, y: peeking ? 5 : 30)
+                    .opacity(peeking ? 1 : 0)
+                    .zIndex(0)
+            }
             panel
+                .padding(.top, stage == .intake ? 25 : 0)
+                .zIndex(1)
         }
-        .padding(.top, 30)
+        .frame(width: panelWidth, alignment: .topLeading)
+        // Search Everything 在原稿中始终是一张白纸，不跟系统深色模式翻黑。
+        .preferredColorScheme(.light)
         .onAppear {
             focused = true
             model.loadOpenCases()
-            // 唤起下落由 CardPanel 在窗口层做；这里只管猫探头
             withAnimation(.spring(response: 0.32, dampingFraction: 0.7).delay(0.18)) { peeking = true }
+        }
+        .onChange(of: stage) {
+            DispatchQueue.main.async { PetPanels.shared.resizeSearchToFit() }
         }
     }
 
@@ -42,15 +122,13 @@ struct SearchPanelView: View {
                     EvidenceBoardView(model: model)
                 }
             }
-            .frame(height: 390, alignment: .top)
+            .frame(height: contentHeight, alignment: .top)
             .clipped()
-            footer
+            if stage != .report { footer }
         }
-        .frame(width: 680)
-        // 半透明纸面罩在 CardPanel 的 vibrancy 上：既保住纸的暖色，又有真模糊
-        .background(panelShape.fill(DS.paper.opacity(0.82)))
-        // Find 的轮廓必须是实色。透明只留给面板外的窗口，不让内容边缘发虚。
-        .overlay(panelShape.strokeBorder(DS.lineStrong, lineWidth: 1))
+        .frame(width: panelWidth)
+        .background(panelShape.fill(SearchDS.paper))
+        .overlay(panelShape.strokeBorder(SearchDS.line, lineWidth: 1))
         .environment(\.openURL, OpenURLAction { url in
             SearchOpenTarget.open(url: url) ? .handled : .discarded
         })
@@ -71,36 +149,44 @@ struct SearchPanelView: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 13) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(DS.inkSoft)
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(DS.bg))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(SearchDS.mutedWarm)
+                .frame(width: 14)
 
-            TextField("想查点什么？人、事，或一种感觉", text: $model.query)
-                .textFieldStyle(.plain)
-                .font(.system(size: 17, weight: .light))
-                .foregroundStyle(DS.ink)
-                .focused($focused)
-                .onSubmit { model.activatePrimaryResult() }
+            ZStack(alignment: .leading) {
+                if model.query.isEmpty {
+                    Text("想查点什么？人、事，或一种感觉")
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundStyle(SearchDS.faint)
+                        .allowsHitTesting(false)
+                }
+                TextField("", text: $model.query)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundStyle(SearchDS.ink)
+                    .tint(SearchDS.coral)
+                    .focused($focused)
+                    .onSubmit { model.activatePrimaryResult() }
+            }
 
             if spinnerVisible {
                 ProgressView()
                     .controlSize(.small)
-                    .tint(DS.muted)
+                    .tint(SearchDS.muted)
             } else if !model.query.isEmpty, model.caseReport == nil {
                 Text(verbatim: model.caseCaption)
                     .font(.system(size: 11))
-                    .foregroundStyle(DS.faint)
+                    .foregroundStyle(SearchDS.faint)
                     .lineLimit(1)
             }
 
             keycap("esc")
         }
-        .padding(.vertical, 17)
-        .padding(.horizontal, 20)
-        .overlay(alignment: .bottom) { DS.line.frame(height: 1) }
+        .frame(height: headerHeight)
+        .padding(.horizontal, 28)
+        .overlay(alignment: .bottom) { SearchDS.line.frame(height: 1) }
         // 学 sheru：忙碌指示延迟 150ms 才现身，快路径永远不闪 spinner
         .task(id: model.isSearching) {
             guard model.isSearching else {
@@ -115,129 +201,69 @@ struct SearchPanelView: View {
     // MARK: - 第一幕 · 受理（空状态）
 
     private var idleView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if !model.openCases.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("未结的案子")
-                        .font(.system(size: 10, weight: .medium))
-                        .tracking(2.5)
-                        .foregroundStyle(DS.faint)
-                    HStack(spacing: 10) {
-                        ForEach(Array(model.openCases.enumerated()), id: \.element) { i, name in
-                            Button {
-                                model.query = name
-                            } label: {
-                                HStack(spacing: 7) {
-                                    Circle()
-                                        .fill(i % 2 == 0 ? DS.blue : DS.coral)
-                                        .frame(width: 6, height: 6)
-                                    Text(verbatim: name)
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(DS.ink)
-                                }
-                                .padding(.vertical, 7)
-                                .padding(.horizontal, 15)
-                                .background(Capsule().stroke(DS.line, lineWidth: 1))
-                                .contentShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
+        VStack(alignment: .leading, spacing: 13) {
+            Text("未结的案子")
+                .font(.system(size: 10, weight: .medium))
+                .tracking(2.5)
+                .foregroundStyle(SearchDS.faint)
+
+            HStack(spacing: 10) {
+                ForEach(Array(intakeCases.enumerated()), id: \.element) { i, name in
+                    Button {
+                        model.query = name
+                    } label: {
+                        HStack(spacing: 7) {
+                            Circle()
+                                .fill(i == 1 ? SearchDS.coral : SearchDS.blue)
+                                .frame(width: 6, height: 6)
+                            Text(verbatim: name)
+                                .font(.system(size: 13))
+                                .foregroundStyle(SearchDS.ink)
                         }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 15)
+                        .overlay(Capsule().strokeBorder(SearchDS.line, lineWidth: 1))
+                        .contentShape(Capsule())
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.top, 18)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-                DS.lineSoft.frame(height: 1)
             }
-
-            VStack(spacing: 0) {
-                idleHint(color: DS.blue, title: "时间笔记",
-                         detail: "搜刚刚在哪个 App 里做过什么 · 试试「下午改过的那个文档」",
-                         highlighted: true)
-                idleHint(color: DS.muted, title: "花园与文件",
-                         detail: "人物卡、链接卡和本机文件，回车直接打开",
-                         highlighted: false)
-                idleHint(color: DS.coral, title: "直接问",
-                         detail: "输入完整问题，懒猫替你布线取证 · 试试「上次牙疼是什么时候」",
-                         highlighted: false)
-            }
-            .padding(.top, 10)
-            .padding(.horizontal, 12)
-
-            HStack(alignment: .top, spacing: 14) {
-                CatFace(size: 30, outlined: true)
-                Text("应用、文件路径和链接会直接变成可打开的入口，不用先搜再点。")
-                    .font(.system(size: 12))
-                    .lineSpacing(4)
-                    .foregroundStyle(DS.inkSoft)
-                Spacer()
-            }
-            .padding(.top, 14)
-            .padding(.horizontal, 26)
-            .overlay(alignment: .top) { DS.lineSoft.frame(height: 1).padding(.horizontal, 12) }
-            .padding(.top, 8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 20)
+        .padding(.horizontal, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func idleHint(color: Color, title: LocalizedStringKey,
-                          detail: LocalizedStringKey, highlighted: Bool) -> some View {
-        HStack(spacing: 14) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 14))
-                    .foregroundStyle(DS.ink)
-                Text(detail)
-                    .font(.system(size: 12))
-                    .foregroundStyle(DS.muted)
-            }
-            Spacer()
-            if highlighted { keycap("↵") }
-        }
-        .padding(.vertical, 13)
-        .padding(.horizontal, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(highlighted ? DS.lineSoft : Color.clear)
-        )
+    /// 本地还没有人物卡时，仍给出设计稿里的三条可点击起始案由。
+    private var intakeCases: [String] {
+        let real = Array(model.openCases.prefix(3))
+        return real.isEmpty ? ["小林", "智齿", "番茄牛腩"] : real
     }
 
     private var footer: some View {
-        HStack(spacing: 14) {
-            if model.caseReport != nil {
-                keycap("esc")
-                Text("结案退出")
-            } else if !model.query.isEmpty {
-                keycap("↑↓")
-                Text("在证物间跳")
-                keycap("↵")
-                Text(verbatim: model.primaryActionLabel)
-                keycap("⇥")
-                Text("串线索")
+        HStack(spacing: 0) {
+            if stage == .evidence {
+                Text("↑↓ 在证物间跳    ↵ \(model.primaryActionLabel)    ⇥ 继续查")
             } else {
                 Text("输入即立案 · 文件与回忆一并取证")
             }
             Spacer()
-            Image(systemName: "lock")
-                .font(.system(size: 9, weight: .semibold))
-            Text(model.caseReport != nil ? "报告存档，供《传》取材" : "全程本机办案，卷宗不出门")
+            Text(stage == .evidence ? "红线是它牵的" : "全程本机办案，卷宗不出门")
         }
         .font(.system(size: 11))
-        .foregroundStyle(DS.mutedWarm)
-        .padding(.vertical, 11)
-        .padding(.horizontal, 20)
-        .overlay(alignment: .top) { DS.line.frame(height: 1) }
+        .foregroundStyle(SearchDS.mutedWarm)
+        .frame(height: 42)
+        .padding(.horizontal, 28)
+        .overlay(alignment: .top) { SearchDS.line.frame(height: 1) }
     }
 
     private func keycap(_ text: String) -> some View {
         Text(verbatim: text)
             .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(DS.mutedWarm)
+            .foregroundStyle(SearchDS.faint)
             .padding(.vertical, 3)
             .padding(.horizontal, 7)
-            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(DS.bg))
-            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).stroke(DS.lineStrong, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).stroke(SearchDS.line, lineWidth: 1))
     }
 }
 
@@ -248,23 +274,23 @@ private struct EvidenceBoardView: View {
     @ObservedObject var model: SearchModel
     @State private var thread: CGFloat = 0
 
-    /// 板上最多 4 张证物 + 1 张推理卡（680×390 空间的固定槽位）。
+    /// 板上最多 4 张证物 + 1 张推理卡；位置按原稿 740×350 点阵板。
     private static let slots: [(x: CGFloat, y: CGFloat, w: CGFloat, rot: Double)] = [
-        (28, 30, 175, -3), (140, 222, 185, 2), (300, 38, 175, 1.5), (312, 224, 190, -2),
+        (34, 50, 150, -3), (218, 218, 170, 2), (365, 48, 170, 1.5), (370, 218, 190, -2),
     ]
     private static let inferenceSlot: (x: CGFloat, y: CGFloat, w: CGFloat, rot: Double)
-        = (486, 96, 176, 1)
+        = (568, 82, 152, 1)
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            DS.headShade
+            SearchDS.headShade
             dotGrid
             if model.evidence.isEmpty && !model.isSearching {
                 emptyView
             } else {
                 ThreadShape(points: pinPoints)
                     .trim(from: 0, to: thread)
-                    .stroke(DS.coral, style: StrokeStyle(lineWidth: 2, lineCap: .round,
+                    .stroke(SearchDS.coral, style: StrokeStyle(lineWidth: 1.5, lineCap: .round,
                                                          lineJoin: .round))
                 ForEach(Array(model.evidence.enumerated()), id: \.element.id) { i, item in
                     let slot = Self.slots[i]
@@ -287,7 +313,7 @@ private struct EvidenceBoardView: View {
                 }
             }
         }
-        .frame(width: 680, height: 390)
+        .frame(width: 740, height: 350)
         // 不用 .id(generation) 炸整棵子树重建：ForEach 按证物 id diff，
         // 留下来的卡不重播钉入动画，只有新卡才落钉；红线单独重牵。
         .onAppear { pullThread() }
@@ -339,7 +365,7 @@ private struct EvidenceBoardView: View {
                 Text("本猫的推理")
                     .font(.system(size: 10, weight: .medium))
                     .tracking(2)
-                    .foregroundStyle(DS.faint)
+                    .foregroundStyle(SearchDS.faint)
             }
             Text(verbatim: model.inferenceHint)
                 .font(.system(size: 12, design: .serif))
@@ -350,10 +376,10 @@ private struct EvidenceBoardView: View {
             } label: {
                 Text("继续查 ⇥")
                     .font(.system(size: 11))
-                    .foregroundStyle(DS.paper)
+                    .foregroundStyle(SearchDS.paper)
                     .padding(.vertical, 6)
                     .padding(.horizontal, 14)
-                    .background(Capsule().fill(DS.ink))
+                    .background(Capsule().fill(SearchDS.ink))
             }
             .buttonStyle(.plain)
         }
@@ -361,13 +387,13 @@ private struct EvidenceBoardView: View {
         .frame(width: EvidenceBoardView.inferenceSlot.w, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(DS.card)
-                .shadow(color: DS.ink.opacity(0.16), radius: 16, y: 10)
+                .fill(SearchDS.card)
+                .shadow(color: SearchDS.ink.opacity(0.16), radius: 16, y: 10)
         )
         .overlay(alignment: .top) {
-            Circle().fill(DS.ink)
+            Circle().fill(SearchDS.ink)
                 .frame(width: 10, height: 10)
-                .shadow(color: DS.ink.opacity(0.35), radius: 2, y: 2)
+                .shadow(color: SearchDS.ink.opacity(0.35), radius: 2, y: 2)
                 .offset(y: -5)
         }
     }
@@ -376,13 +402,13 @@ private struct EvidenceBoardView: View {
         VStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 22))
-                .foregroundStyle(DS.faint)
+                .foregroundStyle(SearchDS.faint)
             Text("板上还没钉上证物")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(DS.inkSoft)
+                .foregroundStyle(SearchDS.inkSoft)
             Text("试试更短的关键词，或按 ⇥ 直接让本猫去查。")
                 .font(.system(size: 12))
-                .foregroundStyle(DS.muted)
+                .foregroundStyle(SearchDS.muted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -404,46 +430,59 @@ private struct EvidenceCard: View {
                 Text(verbatim: "证物 \(Self.letters[min(index, 4)]) · \(item.kind.label)")
                     .font(.system(size: 10, weight: .medium))
                     .tracking(1.5)
-                    .foregroundStyle(latest ? DS.coral : DS.faint)
+                    .foregroundStyle(latest ? SearchDS.coral : SearchDS.faint)
                 if latest {
                     Text("最新")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(DS.coral)
+                        .foregroundStyle(SearchDS.coral)
                 }
             }
             if item.kind == .file {
-                HStack(spacing: 8) {
-                    Image(nsImage: NSWorkspace.shared.icon(forFile: item.path ?? ""))
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 26, height: 26)
+                if isImageFile {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(LinearGradient(colors: [SearchDS.bg, SearchDS.lineStrong],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(height: 68)
                     Text(verbatim: item.title)
-                        .font(.system(size: 13))
-                        .foregroundStyle(DS.ink)
-                        .lineLimit(2)
+                        .font(.system(size: 12))
+                        .foregroundStyle(SearchDS.ink)
+                        .lineLimit(1)
+                } else {
+                    HStack(spacing: 8) {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: item.path ?? ""))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 26, height: 26)
+                        Text(verbatim: item.title)
+                            .font(.system(size: 13))
+                            .foregroundStyle(SearchDS.ink)
+                            .lineLimit(2)
+                    }
                 }
             } else if item.kind == .moment || item.kind == .person {
                 Text(verbatim: "「\(item.text)」")
                     .font(.system(size: 13, design: .serif))
                     .lineSpacing(5)
-                    .foregroundStyle(DS.ink)
+                    .foregroundStyle(SearchDS.ink)
                     .lineLimit(3)
             } else {
                 if !item.title.isEmpty {
                     Text(verbatim: item.title)
                         .font(.system(size: 13))
-                        .foregroundStyle(DS.ink)
+                        .foregroundStyle(SearchDS.ink)
                         .lineLimit(1)
                 }
-                Text(verbatim: item.text)
-                    .font(.system(size: 12))
-                    .lineSpacing(4)
-                    .foregroundStyle(DS.inkSoft)
-                    .lineLimit(3)
+                if !item.text.isEmpty {
+                    Text(verbatim: item.text)
+                        .font(.system(size: 12))
+                        .lineSpacing(4)
+                        .foregroundStyle(SearchDS.inkSoft)
+                        .lineLimit(3)
+                }
             }
             Text(verbatim: item.dateLabel)
                 .font(.system(size: 11))
-                .foregroundStyle(DS.muted)
+                .foregroundStyle(SearchDS.muted)
                 .lineLimit(1)
         }
         .padding(.vertical, 12)
@@ -451,23 +490,29 @@ private struct EvidenceCard: View {
         .frame(width: width, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(DS.card)
-                .shadow(color: DS.ink.opacity(selected ? 0.2 : 0.12),
+                .fill(SearchDS.card)
+                .shadow(color: SearchDS.ink.opacity(selected ? 0.2 : 0.12),
                         radius: selected ? 14 : 10, y: selected ? 8 : 6)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(selected || latest ? DS.coral : .clear, lineWidth: 1.5)
+                .stroke(selected || latest ? SearchDS.coral : .clear, lineWidth: 1.5)
         )
         .overlay(alignment: .top) {
-            Circle().fill(DS.coral)
+            Circle().fill(SearchDS.coral)
                 .frame(width: 10, height: 10)
-                .shadow(color: DS.ink.opacity(0.35), radius: 2, y: 2)
+                .shadow(color: SearchDS.ink.opacity(0.35), radius: 2, y: 2)
                 .offset(y: -5)
         }
         .scaleEffect(selected ? 1.03 : 1)
         .animation(.spring(response: 0.25, dampingFraction: 0.8), value: selected)
         .contentShape(Rectangle())
+    }
+
+    private var isImageFile: Bool {
+        guard let ext = item.path.map({ URL(fileURLWithPath: $0).pathExtension.lowercased() })
+        else { return false }
+        return ["jpg", "jpeg", "png", "heic", "gif", "webp"].contains(ext)
     }
 }
 
@@ -509,6 +554,7 @@ private struct ThreadShape: Shape {
 private struct CaseReportView: View {
     @ObservedObject var model: SearchModel
     @State private var stamped = false
+    @State private var followUpScheduled = false
 
     var body: some View {
         ScrollView {
@@ -520,7 +566,7 @@ private struct CaseReportView: View {
                         Text("正在取证……翻回忆、笔记和链接卡")
                     }
                     .font(.system(size: 14))
-                    .foregroundStyle(DS.mutedWarm)
+                    .foregroundStyle(SearchDS.mutedWarm)
                     .padding(.top, 5)
                     Spacer(minLength: 0)
                 }
@@ -531,14 +577,14 @@ private struct CaseReportView: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text(verbatim: "结案报告 · 案卷 №\(report.seq)「\(report.title)」")
                             .font(.system(size: 16, weight: .semibold, design: .serif))
-                            .foregroundStyle(DS.ink)
+                            .foregroundStyle(SearchDS.ink)
                         Spacer()
                         Text(verbatim: "取证 \(String(format: "%.1f", report.duration)) 秒 · 证物 \(report.sources.count) 件")
                             .font(.system(size: 11))
-                            .foregroundStyle(DS.faint)
+                            .foregroundStyle(SearchDS.faint)
                     }
                     .padding(.bottom, 14)
-                    .overlay(alignment: .bottom) { DS.lineSoft.frame(height: 1) }
+                    .overlay(alignment: .bottom) { SearchDS.lineSoft.frame(height: 1) }
 
                     ForEach(Array(report.sources.prefix(5).enumerated()), id: \.element.id) { i, hit in
                         sourceRow(index: i, hit: hit)
@@ -550,7 +596,7 @@ private struct CaseReportView: View {
                             Text("推理")
                                 .font(.system(size: 10, weight: .medium))
                                 .tracking(2.5)
-                                .foregroundStyle(DS.faint)
+                                .foregroundStyle(SearchDS.faint)
                                 .padding(.top, 5)
                             Text(verbatim: reasoning)
                                 .font(.system(size: 13, design: .serif))
@@ -560,7 +606,7 @@ private struct CaseReportView: View {
                             Spacer(minLength: 0)
                         }
                         .padding(.vertical, 14)
-                        .overlay(alignment: .bottom) { DS.lineSoft.frame(height: 1) }
+                        .overlay(alignment: .bottom) { SearchDS.lineSoft.frame(height: 1) }
                         .modifier(PopIn(delay: 0.25 + Double(min(report.sources.count, 5)) * 0.15))
                     }
 
@@ -568,12 +614,12 @@ private struct CaseReportView: View {
                         Text("结论")
                             .font(.system(size: 10, weight: .medium))
                             .tracking(2.5)
-                            .foregroundStyle(DS.faint)
+                            .foregroundStyle(SearchDS.faint)
                             .padding(.top, 5)
                         MarkdownText(report.conclusion)
                             .font(.system(size: 14))
                             .lineSpacing(7)
-                            .foregroundStyle(DS.ink)
+                            .foregroundStyle(SearchDS.ink)
                             .textSelection(.enabled)
                             .padding(.trailing, 100)
                         Spacer(minLength: 0)
@@ -584,12 +630,12 @@ private struct CaseReportView: View {
                         Text("本猫断定")
                             .font(.system(size: 13, weight: .semibold, design: .serif))
                             .tracking(3)
-                            .foregroundStyle(DS.coral)
+                            .foregroundStyle(SearchDS.coral)
                             .padding(.vertical, 7)
                             .padding(.horizontal, 10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(DS.coral, lineWidth: 2.5)
+                                    .stroke(SearchDS.coral, lineWidth: 2.5)
                             )
                             .rotationEffect(.degrees(-8))
                             .opacity(stamped ? 1 : 0)
@@ -598,26 +644,33 @@ private struct CaseReportView: View {
                     }
                     .modifier(PopIn(delay: 0.25 + Double(min(report.sources.count, 5) + 1) * 0.15))
 
-                    if let url = report.fileURL {
-                        HStack {
-                            Button {
+                    HStack(spacing: 10) {
+                        Button(followUpScheduled ? "已安排下周提醒" : "好，下周提醒我") {
+                            FollowUpStore.shared.schedule(title: report.title,
+                                                          caseURL: report.fileURL)
+                            followUpScheduled = true
+                        }
+                        .buttonStyle(SearchInkPill())
+                        .disabled(followUpScheduled)
+
+                        Button("再缓缓") {
+                            PetPanels.shared.closeSearch()
+                        }
+                        .buttonStyle(SearchGhostPill())
+                        Spacer()
+                        if let url = report.fileURL {
+                            Button("报告存档，供《传》取材") {
                                 NSWorkspace.shared.open(url)
-                            } label: {
-                                Text("打开卷宗")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(DS.inkSoft)
-                                    .padding(.vertical, 7)
-                                    .padding(.horizontal, 16)
-                                    .background(Capsule().stroke(DS.lineStrong, lineWidth: 1))
                             }
                             .buttonStyle(.plain)
-                            Spacer()
-                            Text("报告已存档 · 供《传》取材")
-                                .font(.system(size: 11))
-                                .foregroundStyle(DS.faint)
+                            .help("打开卷宗")
+                        } else {
+                            Text("报告存档，供《传》取材")
                         }
-                        .padding(.top, 12)
                     }
+                    .font(.system(size: 11))
+                    .foregroundStyle(SearchDS.faint)
+                    .padding(.top, 10)
                 }
                 .padding(.vertical, 20)
                 .padding(.horizontal, 24)
@@ -636,24 +689,24 @@ private struct CaseReportView: View {
         HStack(alignment: .top, spacing: 12) {
             Text(verbatim: ["A", "B", "C", "D", "E"][min(index, 4)])
                 .font(.system(size: 10, design: .serif))
-                .foregroundStyle(DS.inkSoft)
+                .foregroundStyle(SearchDS.inkSoft)
                 .frame(width: 22, height: 22)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(DS.lineStrong, lineWidth: 1.5)
+                        .stroke(SearchDS.lineStrong, lineWidth: 1)
                 )
             MarkdownText(hit.text)
                 .font(.system(size: 13))
                 .lineSpacing(5)
-                .foregroundStyle(DS.ink)
+                .foregroundStyle(SearchDS.ink)
             Spacer(minLength: 12)
             Text(verbatim: hit.source)
                 .font(.system(size: 11))
-                .foregroundStyle(DS.faint)
+                .foregroundStyle(SearchDS.faint)
                 .padding(.top, 3)
         }
         .padding(.vertical, 12)
-        .overlay(alignment: .bottom) { DS.lineSoft.frame(height: 1) }
+        .overlay(alignment: .bottom) { SearchDS.lineSoft.frame(height: 1) }
     }
 }
 
@@ -976,6 +1029,25 @@ struct FileHit: Identifiable, Hashable {
     }
 }
 
+/// GCD / Process 里的阻塞工作拿不到 Swift Task 的取消状态，用一个小令牌把取消
+/// 传进去。快速连续输入时，旧的人物卡/链接卡遍历会停，旧 mdfind 进程会终止。
+private final class SearchCancellationToken: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+}
+
 @MainActor
 final class SearchModel: ObservableObject {
     static let shared = SearchModel()
@@ -1030,6 +1102,38 @@ final class SearchModel: ObservableObject {
     @Published var searchGeneration = 0
 
     private var searchTask: Task<Void, Never>?
+    private var searchToken: SearchCancellationToken?
+
+    #if DEBUG
+    private var demoEvidenceLocked = false
+
+    func loadDemoEvidence() {
+        demoEvidenceLocked = true
+        query = "小林"
+        searchTask?.cancel()
+        searchToken?.cancel()
+        let calendar = Calendar.current
+        let now = Date()
+        let dates = [150, 67, 10, 1].map {
+            calendar.date(byAdding: .day, value: -$0, to: now) ?? now
+        }
+        evidence = [
+            Evidence(id: "demo-a", kind: .file, title: "合照.jpg", text: "",
+                     dateLabel: "3月12日", at: dates[0], path: "/tmp/合照.jpg", target: nil),
+            Evidence(id: "demo-b", kind: .note, title: "给小林的生日计划.md",
+                     text: "", dateLabel: "6月2日 · ~/文档",
+                     at: dates[1], path: nil, target: nil),
+            Evidence(id: "demo-c", kind: .moment, title: "", text: "有点怕见小林",
+                     dateLabel: "7月29日 · 屋里来回走了两趟", at: dates[2], path: nil, target: nil),
+            Evidence(id: "demo-d", kind: .moment, title: "", text: "见面聊开了，散了一圈步，看到八月第一场晚霞",
+                     dateLabel: "昨天 19:12 · 倾诉", at: dates[3], path: nil, target: nil),
+        ]
+        totalHits = 5
+        selectedResultID = nil
+        isSearching = false
+        searchGeneration += 1
+    }
+    #endif
 
     var isQuestion: Bool {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -1077,8 +1181,12 @@ final class SearchModel: ObservableObject {
     }
 
     private func queryChanged() {
+        #if DEBUG
+        if demoEvidenceLocked { return }
+        #endif
         caseReport = nil
         searchTask?.cancel()
+        searchToken?.cancel()
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else {
             evidence = []
@@ -1089,6 +1197,8 @@ final class SearchModel: ObservableObject {
         }
 
         selectedResultID = nil
+        let token = SearchCancellationToken()
+        searchToken = token
 
         searchTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 180_000_000)
@@ -1097,13 +1207,13 @@ final class SearchModel: ObservableObject {
             self?.isSearching = true
             // 花园是地基：笔记、人物卡、链接卡先搜；小传在主线程（Loro store）
             let moments = Array(PetStore.shared.search(q).prefix(6))
-            async let notes = Self.searchNotes(q)
-            async let people = Self.searchPeople(q)
-            async let links = Self.searchLinks(q)
-            async let files = Self.mdfind(q)
+            async let notes = Self.searchNotes(q, token: token)
+            async let people = Self.searchPeople(q, token: token)
+            async let links = Self.searchLinks(q, token: token)
+            async let files = Self.mdfind(q, token: token)
             let (noteResults, personResults, linkResults, fileResults) =
                 await (notes, people, links, files)
-            guard !Task.isCancelled, let self else { return }
+            guard !Task.isCancelled, !token.isCancelled, let self else { return }
             self.assemble(q: q, notes: noteResults, moments: moments,
                           people: personResults, links: linkResults, files: fileResults)
         }
@@ -1222,7 +1332,7 @@ final class SearchModel: ObservableObject {
                         let url = Garden.people.appendingPathComponent(file)
                         let date = (try? fm.attributesOfItem(atPath: url.path)[.modificationDate] as? Date)
                             ?? .distantPast
-                        return (String(file.dropLast(3)), date ?? .distantPast)
+                        return (String(file.dropLast(3)), date)
                     }
                     .sorted { $0.1 > $1.1 }
                     .prefix(3)
@@ -1337,20 +1447,28 @@ final class SearchModel: ObservableObject {
 
     // MARK: 花园搜索（people / links / notes）
 
-    nonisolated private static func searchNotes(_ q: String) async -> [NoteHit] {
+    nonisolated private static func searchNotes(_ q: String,
+                                                token: SearchCancellationToken) async -> [NoteHit] {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                continuation.resume(returning: NoteSearchIndex.search(q))
+                guard !token.isCancelled else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                let hits = NoteSearchIndex.search(q)
+                continuation.resume(returning: token.isCancelled ? [] : hits)
             }
         }
     }
 
-    nonisolated private static func searchPeople(_ q: String, limit: Int = 3) async -> [Evidence] {
+    nonisolated private static func searchPeople(_ q: String, limit: Int = 3,
+                                                 token: SearchCancellationToken) async -> [Evidence] {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let fm = FileManager.default
                 var hits: [Evidence] = []
                 for file in Garden.listFiles(Garden.people) where file.hasSuffix(".md") {
+                    if token.isCancelled { break }
                     let name = String(file.dropLast(3))
                     let url = Garden.people.appendingPathComponent(file)
                     guard let text = try? String(contentsOf: url, encoding: .utf8),
@@ -1374,16 +1492,18 @@ final class SearchModel: ObservableObject {
                         target: SearchOpenTarget(kind: .file, label: name, value: url.path)))
                     if hits.count >= limit { break }
                 }
-                continuation.resume(returning: hits)
+                continuation.resume(returning: token.isCancelled ? [] : hits)
             }
         }
     }
 
-    nonisolated private static func searchLinks(_ q: String, limit: Int = 3) async -> [Evidence] {
+    nonisolated private static func searchLinks(_ q: String, limit: Int = 3,
+                                                token: SearchCancellationToken) async -> [Evidence] {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 var hits: [Evidence] = []
                 for file in Garden.listFiles(Garden.links) where file.hasSuffix(".md") {
+                    if token.isCancelled { break }
                     let name = String(file.dropLast(3))
                     let url = Garden.links.appendingPathComponent(file)
                     guard let text = try? String(contentsOf: url, encoding: .utf8),
@@ -1412,16 +1532,21 @@ final class SearchModel: ObservableObject {
                         at: at, path: nil, target: open))
                     if hits.count >= limit { break }
                 }
-                continuation.resume(returning: hits)
+                continuation.resume(returning: token.isCancelled ? [] : hits)
             }
         }
     }
 
     /// Spotlight 文件搜索（mdfind，本机完成）：花园之外的补位证物。
     /// 完整路径输入会优先直接命中。
-    nonisolated static func mdfind(_ q: String) async -> [FileHit] {
+    nonisolated private static func mdfind(_ q: String,
+                                           token: SearchCancellationToken) async -> [FileHit] {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
+                guard !token.isCancelled else {
+                    continuation.resume(returning: [])
+                    return
+                }
                 let expanded = (q as NSString).expandingTildeInPath
                 var paths: [String] = []
                 if (q.hasPrefix("/") || q.hasPrefix("~/")),
@@ -1440,7 +1565,9 @@ final class SearchModel: ObservableObject {
                 do {
                     try proc.run()
                     let deadline = Date().addingTimeInterval(2)
-                    while proc.isRunning && Date() < deadline { usleep(50_000) }
+                    while proc.isRunning && Date() < deadline && !token.isCancelled {
+                        usleep(50_000)
+                    }
                     if proc.isRunning { proc.terminate() }
                     let data = pipe.fileHandleForReading.readDataToEndOfFile()
                     paths.append(contentsOf: String(decoding: data, as: UTF8.self)
@@ -1457,12 +1584,17 @@ final class SearchModel: ObservableObject {
                         folder: url.deletingLastPathComponent().path
                             .replacingOccurrences(of: NSHomeDirectory(), with: "~"),
                         path: url.path,
-                        at: at ?? .distantPast
+                        at: at
                     )
                 }
-                continuation.resume(returning: Array(hits.prefix(6)))
+                continuation.resume(returning: token.isCancelled ? [] : Array(hits.prefix(6)))
             }
         }
+    }
+
+    /// 自动化 / 其它调用方的 Spotlight 入口。
+    nonisolated static func mdfind(_ q: String) async -> [FileHit] {
+        await mdfind(q, token: SearchCancellationToken())
     }
 
     private func writeDebugSnapshotIfNeeded() {

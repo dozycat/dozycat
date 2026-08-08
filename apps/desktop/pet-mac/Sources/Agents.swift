@@ -1,5 +1,5 @@
 import AppKit
-import Vision
+@preconcurrency import Vision
 
 /// 花园：agent 们的文件地盘（全部本机、纯 markdown、用户可翻看）。
 /// ~/.dozycat/garden/{notes/<日期>/<HHmm>_note.md, people/<名>.md, journal/<日期>.md,

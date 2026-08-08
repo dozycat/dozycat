@@ -234,12 +234,18 @@ struct ChatPanelView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("随便说点什么", text: $draft)
+            TextField("随便说点什么", text: $draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
                 .foregroundStyle(DS.ink)
                 .focused($focused)
-                .onSubmit(sendDraft)
+                .lineLimit(1...4)
+                .onKeyPress { press in
+                    guard press.key == .return else { return .ignored }
+                    if press.modifiers.contains(.shift) { return .ignored }
+                    sendDraft()
+                    return .handled
+                }
             Button(action: sendDraft) {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 14, weight: .semibold))
@@ -249,6 +255,7 @@ struct ChatPanelView: View {
             }
             .buttonStyle(.plain)
             .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+            .help("发送（Return）；Shift-Return 换行")
         }
         .padding(.leading, 16)
         .padding(.trailing, 7)

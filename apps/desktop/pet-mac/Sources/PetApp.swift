@@ -5,6 +5,7 @@ import Carbon.HIToolbox
 struct DozycatPetApp: App {
     @NSApplicationDelegateAdaptor(PetAppDelegate.self) private var delegate
     @ObservedObject private var feed = SenseFeed.shared
+    @ObservedObject private var rest = RestSession.shared
 
     init() {
         Self.applyLanguagePreference()
@@ -26,9 +27,9 @@ struct DozycatPetApp: App {
             MenuBarDropdown()
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "cat.fill")
+                Image(systemName: rest.isActive ? "moon.zzz.fill" : "cat.fill")
                     .accessibilityLabel("懒猫")
-                Text(verbatim: feed.phys.formatted(.percent))
+                Text(verbatim: rest.menuLabel ?? "\(feed.phys)")
             }
             .accessibilityElement(children: .combine)
         }
@@ -44,6 +45,9 @@ struct DozycatPetApp: App {
 struct MenuBarDropdown: View {
     @ObservedObject private var feed = SenseFeed.shared
     @ObservedObject private var bio = BiographyStore.shared
+    @ObservedObject private var rest = RestSession.shared
+    @ObservedObject private var recharge = RechargeStore.shared
+    @ObservedObject private var followUps = FollowUpStore.shared
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
@@ -64,7 +68,10 @@ struct MenuBarDropdown: View {
             .help("能量日历与今天的走势")
 
             VStack(spacing: 0) {
-                actionRow("休息 5 分钟", shortcut: "⌥R") { PetPanels.shared.startRest() }
+                actionRow(rest.isActive
+                          ? LocalizedStringKey(rest.menuLabel ?? String(localized: "休息中"))
+                          : "休息 5 分钟",
+                          shortcut: "⌥R") { PetPanels.shared.startRest() }
                 DS.lineSoft.frame(height: 1)
                 actionRow("找点什么 / 问问回忆", shortcut: "⌥␣") { PetPanels.shared.toggleSearch() }
                 DS.lineSoft.frame(height: 1)
@@ -73,9 +80,11 @@ struct MenuBarDropdown: View {
                 actionRow(bookRowLabel, shortcut: "") { PetPanels.shared.toggleBook() }
                 DS.lineSoft.frame(height: 1)
                 HStack {
-                    Text("下一个提醒 · 傍晚散步").font(.system(size: 13)).foregroundStyle(DS.ink)
+                    Text(verbatim: nextReminderLabel)
+                        .font(.system(size: 13)).foregroundStyle(DS.ink)
                     Spacer()
-                    Text(verbatim: "18:30").font(.system(size: 13)).foregroundStyle(DS.faint)
+                    Text(verbatim: nextReminderTime)
+                        .font(.system(size: 13)).foregroundStyle(DS.faint)
                 }
                 .padding(.vertical, 11).padding(.horizontal, 8)
             }
@@ -101,6 +110,35 @@ struct MenuBarDropdown: View {
             return "传 · 第\(ChineseNumeral.ordinal(latest.index))回《\(latest.title)》"
         }
         return "传 · 还没开笔"
+    }
+
+    private var nextRecharge: (item: RechargeItem, date: Date)? {
+        let calendar = Calendar.current
+        let now = Date()
+        return recharge.items.compactMap { item -> (RechargeItem, Date)? in
+            var date = calendar.date(bySettingHour: item.hour, minute: item.minute,
+                                     second: 0, of: now) ?? now
+            if date < now { date = calendar.date(byAdding: .day, value: 1, to: date) ?? date }
+            return (item, date)
+        }.min { $0.1 < $1.1 }
+    }
+
+    private var nextReminderLabel: String {
+        if let followUp = followUps.next,
+           followUp.due < (nextRecharge?.date ?? .distantFuture) {
+            return String(localized: "下一个提醒 · \(followUp.title)")
+        }
+        return nextRecharge.map { String(localized: "下一个提醒 · \($0.item.name)") }
+            ?? String(localized: "下一个提醒 · 还没安排")
+    }
+
+    private var nextReminderTime: String {
+        if let followUp = followUps.next,
+           followUp.due < (nextRecharge?.date ?? .distantFuture) {
+            return followUp.due.formatted(date: .abbreviated, time: .omitted)
+        }
+        guard let nextRecharge else { return "—" }
+        return nextRecharge.date.formatted(date: .omitted, time: .shortened)
     }
 
     private func energyCell(_ label: LocalizedStringKey, value: Int, color: Color, warn: Bool) -> some View {
@@ -166,6 +204,8 @@ final class PetPanels {
     private var chatPanel: CardPanel?
     private var energyPanel: CardPanel?
     private var bookPanel: CardPanel?
+    private var restCountdownPanel: CardPanel?
+    private var restOverlayWindow: RestOverlayWindow?
 
     /// 面板收起后的收尾统一走 CardPanel.onClose（esc、失焦、显式 close 同一条路）。
     private func adopt(_ panel: CardPanel, into slot: ReferenceWritableKeyPath<PetPanels, CardPanel?>) {
@@ -183,7 +223,10 @@ final class PetPanels {
             closeSearch()
             return
         }
-        let panel = CardPanel(content: SearchPanelView(), width: 640)
+        SearchModel.shared.query = ""
+        SearchModel.shared.caseReport = nil
+        let panel = CardPanel(content: SearchPanelView(), width: 680, cornerRadius: 20,
+                              vibrancy: false)
         adopt(panel, into: \.searchPanel)
         panel.showCentered()
     }
@@ -193,6 +236,16 @@ final class PetPanels {
     func closeSearch() {
         searchPanel?.dismiss()
     }
+
+    func resizeSearchToFit() {
+        searchPanel?.resizeToFitKeepingTop()
+    }
+
+    #if DEBUG
+    func writeSearchSnapshot(to path: String) {
+        searchPanel?.writeDebugSnapshot(to: path)
+    }
+    #endif
 
     /// 对话 · 点猫猫展开（设计稿「对话」）。
     func toggleChat() {
@@ -250,6 +303,33 @@ final class PetPanels {
         SenseFeed.shared.panelsOpen = searchVisible || chatVisible || energyVisible || bookVisible
     }
 
+    // MARK: 两段式休息
+
+    func presentRestCountdown() {
+        guard restCountdownPanel == nil else { return }
+        let panel = CardPanel(content: RestCountdownCard(), width: 500,
+                              cornerRadius: 20, dismissOnResignKey: false)
+        restCountdownPanel = panel
+        panel.onClose = { [weak self] in self?.restCountdownPanel = nil }
+        panel.showTopRight()
+    }
+
+    func closeRestCountdown() {
+        restCountdownPanel?.dismiss()
+    }
+
+    func presentRestOverlay() {
+        guard restOverlayWindow == nil else { return }
+        let window = RestOverlayWindow()
+        restOverlayWindow = window
+        window.present()
+    }
+
+    func closeRestOverlay() {
+        restOverlayWindow?.orderOut(nil)
+        restOverlayWindow = nil
+    }
+
     // MARK: 首次见面（onboarding）
 
     private var onboardingPanel: CardPanel?
@@ -298,13 +378,11 @@ final class PetPanels {
     }
     #endif
 
-    /// 休息 5 分钟：给猫放个假（提醒卡显示倒计时结束语）。
+    /// 休息 5 分钟：先留 60 秒收尾，再进入整屏休息。
     func startRest() {
         SenseFeed.shared.acknowledgeReminder()
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 300_000_000_000)
-            SenseFeed.shared.reminderCount += 1
-        }
+        if RestSession.shared.isActive { return }
+        RestSession.shared.begin()
     }
 }
 
@@ -317,7 +395,12 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         Self.applyAppearancePreference()
 
-        let hosting = NSHostingView(rootView: PetView())
+        let hosting = NSHostingView(rootView: PetView().background(Color.clear))
+        // NSHostingView 在 darkAqua 下会给没有 SwiftUI 内容的区域补窗口底色；
+        // 桌宠 420×420 画布大部分应透明，否则提醒/小传卡右侧会露出黑色长条。
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = NSColor.clear.cgColor
+        hosting.layer?.isOpaque = false
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 420, height: 420),
             styleMask: [.borderless],
@@ -394,6 +477,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             SenseFeed.shared.start()
             SenseHintsPump.shared.start()
             RawCapturePump.shared.start()
+            FollowUpStore.shared.start()
         }
         startAgents()
         // 《传》：启动后看看是不是该写了（月初定稿上一回 / 本月开新的一回）

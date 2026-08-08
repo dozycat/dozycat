@@ -1,7 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import ScreenCaptureKit
-import Vision
+@preconcurrency import Vision
 
 /// 原料层：高频（默认 45 秒）截**前台窗口** → 本机 Vision OCR（带位置）→
 /// 聊天应用按气泡左右还原「谁说的什么」→ 去重后落 garden/raw/<日期>/<HHmmss>_raw.md。

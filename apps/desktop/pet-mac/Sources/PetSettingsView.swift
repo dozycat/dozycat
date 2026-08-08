@@ -1,217 +1,379 @@
 import SwiftUI
+import CoreGraphics
 
-/// 桌宠设置窗——懒猫设计语言（纸色、墨字、珊瑚点缀），不是系统 Form。
-/// BYOK 配置与 iOS 共用同一个 SettingsStore / Keychain 条目。
 struct PetSettingsView: View {
+    enum Pane: String, CaseIterable, Identifiable {
+        case general, sensing, model
+        var id: String { rawValue }
+        var label: LocalizedStringKey {
+            switch self {
+            case .general: "常规"
+            case .sensing: "感知"
+            case .model: "模型"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .general: "slider.horizontal.3"
+            case .sensing: "eye"
+            case .model: "sparkles"
+            }
+        }
+    }
+
+    private enum TestState: Equatable {
+        case idle, testing, success, failure(String)
+    }
+
     @ObservedObject private var settings = SettingsStore.shared
-    @State private var keySaved = false
     @AppStorage("uiLanguage") private var uiLanguage = "zh"
     @AppStorage("uiAppearance") private var uiAppearance = "system"
     @AppStorage("presenceSensing") private var presenceSensing = false
+    @State private var pane: Pane
     @State private var languageChanged = false
     @State private var screenGranted = CGPreflightScreenCaptureAccess()
+    @State private var keySaved = false
+    @State private var testState: TestState = .idle
+
+    init(initialPane: Pane = .general) {
+        _pane = State(initialValue: initialPane)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            hero
-            section(title: "语言") {
-                HStack {
-                    Text("界面语言")
-                        .font(.system(size: 13))
-                        .foregroundStyle(DS.ink)
-                    Spacer()
-                    languagePill("跟随系统", value: "system")
-                    languagePill("中文", value: "zh")
-                    languagePill("EN", value: "en")
-                }
-                if languageChanged {
-                    caption("重启懒猫后生效。")
+            header
+            panePicker
+
+            Group {
+                switch pane {
+                case .general: generalPane
+                case .sensing: sensingPane
+                case .model: modelPane
                 }
             }
-            section(title: "外观") {
-                HStack {
-                    Text("亮暗")
-                        .font(.system(size: 13))
-                        .foregroundStyle(DS.ink)
-                    Spacer()
-                    appearancePill("跟随系统", value: "system")
-                    appearancePill("亮", value: "light")
-                    appearancePill("暗", value: "dark")
-                }
+            .frame(height: 322, alignment: .top)
+            .padding(.horizontal, 28)
+            .padding(.top, 22)
+            .id(pane)
+            .transition(.opacity)
+
+            footer
+        }
+        .frame(width: 540)
+        .background(DS.paper)
+        .task {
+            while !Task.isCancelled {
+                screenGranted = CGPreflightScreenCaptureAccess()
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
-            section(title: "感知") {
-                HStack {
-                    Text("屏幕文字（时间笔记的地基）")
-                        .font(.system(size: 13))
-                        .foregroundStyle(DS.ink)
-                    Spacer()
-                    if screenGranted {
-                        Text("已授权")
-                            .font(.system(size: 12))
-                            .foregroundStyle(DS.blue)
-                    } else {
-                        Button("去授权") {
-                            if !CGRequestScreenCaptureAccess(),
-                               let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-                                NSWorkspace.shared.open(url)
-                            }
-                            screenGranted = CGPreflightScreenCaptureAccess()
-                        }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 12))
-                        .foregroundStyle(DS.coralDeep)
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            CatFace(size: 38, outlined: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("懒猫的设置")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(DS.ink)
+                Text("你的数据、你的节奏、你的猫")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DS.muted)
+            }
+            Spacer()
+            HStack(spacing: 6) {
+                Circle().fill(settings.llmConfig == nil ? DS.coral : DS.blue)
+                    .frame(width: 6, height: 6)
+                Text(settings.llmConfig == nil ? "模型未连接" : "模型已就绪")
+                    .font(.system(size: 10))
+                    .foregroundStyle(DS.muted)
+            }
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, 18)
+        .overlay(alignment: .bottom) { DS.line.frame(height: 1) }
+    }
+
+    private var panePicker: some View {
+        HStack(spacing: 6) {
+            ForEach(Pane.allCases) { item in
+                let active = item == pane
+                Button {
+                    withAnimation(.easeOut(duration: 0.16)) { pane = item }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: item.icon)
+                        Text(item.label)
+                    }
+                    .font(.system(size: 12, weight: active ? .medium : .regular))
+                    .foregroundStyle(active ? DS.ink : DS.muted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(active ? DS.card : Color.clear))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(active ? DS.line : Color.clear, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .background(DS.bg)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 28)
+        .padding(.top, 18)
+    }
+
+    private var generalPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            settingGroup(title: "语言") {
+                settingLine(title: "界面语言", detail: languageChanged ? "重启懒猫后生效" : nil) {
+                    pillPicker(values: [
+                        ("跟随系统", "system"), ("中文", "zh"), ("EN", "en")
+                    ], selection: $uiLanguage) { _ in
+                        DozycatPetApp.applyLanguagePreference()
+                        languageChanged = true
                     }
                 }
-                caption("每隔几十秒读一眼前台窗口上的字（本机 OCR），记成你随时能翻的时间笔记。像素只在内存里过一遍，磁盘上从不出现截图；密码框亮着时闭眼；原料只留十四天，永不同步。")
+            }
 
+            settingGroup(title: "外观") {
+                settingLine(title: "亮暗", detail: "所有面板会立即切换") {
+                    pillPicker(values: [
+                        ("跟随系统", "system"), ("亮", "light"), ("暗", "dark")
+                    ], selection: $uiAppearance) { _ in
+                        PetAppDelegate.applyAppearancePreference()
+                    }
+                }
+            }
+
+            settingGroup(title: "本机花园") {
                 HStack {
-                    Text("摄像头在位感知")
-                        .font(.system(size: 13))
-                        .foregroundStyle(DS.ink)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("时间笔记、卷宗和《传》")
+                            .font(.system(size: 13)).foregroundStyle(DS.ink)
+                        Text(verbatim: Garden.root.path)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(DS.muted)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Button("打开") { NSWorkspace.shared.open(Garden.root) }
+                        .buttonStyle(SmallGhostPill())
+                }
+            }
+        }
+    }
+
+    private var sensingPane: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            permissionCard(
+                icon: "rectangle.dashed.badge.record",
+                title: "屏幕文字",
+                detail: "本机 OCR 只产出时间笔记；截图不落盘，密码框会闭眼。",
+                granted: screenGranted,
+                action: requestScreenAccess
+            )
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "video")
+                        .font(.system(size: 15))
+                        .foregroundStyle(DS.blue)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(DS.blue.opacity(0.10)))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("摄像头在位感知")
+                            .font(.system(size: 13, weight: .medium)).foregroundStyle(DS.ink)
+                        Text("只判断人是否在屏幕前。帧过完人脸检测即丢；开启时系统指示灯会常亮。")
+                            .font(.system(size: 11)).lineSpacing(5).foregroundStyle(DS.muted)
+                    }
                     Spacer()
                     Toggle("", isOn: $presenceSensing)
+                        .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.small)
-                        .labelsHidden()
                         .onChange(of: presenceSensing) { _, on in
                             PresenceSensor.shared.setEnabled(on)
                         }
                 }
-                .padding(.top, 6)
-                caption("开着时它知道你在不在屏幕前：看视频不再被误当成休息，真离开两分钟就开始回血。画面在内存里过一遍人脸检测就丢，不截图不落盘；摄像头指示灯会常亮——这盏灯是诚实的。")
             }
-            section(title: "模型") {
-                providerPicker
-                if settings.provider == .custom {
-                    underlinedField("Base URL", text: $settings.baseURL, prompt: "https://…/v1")
-                }
-                underlinedField("模型名", text: $settings.model,
-                                prompt: settings.provider.defaultModel)
-                underlinedField("API Key", text: $settings.apiKey, prompt: "sk-…", secure: true)
-                    .onChange(of: settings.apiKey) { keySaved = false }
+            .padding(16)
+            .background(cardBackground)
 
-                HStack {
-                    Spacer()
-                    Button(keySaved ? String(localized: "已保存") : String(localized: "保存 Key")) {
-                        settings.persistKey()
-                        keySaved = true
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "lock.shield")
+                    .foregroundStyle(DS.muted)
+                Text("所有感知都可以单独关闭。见完面之前感知层不会启动；原始 OCR 最多保留十四天。")
+                    .font(.system(size: 11)).lineSpacing(5).foregroundStyle(DS.muted)
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    private var modelPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                ForEach(LLMProvider.allCases) { provider in
+                    selectionPill(LocalizedStringKey(provider.label),
+                                  active: settings.provider == provider) {
+                        settings.provider = provider
+                        settings.baseURL = ""
+                        settings.model = ""
+                        keySaved = false
+                        testState = .idle
                     }
-                    .buttonStyle(InkPillStyle())
-                    .disabled(keySaved)
-                    .opacity(keySaved ? 0.5 : 1)
-                    Spacer()
                 }
-                .padding(.top, 6)
-                caption("Key 只在你的钥匙串里。")
+                Spacer()
             }
+
+            VStack(spacing: 0) {
+                if settings.provider == .custom {
+                    fieldLine("Base URL", text: $settings.baseURL, prompt: "https://…/v1")
+                }
+                fieldLine("模型名", text: $settings.model, prompt: settings.provider.defaultModel)
+                fieldLine("API Key", text: $settings.apiKey, prompt: "sk-…", secure: true)
+            }
+            .padding(.horizontal, 14)
+            .background(cardBackground)
+
+            HStack(spacing: 10) {
+                Button(keySaved ? "已保存" : "保存") {
+                    settings.persistKey()
+                    keySaved = true
+                    testState = .idle
+                }
+                .buttonStyle(InkPillStyle())
+                .disabled(settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button(testButtonLabel) { testModel() }
+                    .buttonStyle(GhostPillStyle())
+                    .disabled(settings.llmConfig == nil || testState == .testing)
+
+                Spacer()
+                Text(testMessage)
+                    .font(.system(size: 11))
+                    .foregroundStyle(testColor)
+                    .lineLimit(1)
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "key.horizontal")
+                Text("Key 只存在系统钥匙串；费用与数据策略由你选择的模型服务决定。")
+            }
+            .font(.system(size: 10))
+            .foregroundStyle(DS.muted)
         }
+        .onChange(of: settings.apiKey) {
+            keySaved = false
+            testState = .idle
+        }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            Circle().fill(DS.blue).frame(width: 5, height: 5)
+            Text("设置保存在这台 Mac；API Key 使用系统钥匙串。")
+            Spacer()
+            Text(verbatim: "dozycat · 0.1")
+        }
+        .font(.system(size: 10))
+        .foregroundStyle(DS.faint)
         .padding(.horizontal, 28)
-        .padding(.bottom, 24)
-        .frame(width: 380)
-        .background(DS.paper)
+        .padding(.vertical, 14)
+        .overlay(alignment: .top) { DS.line.frame(height: 1) }
     }
 
-    // MARK: 组件
-
-    private var hero: some View {
-        VStack(spacing: 8) {
-            CatFace(size: 76, breathing: true)
-            Text("设置")
-                .font(.system(size: 20, weight: .light))
-                .foregroundStyle(DS.ink)
-        }
-        .padding(.top, 20)
-        .padding(.bottom, 4)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func section(title: LocalizedStringKey,
-                         @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func settingGroup<Content: View>(title: LocalizedStringKey,
+                                             @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 11))
+                .font(.system(size: 9, weight: .medium))
                 .tracking(2.2)
-                .foregroundStyle(DS.muted)
-                .padding(.top, 18)
+                .foregroundStyle(DS.faint)
             content()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) { DS.line.frame(height: 1) }
-        .padding(.top, 14)
     }
 
-    private func languagePill(_ label: LocalizedStringKey, value: String) -> some View {
-        let active = uiLanguage == value
-        return Button {
-            guard uiLanguage != value else { return }
-            uiLanguage = value
-            DozycatPetApp.applyLanguagePreference()
-            languageChanged = true
-        } label: {
-            Text(label)
-                .font(.system(size: 12, weight: active ? .medium : .regular))
-                .foregroundStyle(active ? DS.paper : DS.inkSoft)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 14)
-                .background(Capsule().fill(active ? DS.ink : Color.clear))
-                .overlay(Capsule().stroke(active ? Color.clear : DS.lineStrong, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func appearancePill(_ label: LocalizedStringKey, value: String) -> some View {
-        let active = uiAppearance == value
-        return Button {
-            guard uiAppearance != value else { return }
-            uiAppearance = value
-            PetAppDelegate.applyAppearancePreference()  // 立即生效，不用重启
-        } label: {
-            Text(label)
-                .font(.system(size: 12, weight: active ? .medium : .regular))
-                .foregroundStyle(active ? DS.paper : DS.inkSoft)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 14)
-                .background(Capsule().fill(active ? DS.ink : Color.clear))
-                .overlay(Capsule().stroke(active ? Color.clear : DS.lineStrong, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var providerPicker: some View {
-        HStack(spacing: 8) {
-            ForEach(LLMProvider.allCases) { provider in
-                let active = settings.provider == provider
-                Button {
-                    settings.provider = provider
-                    settings.baseURL = ""
-                    settings.model = ""
-                    keySaved = false
-                } label: {
-                    Text(verbatim: provider.label)
-                        .font(.system(size: 12, weight: active ? .medium : .regular))
-                        .foregroundStyle(active ? DS.paper : DS.inkSoft)
-                        .padding(.vertical, 7)
-                        .padding(.horizontal, 14)
-                        .background(
-                            Capsule().fill(active ? DS.ink : Color.clear)
-                        )
-                        .overlay(
-                            Capsule().stroke(active ? Color.clear : DS.lineStrong, lineWidth: 1)
-                        )
+    private func settingLine<Content: View>(title: LocalizedStringKey, detail: LocalizedStringKey?,
+                                            @ViewBuilder accessory: () -> Content) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(size: 13)).foregroundStyle(DS.ink)
+                if let detail {
+                    Text(detail).font(.system(size: 10)).foregroundStyle(DS.muted)
                 }
-                .buttonStyle(.plain)
             }
             Spacer()
+            accessory()
         }
     }
 
-    private func underlinedField(_ label: LocalizedStringKey, text: Binding<String>,
-                                 prompt: String, secure: Bool = false) -> some View {
+    private func pillPicker(values: [(LocalizedStringKey, String)], selection: Binding<String>,
+                            onChange: @escaping (String) -> Void) -> some View {
+        HStack(spacing: 6) {
+            ForEach(values, id: \.1) { item in
+                selectionPill(item.0, active: selection.wrappedValue == item.1) {
+                    selection.wrappedValue = item.1
+                    onChange(item.1)
+                }
+            }
+        }
+    }
+
+    private func selectionPill(_ label: LocalizedStringKey, active: Bool,
+                               action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 11, weight: active ? .medium : .regular))
+                .foregroundStyle(active ? DS.paper : DS.inkSoft)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+                .background(Capsule().fill(active ? DS.ink : Color.clear))
+                .overlay(Capsule().stroke(active ? Color.clear : DS.lineStrong, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func permissionCard(icon: String, title: LocalizedStringKey,
+                                detail: LocalizedStringKey, granted: Bool,
+                                action: @escaping () -> Void) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 15))
+                .foregroundStyle(granted ? DS.blue : DS.coral)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill((granted ? DS.blue : DS.coral).opacity(0.10)))
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Text(title).font(.system(size: 13, weight: .medium)).foregroundStyle(DS.ink)
+                    Text(granted ? "已授权" : "未授权")
+                        .font(.system(size: 10)).foregroundStyle(granted ? DS.blue : DS.coral)
+                }
+                Text(detail).font(.system(size: 11)).lineSpacing(5).foregroundStyle(DS.muted)
+            }
+            Spacer()
+            if !granted {
+                Button("去授权", action: action).buttonStyle(SmallGhostPill())
+            }
+        }
+        .padding(16)
+        .background(cardBackground)
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(DS.card)
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(DS.line, lineWidth: 1))
+    }
+
+    private func fieldLine(_ label: LocalizedStringKey, text: Binding<String>,
+                           prompt: String, secure: Bool = false) -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(.system(size: 13))
-                .foregroundStyle(DS.ink)
-                .frame(width: 74, alignment: .leading)
+                .font(.system(size: 12)).foregroundStyle(DS.inkSoft)
+                .frame(width: 70, alignment: .leading)
             Group {
                 if secure {
                     SecureField("", text: text, prompt: Text(verbatim: prompt))
@@ -220,28 +382,58 @@ struct PetSettingsView: View {
                 }
             }
             .textFieldStyle(.plain)
-            .font(.system(size: 13))
+            .font(.system(size: 12))
             .foregroundStyle(DS.ink)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 12)
         .overlay(alignment: .bottom) { DS.lineSoft.frame(height: 1) }
     }
 
-    private func caption(_ key: LocalizedStringKey) -> some View {
-        Text(key)
-            .font(.system(size: 11))
-            .lineSpacing(4)
-            .foregroundStyle(DS.faint)
-            .fixedSize(horizontal: false, vertical: true)
+    private var testButtonLabel: LocalizedStringKey {
+        testState == .testing ? "连接中…" : "测试连接"
     }
 
-    private var currentLanguageLabel: String {
-        let code = Bundle.main.preferredLocalizations.first ?? "en"
-        let displayLocale = Locale(identifier: code)
-        return displayLocale.localizedString(forLanguageCode: code) ?? code
+    private var testMessage: LocalizedStringKey {
+        switch testState {
+        case .idle: "Key 只存在你的钥匙串里"
+        case .testing: "正在问模型一句话"
+        case .success: "连接正常"
+        case .failure: "连接失败"
+        }
+    }
+
+    private var testColor: Color {
+        switch testState {
+        case .success: DS.blue
+        case .failure: DS.coral
+        default: DS.faint
+        }
+    }
+
+    private func requestScreenAccess() {
+        if !CGRequestScreenCaptureAccess(),
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
+        }
+        screenGranted = CGPreflightScreenCaptureAccess()
+    }
+
+    private func testModel() {
+        settings.persistKey()
+        guard let config = settings.llmConfig else { return }
+        testState = .testing
+        Task {
+            do {
+                _ = try await LLMClient.reply(
+                    history: [(role: "user", content: "只回复：在。")], config: config)
+                testState = .success
+            } catch {
+                testState = .failure(error.localizedDescription)
+            }
+        }
     }
 }
 
-#Preview {
-    PetSettingsView()
-}
+#Preview("常规") { PetSettingsView(initialPane: .general) }
+#Preview("感知") { PetSettingsView(initialPane: .sensing) }
+#Preview("模型") { PetSettingsView(initialPane: .model) }
