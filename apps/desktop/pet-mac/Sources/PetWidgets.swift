@@ -31,8 +31,10 @@ struct EnergyCapsule: View {
         }
     }
 
+    // 这里的账要和能量模型对得上（lib.rs tuning）：离开 3 分钟起算，
+    // 前 10 分钟每分钟 +1（短憩红利），一刻钟 ≈ +11。
     private var tip: LocalizedStringKey {
-        if feed.phys < 50 { return "久坐掉的。站起来 3 分钟就能回 10 点" }
+        if feed.phys < 50 { return "久坐掉的。站起来歇一刻钟，能回十来点" }
         if feed.mind < 50 { return "心理有点耗。跟我说说，或者出去走走？" }
         return "状态不错。保持这个节奏就好"
     }

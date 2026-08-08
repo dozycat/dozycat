@@ -95,8 +95,14 @@ pub mod tuning {
     pub const MIND_LONG_FOCUS_DRAIN: f32 = 0.10; // 连续活跃 > 60min 后叠加
 
     pub const RECOVERY_AFTER_IDLE_MIN: u32 = 3; // 离开满 3 分钟才开始回血
-    pub const PHYS_RECOVERY: f32 = 0.5; // 每空闲分钟
+    pub const PHYS_RECOVERY: f32 = 0.5; // 每空闲分钟（红利期之后）
     pub const MIND_RECOVERY: f32 = 0.3;
+    /// 短憩红利：回血起算后的前 10 分钟双倍速——接杯水、走两步这种
+    /// 短休息的恢复效率最高（微休息文献同款结论）。没有它，nudge 让人
+    /// 「去接杯水」账上却几乎不奖励，反馈环是断的。
+    pub const RECOVERY_FAST_MIN: u32 = 10;
+    pub const PHYS_RECOVERY_FAST: f32 = 1.0;
+    pub const MIND_RECOVERY_FAST: f32 = 0.5;
 
     // ---- v2：摄像头在位 + 活动类别 ----
     /// 摄像头确认离开只要 2 分钟就起算回血（比纯键鼠推断的 3 分钟快，
@@ -133,6 +139,8 @@ pub struct EnergyModel {
     seat_streak: u32,
     /// 摄像头确认离开的连续分钟数（v2 回血起算用）
     away_streak: u32,
+    /// 本次休息已经回血的分钟数（短憩红利的计时器；一动就归零）
+    rest_streak: u32,
     meeting_streak: u32,
     /// 会议态消失后的连续分钟数（结束确认用，见 MEETING_END_CONFIRM_MIN）
     meeting_gap: u32,
@@ -150,6 +158,7 @@ impl EnergyModel {
             idle_streak: 0,
             seat_streak: 0,
             away_streak: 0,
+            rest_streak: 0,
             meeting_streak: 0,
             meeting_gap: 0,
             churn_streak: 0,
@@ -213,6 +222,7 @@ impl EnergyModel {
         if active {
             self.active_streak += 1;
             self.idle_streak = 0;
+            self.rest_streak = 0;
 
             // 生理损耗只看强度和坐着本身，不看在干什么——身体不在乎你是
             // 写代码还是刷视频，在乎的是这一小时没起身。
@@ -249,6 +259,7 @@ impl EnergyModel {
             self.active_streak = 0;
             self.churn_streak = 0;
             self.idle_streak += 1;
+            self.rest_streak = 0;
             self.phys -= PASSIVE_SITTING_DRAIN;
             if matches!(s.activity, Activity::Fun | Activity::Browse) {
                 self.mind += MIND_PASSIVE_RECOVERY;
@@ -265,8 +276,16 @@ impl EnergyModel {
                 self.idle_streak >= RECOVERY_AFTER_IDLE_MIN
             };
             if resting {
-                self.phys += PHYS_RECOVERY;
-                self.mind += MIND_RECOVERY;
+                // 短憩红利：本次休息的前 10 个回血分钟双倍速，之后回到常速。
+                // 站起来一刻钟 ≈ 回 11 点——胶囊文案说的就是这笔账。
+                self.rest_streak += 1;
+                if self.rest_streak <= RECOVERY_FAST_MIN {
+                    self.phys += PHYS_RECOVERY_FAST;
+                    self.mind += MIND_RECOVERY_FAST;
+                } else {
+                    self.phys += PHYS_RECOVERY;
+                    self.mind += MIND_RECOVERY;
+                }
             }
         }
         self.phys = self.phys.clamp(0.0, 100.0);
@@ -457,12 +476,96 @@ mod tests {
 
     #[test]
     fn walking_away_recovers() {
+        // 20 分钟离开：3 分钟确认 + 10 分钟红利（×1.0）+ 7 分钟常速（×0.5）
+        // 生理应回约 13.5
         let mut m = EnergyModel::new(40.0, 40.0);
         for _ in 0..20 {
             m.step(&idle_minute());
         }
-        assert!(m.phys > 47.0, "20min 离开应回血: {}", m.phys);
-        assert!(m.mind > 44.0);
+        assert!(m.phys > 52.0, "20min 离开应回约 13.5: {}", m.phys);
+        assert!(m.mind > 46.0);
+    }
+
+    // ---- 短憩红利（产品逻辑：nudge 让你接杯水，账上必须奖励）----
+
+    #[test]
+    fn quarter_hour_break_pays_back_double_digits() {
+        // 胶囊文案的那笔账：「站起来歇一刻钟，能回十来点」。
+        // 15 分钟 = 3 确认 + 10 红利（+10）+ 2 常速（+1）→ +11
+        let mut m = EnergyModel::new(50.0, 50.0);
+        for _ in 0..15 {
+            m.step(&idle_minute());
+        }
+        assert!(
+            (m.phys - 61.0).abs() < 1.0,
+            "一刻钟应回十来点生理: {}",
+            m.phys
+        );
+    }
+
+    #[test]
+    fn rest_bonus_resets_after_interruption() {
+        // 红利跟「本次休息」走：中途回来敲一分钟键盘，下次休息重新确认、
+        // 红利重新计——不能把上一场没用完的红利接着花
+        let mut m = EnergyModel::new(50.0, 50.0);
+        for _ in 0..15 {
+            m.step(&idle_minute());
+        }
+        let after_first_break = m.phys;
+        m.step(&coding_minute());
+        // 新一场休息：前 2 分钟确认期不回血
+        m.step(&idle_minute());
+        m.step(&idle_minute());
+        let before_recovery = m.phys;
+        m.step(&idle_minute()); // 第 3 分钟起算，且应是红利速率
+        assert!(
+            (m.phys - before_recovery - 1.0).abs() < 0.01,
+            "新休息的第一个回血分钟应是红利速率 +1.0: {}",
+            m.phys - before_recovery
+        );
+        assert!(m.phys < after_first_break + 2.0, "中断的代价要真实入账");
+    }
+
+    #[test]
+    fn long_lounging_tapers() {
+        // 边际递减：同样 20 分钟，休息的第一段比第二段回得多——
+        // 躺一下午不该和四次短憩一个价
+        let mut m = EnergyModel::new(20.0, 20.0);
+        for _ in 0..20 {
+            m.step(&idle_minute());
+        }
+        let first = m.phys - 20.0;
+        let mid = m.phys;
+        for _ in 0..20 {
+            m.step(&idle_minute());
+        }
+        let second = m.phys - mid;
+        assert!(
+            first > second + 3.0,
+            "前 20 分钟（含红利）应明显多于后 20 分钟: {first} vs {second}"
+        );
+    }
+
+    #[test]
+    fn meeting_blocks_recovery() {
+        // 手不动但在开会：一分钟都不回血（活跃分钟只会掉）
+        let mut m = EnergyModel::new(60.0, 60.0);
+        let mut last = m.phys;
+        for _ in 0..30 {
+            m.step(&meeting_minute());
+            assert!(m.phys <= last, "会议中生理只降不升");
+            last = m.phys;
+        }
+    }
+
+    #[test]
+    fn energy_clamps_at_ceiling() {
+        let mut m = EnergyModel::new(99.0, 99.0);
+        for _ in 0..40 {
+            m.step(&idle_minute());
+        }
+        assert_eq!(m.phys, 100.0);
+        assert_eq!(m.mind, 100.0);
     }
 
     #[test]
