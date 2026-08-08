@@ -23,6 +23,18 @@ struct PetView: View {
                         openSettings()
                     }
                     if defaults.bool(forKey: "showSearch") { PetPanels.shared.toggleSearch() }
+                    if let path = defaults.string(forKey: "captureSearch") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            PetPanels.shared.writeSearchSnapshot(to: path)
+                        }
+                    }
+                    if let path = defaults.string(forKey: "capturePet") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            NSApp.windows.first(where: {
+                                abs($0.frame.width - 420) < 1 && abs($0.frame.height - 420) < 1
+                            })?.contentView?.writeDebugPNG(to: path)
+                        }
+                    }
                     if let q = defaults.string(forKey: "searchQuery") {
                         SearchModel.shared.query = q
                     }
@@ -46,7 +58,7 @@ struct PetView: View {
                         SearchModel.shared.query = "上次牙疼是什么时候来着？"
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                             SearchModel.shared.caseReport = .init(
-                                seq: 11, title: "上次牙疼是什么时候",
+                                seq: 11, title: "智齿",
                                 reasoning: "五月十四日疼过一次（A），医嘱要拔（B）。此后 81 天，你再没提过牙——不是好了，是拖着。",
                                 conclusion: "上次牙疼是 **5月14日**，距今 84 天。智齿还在，复查欠着。要不要我下周替你把这个案子了结？",
                                 sources: [
@@ -54,8 +66,15 @@ struct PetView: View {
                                           source: "5月14日 · 倾诉", note: nil, at: Date()),
                                     .init(id: "d2", text: "「医生建议拔，我说缓缓再说」",
                                           source: "5月17日 · 倾诉", note: nil, at: Date()),
+                                    .init(id: "d3", text: "口腔全景片-0517.pdf",
+                                          source: "~/文档/体检", note: nil, at: Date()),
                                 ],
                                 duration: 0.4, fileURL: nil)
+                        }
+                    }
+                    if defaults.bool(forKey: "demoEvidence") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                            SearchModel.shared.loadDemoEvidence()
                         }
                     }
                     // 无头渲染面板到 PNG（锁屏/CI 下也能核对视觉）
@@ -63,6 +82,17 @@ struct PetView: View {
                         Task { @MainActor in
                             try? await Task.sleep(nanoseconds: 800_000_000)
                             var panels: [(String, AnyView)] = [
+                                ("onboarding-1", AnyView(OnboardingView(initialPage: 0))),
+                                ("onboarding-2", AnyView(OnboardingView(initialPage: 1))),
+                                ("onboarding-3", AnyView(OnboardingView(initialPage: 2))),
+                                ("onboarding-4", AnyView(OnboardingView(initialPage: 3))),
+                                ("settings-general", AnyView(PetSettingsView(initialPane: .general))),
+                                ("settings-sensing", AnyView(PetSettingsView(initialPane: .sensing))),
+                                ("settings-model", AnyView(PetSettingsView(initialPane: .model))),
+                                ("rest-countdown", AnyView(RestCountdownCard(previewSeconds: 47))),
+                                ("rest", AnyView(RestOverlayView(previewSeconds: 272)
+                                    .frame(width: 1200, height: 760))),
+                                ("menu", AnyView(MenuBarDropdown())),
                                 ("chat", AnyView(ChatPanelView())),
                                 ("energy", AnyView(EnergyPanelView())),
                                 ("book", AnyView(BookPanelView())),
@@ -80,7 +110,8 @@ struct PetView: View {
                             if let chapter = BiographyStore.shared.news {
                                 panels.append(("booknews", AnyView(BookNewsCard(chapter: chapter))))
                             }
-                            for (name, view) in panels {
+                            let renderOnly = defaults.string(forKey: "renderOnly")
+                            for (name, view) in panels where renderOnly == nil || renderOnly == name {
                                 // 没有窗口的视图 layer contentsScale 是 1x，文字先按 1x
                                 // 光栅化再放大必然发虚——挂进一个全透明、垫底的真窗口，
                                 // 让图层拿到屏幕的 Retina backing scale 再截。
@@ -110,6 +141,7 @@ struct PetView: View {
                                 }
                             }
                             NSLog("renderPanels: done")
+                            if renderOnly != nil { NSApp.terminate(nil) }
                         }
                     }
                     if defaults.bool(forKey: "searchSubmit") {
@@ -147,10 +179,13 @@ struct PetView: View {
                     onGo: { feed.acknowledgeReminder() },
                     onSnooze: { feed.snoozeReminder() }
                 )
+                // 给卡片阴影留出真实透明缓冲，避免在桌宠窗右边界被裁成黑色直条。
+                .padding(.trailing, 20)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             } else if let chapter = bio.news {
                 // 《传》更新那天，它把新的一回递给你（提醒卡优先）
                 BookNewsCard(chapter: chapter)
+                    .padding(.trailing, 20)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
