@@ -13,6 +13,12 @@ final class SenseFeed: ObservableObject {
     @Published var mind = 72
     @Published var activeStreakMin = 0
     @Published var mood: CatMood = .doze
+    /// 最近一分钟的劳动强度（0-1，键鼠折算）。「一段一段」写进笔记 frontmatter，
+    /// 当「这几分钟用户在积极输入还是只在看」的参与度标注。不发布——UI 不显示。
+    var intensity: Double = 0
+    /// 连续在座分钟数（键鼠活跃 ∨ 摄像头见人）。久坐提醒的文案用它——
+    /// 模型的 nudge 也是按在座算的，不能拿 activeStreakMin 顶包。
+    var seatedStreakMin = 0
 
     /// 当前提醒卡文案（nil = 无卡）。20 秒后自己走（设计稿）。
     @Published var reminder: String?
@@ -77,6 +83,8 @@ final class SenseFeed: ObservableObject {
             if let p = obj["phys"] as? Double { phys = Int(p.rounded()) }
             if let m = obj["mind"] as? Double { mind = Int(m.rounded()) }
             if let streak = obj["activeStreakMin"] as? Int { activeStreakMin = streak }
+            if let seated = obj["seatedStreakMin"] as? Int { seatedStreakMin = seated }
+            if let i = obj["intensity"] as? Double { intensity = i }
             PetStore.shared.recordEnergy(phys: Double(phys), mind: Double(mind), kind: "minute")
             refreshMood()
         case "nudge":
@@ -150,7 +158,7 @@ final class SenseFeed: ObservableObject {
     private func localizedBubble(kind: String?) -> String? {
         switch kind {
         case "LongSitting":
-            return String(localized: "坐了 \(activeStreakMin) 分钟啦，去接杯水回血？")
+            return String(localized: "坐了 \(max(seatedStreakMin, activeStreakMin)) 分钟啦，去接杯水回血？")
         case "PostMeeting":
             return String(localized: "会开完了吧？高强度输出后要补血，起来走两步～")
         case "LowPhysical":

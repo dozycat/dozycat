@@ -9,6 +9,7 @@ struct PetSettingsView: View {
     @AppStorage("uiAppearance") private var uiAppearance = "system"
     @AppStorage("presenceSensing") private var presenceSensing = false
     @State private var languageChanged = false
+    @State private var screenGranted = CGPreflightScreenCaptureAccess()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,6 +41,30 @@ struct PetSettingsView: View {
             }
             section(title: "感知") {
                 HStack {
+                    Text("屏幕文字（时间笔记的地基）")
+                        .font(.system(size: 13))
+                        .foregroundStyle(DS.ink)
+                    Spacer()
+                    if screenGranted {
+                        Text("已授权")
+                            .font(.system(size: 12))
+                            .foregroundStyle(DS.blue)
+                    } else {
+                        Button("去授权") {
+                            if !CGRequestScreenCaptureAccess(),
+                               let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            screenGranted = CGPreflightScreenCaptureAccess()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 12))
+                        .foregroundStyle(DS.coralDeep)
+                    }
+                }
+                caption("每隔几十秒读一眼前台窗口上的字（本机 OCR），记成你随时能翻的时间笔记。像素只在内存里过一遍，磁盘上从不出现截图；密码框亮着时闭眼；原料只留十四天，永不同步。")
+
+                HStack {
                     Text("摄像头在位感知")
                         .font(.system(size: 13))
                         .foregroundStyle(DS.ink)
@@ -52,7 +77,8 @@ struct PetSettingsView: View {
                             PresenceSensor.shared.setEnabled(on)
                         }
                 }
-                caption("开着时它知道你在不在屏幕前：看视频不再被误当成休息，真离开两分钟就开始回血。画面在内存里过一遍人脸检测就丢，不截图不落盘；摄像头指示灯会常亮。")
+                .padding(.top, 6)
+                caption("开着时它知道你在不在屏幕前：看视频不再被误当成休息，真离开两分钟就开始回血。画面在内存里过一遍人脸检测就丢，不截图不落盘；摄像头指示灯会常亮——这盏灯是诚实的。")
             }
             section(title: "模型") {
                 providerPicker

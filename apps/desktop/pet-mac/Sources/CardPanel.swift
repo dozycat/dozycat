@@ -18,9 +18,12 @@ final class CardPanel: NSPanel {
     private let hosting: NSHostingView<AnyView>
     private var resignObserver: NSObjectProtocol?
     private var dismissing = false
+    /// onboarding 这类流程面板要挺住失焦（用户中途去系统设置授权，回来还得在）。
+    private let dismissOnResignKey: Bool
 
     init(content: some View, width: CGFloat, cornerRadius: CGFloat = 22,
-         vibrancy: Bool = true) {
+         vibrancy: Bool = true, dismissOnResignKey: Bool = true) {
+        self.dismissOnResignKey = dismissOnResignKey
         hosting = NSHostingView(rootView: AnyView(content))
         super.init(contentRect: NSRect(x: 0, y: 0, width: width, height: 100),
                    styleMask: [.borderless, .nonactivatingPanel],
@@ -125,6 +128,7 @@ final class CardPanel: NSPanel {
             animator().alphaValue = 1
             animator().setFrame(final, display: true)
         }
+        guard dismissOnResignKey else { return }
         resignObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didResignKeyNotification, object: self, queue: .main
         ) { [weak self] _ in

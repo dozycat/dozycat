@@ -35,10 +35,13 @@ enum Garden {
     }
 }
 
-// MARK: - Sequence agent：screen + 其它输入 → 时间_note.md
+// MARK: - 一段一段（sequence）：原料段 → 时间_note.md（带 cite）
 
-/// 每 5 分钟一跑：屏幕文字（本机 Vision OCR，不出设备）+ 前台应用 + 能量，
-/// 让模型写一段白描，落成 notes/<日期>/<HHmm>_note.md。
+/// 「一段一段」：每 5 分钟一跑，把这段时间里原料层攒下的高频 OCR 段
+/// （RawCapture，本机、免费）串起来，让模型写一条时间笔记，落成
+/// notes/<日期>/<HHmm>_note.md。纪律：人和人说的原话是最重要的内容——
+/// 对话摘录一字不改地留；每条事实标注出自哪份原料（cite），frontmatter 的
+/// sources 列出全部原料路径，随时能找回当时的原始输入。
 @MainActor
 enum SequenceAgent {
     static func run() async -> String? {
@@ -50,23 +53,51 @@ enum SequenceAgent {
             ? "" : (front?.localizedName ?? "")
         let appBundleID = front?.bundleIdentifier == Bundle.main.bundleIdentifier
             ? "" : (front?.bundleIdentifier ?? "")
-        let ocr = await screenText()
-        // 活动类别（带 OCR 的精分类）喂给疲劳感知——跨边界的只有类别标签
+
+        // 原料优先：过去 6 分钟的高频段。原料层没跑起来时退回瞬时 OCR（无 cite）。
+        var segments = RawCapture.segments(since: Date().addingTimeInterval(-360))
+        var fallbackOCR = ""
+        if segments.isEmpty {
+            fallbackOCR = await screenText()
+        }
+        // 活动类别（带屏幕文字的精分类）喂给疲劳感知——跨边界的只有类别标签
+        let classifyText = segments.map(\.text).joined(separator: "\n") + fallbackOCR
         SenseHintsPump.shared.updateActivity(
-            ActivityClass.classify(app: app, bundleID: appBundleID, ocr: ocr))
+            ActivityClass.classify(app: app, bundleID: appBundleID, ocr: classifyText))
+
+        // 控制上下文：从最新往回收，总量 ~7000 字放得下几段对话
+        var budget = 7000
+        var kept: [RawCapture.Segment] = []
+        for seg in segments.reversed() {
+            budget -= seg.text.count
+            if budget < 0 && !kept.isEmpty { break }
+            kept.append(seg)
+        }
+        segments = kept.reversed()
 
         var body = ""
-        if let config = SettingsStore.shared.llmConfig, !ocr.isEmpty {
+        if let config = SettingsStore.shared.llmConfig,
+           !(segments.isEmpty && fallbackOCR.isEmpty) {
+            let material = segments.isEmpty
+                ? "【原料】（瞬时 OCR，无存档）\n\(fallbackOCR.prefix(3000))"
+                : segments.enumerated().map { i, seg in
+                    "【原料\(i + 1) \(seg.ref)】\n\(seg.text)"
+                }.joined(separator: "\n\n")
             let prompt = """
-            以下是刚刚几分钟用户屏幕上的文字片段（本机 OCR，可能零碎）：
+            以下是刚刚几分钟里前台窗口的文字原料（本机 OCR，按时间排列；
+            「对方：/我：」是按气泡位置还原的说话人，可能有识别噪音）：
             ---
-            \(ocr.prefix(3000))
+            \(material)
             ---
-            前台应用：\(app)。用 2-3 句第三人称白描用户在做的事：只写屏幕上可见的事实
-            （在和谁说什么、看什么、约了什么），不要想象动作、表情或心理活动。
-            如果屏幕清楚显示了文件或目录的绝对路径，必须保留准确路径并写成 Markdown 链接：
-            [文件名](file:///绝对路径)。没有完整路径就不要猜，也不要把普通文字伪装成链接。
-            屏幕上出现的具体人名（含「X医生」这类称呼）最后单独一行写「人物：名字1、名字2」，没有则写「人物：无」。
+            前台应用：\(app)。写一条时间笔记，两部分：
+            1) 用 2-3 句第三人称白描用户在做的事：只写原料里可见的事实
+               （在和谁说什么、看什么、约了什么），不要想象动作、表情或心理活动。
+            2) 原料里有人和人的对话时，加一节「## 对话摘录」，挑最要紧的原话逐条保留
+               （每行「说话人：「原话」」，原话一字不改，最多 8 条；闲聊寒暄可略）。
+            每条白描和每条摘录末尾用（原料N）标注出处；拿不准出处就不写这条。
+            原料里清楚显示的文件/目录绝对路径写成 [文件名](file:///绝对路径)，
+            没有完整路径不要猜。出现的具体人名（含「X医生」这类称呼）最后单独一行
+            写「人物：名字1、名字2」，没有则写「人物：无」。
             """
             body = (try? await LLMClient.reply(history: [(role: "user", content: prompt)],
                                                config: config)) ?? ""
@@ -80,6 +111,9 @@ enum SequenceAgent {
         let appContext = app.isEmpty ? "" : (appBundleID.isEmpty
             ? "使用：\(app)"
             : "使用：[\(appLabel)](app://\(appBundleID))")
+        // sources 由代码落死，不依赖模型——「找到当时的原始输入」是硬保证
+        let sourceLines = segments.isEmpty ? ""
+            : "\nsources:\n" + segments.map { "  - \($0.ref)" }.joined(separator: "\n")
         let md = """
         ---
         time: \(local.string(from: Date()))（本地时间）
@@ -88,6 +122,7 @@ enum SequenceAgent {
         phys: \(feed.phys)
         mind: \(feed.mind)
         activeStreakMin: \(feed.activeStreakMin)
+        intensity: \(String(format: "%.2f", feed.intensity))\(sourceLines)
         ---
         \(appContext)
 
@@ -107,19 +142,13 @@ enum SequenceAgent {
         return file.path
     }
 
-    /// 屏幕文字：测试注入（DOZYCAT_FAKE_OCR）优先；真跑走 screencapture + Vision，
-    /// 首次会触发系统「屏幕录制」授权。截图用后即删，文字不出设备（只有白描给模型）。
+    /// 屏幕文字（原料层没跑起来时的兜底）：测试注入（DOZYCAT_FAKE_OCR）优先；
+    /// 真跑走 ScreenCaptureKit 内存直采 + Vision，首次触发系统「屏幕录制」授权。
+    /// 像素只活在内存里、OCR 完即弃——**磁盘上从不出现截图文件**；
+    /// 文字不出设备（只有白描给模型）。
     private static func screenText() async -> String {
         if let fake = ProcessInfo.processInfo.environment["DOZYCAT_FAKE_OCR"] { return fake }
-        let tmp = NSTemporaryDirectory() + "dz-seq-\(UUID().uuidString).png"
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-        proc.arguments = ["-x", tmp]
-        try? proc.run()
-        proc.waitUntilExit()
-        guard let image = NSImage(contentsOfFile: tmp),
-              let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return "" }
+        guard let cg = await RawCapture.frontWindowImage() else { return "" }
         return await withCheckedContinuation { continuation in
             let request = VNRecognizeTextRequest { req, _ in
                 let lines = (req.results as? [VNRecognizedTextObservation])?
@@ -138,10 +167,11 @@ enum SequenceAgent {
     }
 }
 
-// MARK: - Dream agent：时间笔记 → 人物、关系、值得记住的小事
+// MARK: - 一片一片（dream）：时间笔记 → 人物、关系、值得记住的小事
 
-/// 定期「做梦」：翻最近的时间笔记，维护人物卡（谁、和用户什么关系、最近温度），
-/// 把真正值得记住的小事存进小传（一天 ≤3 条），写一篇短梦记。
+/// 「一片一片」：定期做梦，翻最近的时间笔记，维护人物卡（谁、和用户什么关系、
+/// 最近温度），把真正值得记住的小事存进小传（一天 ≤3 条），写一篇短梦记。
+/// 纪律：用了哪段笔记要记得——证据必须带出处（笔记路径），梦记末尾列「取材」。
 @MainActor
 enum DreamAgent {
     static func run() async -> String {
@@ -155,19 +185,23 @@ enum DreamAgent {
         if PiCLI.available {
             MomentsBridge.writeSnapshot()
             let system = """
-            你是「懒猫」的梦，工作目录就是懒猫的花园（notes/<日期>/ 时间笔记、
-            people/ 人物卡、journal/ 梦记、links/ 链接卡、moments_snapshot.md 小传快照）。
+            你是「懒猫」的梦（一片一片），工作目录就是懒猫的花园（notes/<日期>/ 时间笔记、
+            people/ 人物卡、journal/ 梦记、links/ 链接卡、raw/ 原料段、moments_snapshot.md 小传快照）。
             花园是搜索的地基：所有和用户相关的信息都要组织到这里。
             用你的文件和 bash 工具翻今天的笔记，只搞清楚三件事：
             1) 人物——谁反复出现；2) 关系——对用户意味着什么、最近温度（亲近/紧张/疏远）
             及带日期的证据；3) 用户本人——累不累、答应过什么、情绪与身体信号。
-            然后：更新/合并 people/<名>.md（保留旧证据）；\(MomentsBridge.howToSave)
+            然后：更新/合并 people/<名>.md（保留旧证据）。人物卡的证据优先引用笔记
+            「对话摘录」里的原话，每条证据末尾标注出处（日期 + 笔记路径，如
+            notes/\(today)/1032_note.md）——用了哪段笔记必须记得，出处追不到的不写。
+            \(MomentsBridge.howToSave)
             笔记里出现的、和用户有关的本机文件路径或网页链接，写成 links/<名>.md 链接卡：
             frontmatter 三行（target: 绝对路径或 URL / date: \(today) / why: 一句话为什么值得留），
             正文一两句白描。已有同名卡就合并更新，别的机器路径或猜的路径不建卡。
-            最后写 journal/\(today).md（≤5 句）。铁律：笔记里没有的不写；不确定的人名不建卡。
+            最后写 journal/\(today).md（≤5 句），末尾一行「取材：」列出你实际用到的笔记路径。
+            铁律：笔记里没有的不写；不确定的人名不建卡。
             """
-            if let out = await PiCLI.run(name: "dozycat·梦 \(today)", system: system,
+            if let out = await PiCLI.run(name: "dozycat·一片一片 \(today)", system: system,
                                          prompt: "今天是 \(today)。开始吧。",
                                          cwd: Garden.root, timeout: 600) {
                 let saved = MomentsBridge.ingest()
@@ -175,19 +209,21 @@ enum DreamAgent {
             }
         }
         let system = """
-        你是「懒猫」的梦。你翻用户的时间笔记，只搞清楚三件事：
+        你是「懒猫」的梦（一片一片）。你翻用户的时间笔记，只搞清楚三件事：
         1) 人物——谁在用户生活里反复出现；
         2) 关系——这个人对用户意味着什么，最近的温度（亲近/紧张/疏远）有没有变化，证据是什么；
         3) 用户本人——累不累、答应过自己或别人什么、情绪走向、身体信号（睡眠/久坐/疼痛）。
         做法：先 list_notes 看今天有什么，逐条 read_note；再 list_people 看已有人物卡，
         有新信息就 read_person 后用 write_person 合并更新（保留旧证据，新证据带日期）。
+        人物卡的证据优先引用笔记「对话摘录」里的原话，每条证据末尾标注出处
+        （日期 + 笔记文件名）——用了哪段笔记必须记得，出处追不到的不写。
         用 save_moment 存今天真正值得记住的小事——宁缺毋滥，白描 ≤40 字，
         note 是两三个字的情绪词（可加 · 跟进动作）。
         笔记里出现的、和用户有关的本机文件路径用 link_file 收进花园，
         网页链接用 link_url——花园是搜索的地基，值得再找到的东西都要留一张链接卡。
-        最后 write_journal 写 ≤5 句的今日梦记（人物动态 + 用户状态一句话）。
-        铁律：笔记里没有的不写；不确定的人名不建卡；路径是猜的不建链接卡；
-        隐私内容只留白描不留原文。
+        最后 write_journal 写 ≤5 句的今日梦记（人物动态 + 用户状态一句话），
+        末尾一行「取材：」列出你实际用到的笔记文件。
+        铁律：笔记里没有的不写；不确定的人名不建卡；路径是猜的不建链接卡。
         """
         return (try? await PiAgent.run(
             system: system,

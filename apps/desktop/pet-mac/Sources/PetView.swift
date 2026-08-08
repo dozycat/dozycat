@@ -120,6 +120,14 @@ struct PetView: View {
                     if defaults.bool(forKey: "runSequence") {
                         Task { _ = await SequenceAgent.run() }
                     }
+                    // OCR 准确性核对：启动后 5 秒把前台窗口的原始 OCR + 聊天还原
+                    // dump 到指定文件——对着微信窗口跑，肉眼核对说话人和原话。
+                    if let probePath = defaults.string(forKey: "ocrProbe") {
+                        Task {
+                            try? await Task.sleep(nanoseconds: 5_000_000_000)
+                            await RawCapture.probe(to: probePath)
+                        }
+                    }
                     if defaults.bool(forKey: "runDream") {
                         Task { NSLog("DreamAgent: %@", await DreamAgent.run()) }
                     }

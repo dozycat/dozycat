@@ -250,6 +250,28 @@ final class PetPanels {
         SenseFeed.shared.panelsOpen = searchVisible || chatVisible || energyVisible || bookVisible
     }
 
+    // MARK: 首次见面（onboarding）
+
+    private var onboardingPanel: CardPanel?
+
+    /// 一页一页说明白权限再启动感知。esc / 走完流程都算见过面；
+    /// 面板不因失焦收起——用户中途要去系统设置授权。
+    func showOnboarding(completion: @escaping () -> Void) {
+        let panel = CardPanel(content: OnboardingView(), width: 480,
+                              dismissOnResignKey: false)
+        onboardingPanel = panel
+        panel.onClose = { [weak self] in
+            self?.onboardingPanel = nil
+            UserDefaults.standard.set(true, forKey: "onboarded")
+            completion()
+        }
+        panel.showCentered(yRatio: 0.58)
+    }
+
+    func closeOnboarding() {
+        onboardingPanel?.dismiss()
+    }
+
     #if DEBUG
     /// 调试：8 态猫猫总览（对齐设计稿「猫猫状态」）。
     func showMoodBoard() {
@@ -327,13 +349,12 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             PetPanels.shared.toggleEnergy()
         })
 
-        SenseFeed.shared.start()
-        SenseHintsPump.shared.start()
-        startAgents()
-        // 《传》：启动后看看是不是该写了（月初定稿上一回 / 本月开新的一回）
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 15_000_000_000)
-            BiographyStore.shared.tickIfNeeded()
+        // 首次见面先把权限一页一页说明白，感知等用户看完才启动——
+        // 权限弹窗绝不在没解释之前出现。
+        if UserDefaults.standard.bool(forKey: "onboarded") {
+            startSensing()
+        } else {
+            PetPanels.shared.showOnboarding { [weak self] in self?.startSensing() }
         }
 
         #if DEBUG
@@ -365,6 +386,21 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         #endif
+    }
+
+    /// 感知与 agent 全家桶：见过面（onboarded）之后才启动。
+    private func startSensing() {
+        Task { @MainActor in
+            SenseFeed.shared.start()
+            SenseHintsPump.shared.start()
+            RawCapturePump.shared.start()
+        }
+        startAgents()
+        // 《传》：启动后看看是不是该写了（月初定稿上一回 / 本月开新的一回）
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            BiographyStore.shared.tickIfNeeded()
+        }
     }
 
     /// 外观：默认跟系统；设置里可锁「亮 / 暗」。一行 NSApp.appearance 全局生效，
