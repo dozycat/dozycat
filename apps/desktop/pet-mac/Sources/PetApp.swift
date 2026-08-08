@@ -92,7 +92,8 @@ struct MenuBarDropdown: View {
         }
         .padding(16)
         .frame(width: 300)
-        // 不铺不透明纸底：让 MenuBarExtra 的 popover 材质自己透出来
+        // 纸底铺满：菜单栏下拉也是懒猫的纸面，不能让内容浮在系统模糊上发虚
+        .background(DS.paper)
     }
 
     private var bookRowLabel: LocalizedStringKey {

@@ -26,10 +26,9 @@ struct DeskCat: View {
     private var breatheDuration: Double { mood == .breathing ? 4.8 : 3.4 }
 
     var body: some View {
+        // 不加 .drawingGroup()：光栅化会把柔和阴影压出脏灰边（透明窗上尤其明显）。
+        // 性能靠呼吸动画只动 transform 兜底。
         canvas
-            // 整棵形状树（三层离屏阴影）压成一张纹理再参与呼吸动画：
-            // 动画帧里只变换纹理，不逐帧重新光栅化阴影。
-            .drawingGroup()
             .scaleEffect(s, anchor: .topLeading)
             .frame(width: 110 * s, height: 96 * s, alignment: .topLeading)
             .rotationEffect(.degrees(mood == .missYou ? -5 : 0))
