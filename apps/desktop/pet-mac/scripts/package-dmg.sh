@@ -131,7 +131,7 @@ xcodebuild -project DozycatPet.xcodeproj -scheme DozycatPet -configuration Relea
   ARCHS="$ARCH" ONLY_ACTIVE_ARCH=YES MACOSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
   -quiet build
-APP="$DERIVED/Build/Products/Release/DozycatPet.app"
+APP="$DERIVED/Build/Products/Release/dozycat.app"
 [ -d "$APP" ] || { echo "构建失败：$APP 不存在"; exit 1; }
 
 echo "==> 捆入 dozycat-sense"
@@ -156,7 +156,7 @@ DMG="$OUT/dozycat-$VERSION-$ARCH.dmg"
 
 echo "==> 打 dmg：$DMG"
 STAGE="$(mktemp -d /tmp/dozycat-dmg.XXXXXX)"
-ditto "$APP" "$STAGE/DozycatPet.app"
+ditto "$APP" "$STAGE/dozycat.app"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "dozycat 懒猫" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
 hdiutil verify "$DMG" >/dev/null

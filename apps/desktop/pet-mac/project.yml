@@ -31,7 +31,13 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.paperboytm.dozycat.pet
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES   # 菜单栏应用，不占 Dock
+        # 显示名走中文「懒猫」；CFBundleName 是隐私列表/强制退出里那个短名——
+        # 定成 dozycat，别再露内部 target 名 DozycatPet
         INFOPLIST_KEY_CFBundleDisplayName: 懒猫
+        # 产物名 dozycat（= CFBundleName，隐私列表/强制退出显示的短名）；
+        # xcodeproj / scheme 仍叫 DozycatPet（内部 target 名）。改这行要同步改
+        # scripts/package-dmg.sh 里的 dozycat.app 路径。
+        PRODUCT_NAME: dozycat
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon   # Finder / DMG 里的脸面
         # 摄像头在位感知（设置里默认关）：帧过一遍人脸检测即弃，只产出在/不在
         INFOPLIST_KEY_NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前（只产出在/不在，一张画面都不保存）。
