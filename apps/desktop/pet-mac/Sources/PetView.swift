@@ -97,7 +97,8 @@ struct PetView: View {
                                 )),
                                 ("moods", AnyView(MoodBoardGrid())),
                             ]
-                            if let chapter = BiographyStore.shared.news {
+                            // 截图用：news 读过后为 nil，退回最新一回，好让官网侧图用真实数据
+                            if let chapter = BiographyStore.shared.news ?? BiographyStore.shared.latest {
                                 panels.append(("booknews", AnyView(BookNewsCard(chapter: chapter))))
                             }
                             let renderOnly = defaults.string(forKey: "renderOnly")
