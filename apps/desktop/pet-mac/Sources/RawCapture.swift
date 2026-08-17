@@ -175,41 +175,89 @@ enum RawCapture {
 
     // MARK: - 聊天还原
 
-    /// 气泡左右 → 说话人。启发式，靠 -ocrProbe 对着真窗口核准：
-    /// - 微信主窗左侧是会话列表，完全落在左 1/4 的行丢弃；
-    /// - 离右边近的是右气泡（我），离左边近的是左气泡（对方）；
-    /// - 居中的短行是时间戳/系统提示，降级为上下文行；
-    /// - 连续同侧的行并成一条消息。
+    /// 气泡几何 + 群聊昵称 → 说话人。启发式，靠 -ocrProbe 对着真窗口核准。
+    ///
+    /// 微信主窗是三栏（侧边导航 + 会话列表 + 聊天区）：会话列表的预览行
+    /// （minX≈0.06）长得和群聊消息一样是「名字：内容」，必须先按几何剔掉，
+    /// 否则别人会话里的推送会被当成当前聊天。聊天区左气泡 minX≈0.26、
+    /// 右气泡靠右（maxX≈0.95）。数据见 -ocrProbe 实测。
+    ///
+    /// 群聊的关键：微信给别人的每条消息都标了昵称，OCR 出来常是「名字：内容」
+    /// （连在一行或紧邻上一行）。所以说话人优先从**文本前缀**拆——比左右几何
+    /// 可靠得多，也天然区分了群里的不同人；单聊没有昵称前缀，才退回左右几何
+    /// （右＝我、左＝对方）。
     static func chatTranscript(_ lines: [Line]) -> String {
-        enum Side { case me, them, context }
-        var messages: [(side: Side, text: String)] = []
+        // 有会话列表栏？最左侧（minX<0.10）密集堆着行就是它——此时聊天区
+        // 从 minX≈0.24 才开始，据此把列表与侧栏整列剔掉。独立聊天窗没有
+        // 这一栏（左气泡可以很靠左），就不设这道闸，免得误删对方消息。
+        let hasSidebar = lines.filter { $0.box.minX < 0.10 }.count >= 4
+        let leftCutoff = hasSidebar ? 0.24 : 0.0
+
+        enum Speaker: Equatable { case me, them, named(String) }
+        var messages: [(who: Speaker, text: String)] = []
+
         // 从上到下（Vision 原点在左下，y 大的在上面）
         for line in lines.sorted(by: { $0.box.midY > $1.box.midY }) {
-            let text = line.text.trimmingCharacters(in: .whitespaces)
-            guard !text.isEmpty else { continue }
+            let raw = line.text.trimmingCharacters(in: .whitespaces)
+            guard !raw.isEmpty else { continue }
             let box = line.box
-            if box.maxX < 0.25 { continue } // 会话列表 / 侧栏
-            let side: Side
-            if abs(box.midX - 0.5) < 0.09, box.width < 0.35, box.minX > 0.2 {
-                side = .context // 时间戳、撤回提示这类居中短行
-            } else if (1 - box.maxX) < box.minX {
-                side = .me
+            if box.maxX < leftCutoff { continue }              // 会话列表 / 侧栏
+            if box.minX < leftCutoff, box.maxX < 0.5 { continue }
+
+            // 居中的短行是时间戳 / 系统提示，跳过不入账
+            if abs(box.midX - 0.5) < 0.09, box.width < 0.35, box.minX > 0.2 { continue }
+            if isTimestamp(raw) { continue }
+
+            let onRight = (1 - box.maxX) < box.minX
+            // 「名字：内容」→ 拆出说话人（群聊每条都带）。名字侧优先，
+            // 拆不出再退回左右几何。
+            let who: Speaker
+            let body: String
+            if let (name, rest) = splitSender(raw) {
+                who = .named(name); body = rest
             } else {
-                side = .them
+                who = onRight ? .me : .them; body = raw
             }
-            if side != .context, let last = messages.last, last.side == side {
-                messages[messages.count - 1].text += " " + text
+            // 同一说话人的连续行并成一条消息
+            if let last = messages.last, last.who == who {
+                messages[messages.count - 1].text += " " + body
             } else {
-                messages.append((side, text))
+                messages.append((who, body))
             }
         }
+
         return messages.map { m in
-            switch m.side {
+            switch m.who {
             case .me: "我：\(m.text)"
             case .them: "对方：\(m.text)"
-            case .context: "· \(m.text)"
+            case .named(let name): "\(name)：\(m.text)"
             }
         }.joined(separator: "\n")
+    }
+
+    /// 「名字：内容」拆分。名字要像名字：不超过 14 字、不含句末标点、
+    /// 不是一整句话——否则「提醒：记得预约」这种正常带冒号的句子会被误拆。
+    static func splitSender(_ text: String) -> (name: String, body: String)? {
+        guard let colon = text.firstIndex(where: { $0 == "：" || $0 == ":" }) else { return nil }
+        let name = String(text[text.startIndex..<colon]).trimmingCharacters(in: .whitespaces)
+        let body = String(text[text.index(after: colon)...]).trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, !body.isEmpty, name.count <= 14 else { return nil }
+        // 名字里不该有句末标点或成句的迹象
+        let banned = CharacterSet(charactersIn: "。！？，、；.!?,;…「」()（）@")
+        if name.rangeOfCharacter(from: banned) != nil { return nil }
+        // 冒号后内容太短（像时间「09:03」）也不算说话
+        guard body.count >= 2 else { return nil }
+        return (name, body)
+    }
+
+    /// 纯时间戳行（09:03 / Yesterday 11:29 / 08/06）——不是消息。
+    private static func isTimestamp(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        if t.range(of: #"^\d{1,2}[:：]\d{2}\.?$"#, options: .regularExpression) != nil { return true }
+        if t.range(of: #"^\d{1,2}/\d{1,2}$"#, options: .regularExpression) != nil { return true }
+        if t.range(of: #"^(Yesterday|昨天|今天|周[一二三四五六日天])"#,
+                   options: .regularExpression) != nil, t.count <= 16 { return true }
+        return false
     }
 
     // MARK: - 准确性核对（-ocrProbe <输出路径>）
