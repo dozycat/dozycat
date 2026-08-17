@@ -341,7 +341,13 @@ h1, h2, h3, p { margin: 0; }
   padding: 160px 32px 140px; text-align: center;
 }
 .cta h2 { font-size: 44px; font-weight: 300; line-height: 1.4; }
-.cta-platforms { font-size: 15px; color: var(--ink-soft); }
+.cta-platforms {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: .5em; font-size: 15px;
+}
+.platform-available { color: var(--ink); font-weight: 500; }
+.platform-divider { color: var(--line-strong); }
+.platform-unavailable { color: var(--faint); cursor: not-allowed; }
 .cta-note { font-size: 13px; color: var(--muted); }
 
 /* ---- footer ---- */
