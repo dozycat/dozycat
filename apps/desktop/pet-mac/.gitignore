@@ -1,1 +1,4 @@
 dist/
+
+# xcodegen 生成（从 project.yml 派生，勿手改勿提交）
+Info.plist

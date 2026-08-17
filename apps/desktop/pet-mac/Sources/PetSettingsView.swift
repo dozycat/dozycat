@@ -34,6 +34,13 @@ struct PetSettingsView: View {
     @State private var screenGranted = CGPreflightScreenCaptureAccess()
     @State private var keySaved = false
     @State private var testState: TestState = .idle
+    @State private var autoUpdate = Updater.shared.automaticallyChecks
+
+    private var appVersion: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "\(v)（\(b)）"
+    }
 
     init(initialPane: Pane = .general) {
         _pane = State(initialValue: initialPane)
@@ -159,6 +166,26 @@ struct PetSettingsView: View {
                     }
                     Spacer()
                     Button("打开") { NSWorkspace.shared.open(Garden.root) }
+                        .buttonStyle(SmallGhostPill())
+                }
+            }
+
+            settingGroup(title: "更新") {
+                settingLine(title: "当前版本", detail: nil) {
+                    Text(verbatim: appVersion)
+                        .font(.system(size: 13)).foregroundStyle(DS.muted)
+                }
+                settingLine(title: "自动检查更新",
+                            detail: "后台每天看一次官网有没有新版本") {
+                    Toggle("", isOn: $autoUpdate)
+                        .toggleStyle(.switch).controlSize(.small).labelsHidden()
+                        .onChange(of: autoUpdate) { _, on in
+                            Updater.shared.automaticallyChecks = on
+                        }
+                }
+                HStack {
+                    Spacer()
+                    Button("检查更新") { Updater.shared.checkForUpdates() }
                         .buttonStyle(SmallGhostPill())
                 }
             }

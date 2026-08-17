@@ -114,15 +114,18 @@ echo "==> dozycat-core (macOS $MIN_MACOS+)"
 DOZYCAT_MACOS_DEPLOYMENT_TARGET="$MIN_MACOS" \
   "$REPO_ROOT/apps/ios/scripts/build-core.sh"
 
-echo "==> 版本号自动 +1（project.yml，patch 位）"
 cd "$PROJECT_DIR"
-CURRENT="$(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)"
-BUILD="$(sed -n 's/.*CURRENT_PROJECT_VERSION: "\(.*\)"/\1/p' project.yml)"
-NEXT="$(echo "$CURRENT" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')"
-NEXT_BUILD=$((BUILD + 1))
-sed -i '' "s/MARKETING_VERSION: \"$CURRENT\"/MARKETING_VERSION: \"$NEXT\"/" project.yml
-sed -i '' "s/CURRENT_PROJECT_VERSION: \"$BUILD\"/CURRENT_PROJECT_VERSION: \"$NEXT_BUILD\"/" project.yml
-echo "    $CURRENT (build $BUILD) → $NEXT (build $NEXT_BUILD)；记得连 project.yml 一起提交"
+# 版本号自动 +1 只在正式发布时做——adhoc 验证不消耗版本号。
+if [ "$MODE" = "release" ]; then
+  echo "==> 版本号自动 +1（project.yml，patch 位）"
+  CURRENT="$(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)"
+  BUILD="$(sed -n 's/.*CURRENT_PROJECT_VERSION: "\(.*\)"/\1/p' project.yml)"
+  NEXT="$(echo "$CURRENT" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')"
+  NEXT_BUILD=$((BUILD + 1))
+  sed -i '' "s/MARKETING_VERSION: \"$CURRENT\"/MARKETING_VERSION: \"$NEXT\"/" project.yml
+  sed -i '' "s/CURRENT_PROJECT_VERSION: \"$BUILD\"/CURRENT_PROJECT_VERSION: \"$NEXT_BUILD\"/" project.yml
+  echo "    $CURRENT (build $BUILD) → $NEXT (build $NEXT_BUILD)；记得连 project.yml 一起提交"
+fi
 
 echo "==> xcodegen + xcodebuild (Release)"
 xcodegen generate >/dev/null
@@ -137,17 +140,29 @@ APP="$DERIVED/Build/Products/Release/dozycat.app"
 echo "==> 捆入 dozycat-sense"
 install -m 755 "$SENSE" "$APP/Contents/Resources/dozycat-sense"
 
+# 签名参数：release 用 Developer ID + hardened runtime；adhoc 用 - 只为本机验证。
+SIGN_ARGS=(--force --sign "$IDENTITY")
 if [ "$MODE" = "release" ]; then
-  echo "==> 签名：${IDENTITY}（hardened runtime）"
-  codesign --force --timestamp --options runtime \
-    --sign "$IDENTITY" "$APP/Contents/Resources/dozycat-sense"
-  codesign --force --timestamp --options runtime \
-    --sign "$IDENTITY" "$APP"
-else
-  echo "==> ad-hoc 签名（仅用于本机验证）"
-  codesign --force --sign - "$APP/Contents/Resources/dozycat-sense"
-  codesign --force --sign - "$APP"
+  SIGN_ARGS=(--force --timestamp --options runtime --sign "$IDENTITY")
 fi
+
+# inside-out 签名：Sparkle.framework 里嵌着 XPC 服务和 Autoupdate/Updater.app，
+# 必须先签内层再签外层，否则 Gatekeeper / 公证会拒。
+FW="$APP/Contents/Frameworks/Sparkle.framework"
+if [ -d "$FW" ]; then
+  echo "==> 签名 Sparkle（inside-out）"
+  SPARKLE_V="$FW/Versions/B"
+  for xpc in "$SPARKLE_V"/XPCServices/*.xpc; do
+    [ -e "$xpc" ] && codesign "${SIGN_ARGS[@]}" "$xpc"
+  done
+  [ -e "$SPARKLE_V/Autoupdate" ] && codesign "${SIGN_ARGS[@]}" "$SPARKLE_V/Autoupdate"
+  [ -e "$SPARKLE_V/Updater.app" ] && codesign "${SIGN_ARGS[@]}" "$SPARKLE_V/Updater.app"
+  codesign "${SIGN_ARGS[@]}" "$FW"
+fi
+
+echo "==> 签名：helper 与 app（${IDENTITY}）"
+codesign "${SIGN_ARGS[@]}" "$APP/Contents/Resources/dozycat-sense"
+codesign "${SIGN_ARGS[@]}" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 echo "    app 签名结构校验通过"
 

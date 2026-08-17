@@ -5,6 +5,12 @@ options:
     macOS: "14.0"
   createIntermediateGroups: true
   developmentLanguage: zh-Hans
+packages:
+  # 自动更新：直发（非 MAS）版更新器。Xcode 把二进制 Sparkle.framework
+  # 嵌进 bundle；scripts/package-dmg.sh 对其 inside-out 签名。
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
 targets:
   DozycatPet:
     type: application
@@ -26,28 +32,33 @@ targets:
     dependencies:
       - framework: ../../ios/Vendor/DozycatCore.xcframework
         embed: false
+      - package: Sparkle
+        product: Sparkle
+    # 自定义 Info.plist：Sparkle 的 SUFeedURL / SUPublicEDKey 不在
+    # GENERATE_INFOPLIST_FILE 的白名单里，只能自己写一份。
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: 懒猫
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSUIElement: true
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前（只产出在/不在，一张画面都不保存）。
+        NSHumanReadableCopyright: © 2026 dozycat
+        # 更新清单托管在官网（GitHub Pages）；发布脚本更新这份 appcast.xml。
+        SUFeedURL: https://dozycat.github.io/dozycat/appcast.xml
+        # EdDSA 公钥：generate_keys 生成，私钥在本机钥匙串（发布者持有）。
+        SUPublicEDKey: orMMRU/a20tQnzy6zx9sK+cQ523Xrt/P+ia+vJupHRQ=
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.paperboytm.dozycat.pet
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_LSUIElement: YES   # 菜单栏应用，不占 Dock
-        # 显示名走中文「懒猫」；CFBundleName 是隐私列表/强制退出里那个短名——
-        # 定成 dozycat，别再露内部 target 名 DozycatPet
-        INFOPLIST_KEY_CFBundleDisplayName: 懒猫
-        # 产物名 dozycat（= CFBundleName，隐私列表/强制退出显示的短名）；
-        # xcodeproj / scheme 仍叫 DozycatPet（内部 target 名）。改这行要同步改
-        # scripts/package-dmg.sh 里的 dozycat.app 路径。
+        # 产物名 dozycat（= CFBundleName，隐私列表/强制退出的短名）；xcodeproj /
+        # scheme 仍叫 DozycatPet。改这行要同步改 package-dmg.sh 的 dozycat.app。
         PRODUCT_NAME: dozycat
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon   # Finder / DMG 里的脸面
-        # 摄像头在位感知（设置里默认关）：帧过一遍人脸检测即弃，只产出在/不在
-        INFOPLIST_KEY_NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前（只产出在/不在，一张画面都不保存）。
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_IDENTITY: "-"
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
-    # 签名发布时打开（iOS target 同步加同名 group）：iOS ↔ macOS 共享同一条
-    # Keychain Key，经 iCloud 钥匙串同步。见 docs/MEMORY-SYNC.md「设置与 Key」。
-    # entitlements:
-    #   path: DozycatPet.entitlements
-    #   properties:
-    #     keychain-access-groups:
-    #       - $(AppIdentifierPrefix)com.paperboytm.dozycat.shared
+        MARKETING_VERSION: "0.1.1"
+        CURRENT_PROJECT_VERSION: "2"

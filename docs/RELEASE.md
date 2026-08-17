@@ -39,10 +39,11 @@ iOS 用 Xcode Cloud（Apple 原生 CI）：证书和描述文件全自动管理�
 加 Rust，只需要一个 `ci_scripts/ci_post_clone.sh`：装 rustup targets，跑
 `./scripts/build-core.sh`，再 `xcodegen generate`。
 
-macOS 用 GitHub Actions：`xcodebuild archive`，用 Developer ID Application 证书
-`codesign`，`xcrun notarytool submit --wait`，`stapler` 钉票，打成 dmg 传 GitHub
-Releases，Sparkle 的 appcast 一并生成。证书以 base64 存在 repo secrets 里。
-版本纪律：`MARKETING_VERSION` 的单一来源在 project.yml，tag 触发发布。
+macOS 在发布者本机打包：Developer ID Application 证书和 Sparkle EdDSA 私钥只留
+在本机钥匙串，`codesign`、`xcrun notarytool submit --wait`、`stapler` 全部本地跑；
+GitHub 只接收已经签名并公证好的 dmg Release 附件，以及公开的 appcast。证书、
+私钥和 Apple 登录凭证不上传到 GitHub（包括 GitHub Secrets）。版本纪律：
+`MARKETING_VERSION` 的单一来源在 project.yml。
 
 ## iOS 上架前的清单
 
@@ -58,3 +59,49 @@ TestFlight 首个构建，提交后约一天。App Store 首次提审，准备�
 72 小时，含一次被拒的缓冲，一到两周拿到上架。后续版本更新通常 24 到 48 小时内
 过审，可以用 phased release。macOS 直发公证是分钟级的，当天可发，Sparkle 更新
 即时到达。
+
+## macOS 发布怎么走（Sparkle 已接好）
+
+自动更新用 Sparkle 2，代码和打包链路都已接通，跑一次验证过（adhoc）：
+
+- **设置里的更新**：设置 → 常规 → 更新，有「当前版本」「自动检查更新」开关
+  和「检查更新」按钮。默认后台每天查一次官网的 appcast（`Updater.swift`，
+  Info.plist 的 `SUEnableAutomaticChecks` / `SUScheduledCheckInterval`）。
+- **签名密钥**：更新包用 EdDSA 签名。私钥在发布者本机钥匙串（`generate_keys`
+  生成），公钥 `SUPublicEDKey` 写在 project.yml 的 Info.plist 段。换发布者要
+  重新 `generate_keys` 并同步改公钥、重签所有历史 appcast。
+- **一条命令出 dmg**：`scripts/package-dmg.sh`——Release 构建 → 嵌 sense →
+  **Sparkle.framework inside-out 签名**（XPC 服务、Autoupdate、Updater.app 逐层）
+  → Developer ID 签 app（hardened runtime）→ dmg → 公证 → 钉票。正式模式每次
+  自动把 `MARKETING_VERSION` 的 patch 位 +1（adhoc 验证不消耗版本号）。
+- **appcast**：`scripts/make-appcast.sh` 从 dist 里的 dmg 生成并签名
+  `site/appcast.xml`，下载地址指向 GitHub Releases（`DOZYCAT_DL_PREFIX` 可改）。
+
+发一版的完整动作：
+
+1. `scripts/package-dmg.sh`（需 Developer ID 证书 + `DOZYCAT_NOTARY_PROFILE`）
+   出 `dist/dozycat-<版本>-arm64.dmg`，已公证钉票。
+2. 把这个 dmg 传到 GitHub Releases（tag = 版本号）。
+3. `scripts/make-appcast.sh` 生成 `site/appcast.xml`，连同 project.yml 的版本号
+   一起提交、推到 main。
+4. GitHub Pages 部署 `site/`，`SUFeedURL`（`https://dozycat.github.io/dozycat/appcast.xml`）
+   即生效，老版本下次检查就能看到更新。
+
+**凭证只放钥匙串或 CI secrets，绝不提交到仓库。** 发布机需要一张有效的
+Developer ID Application 证书，以及用 `xcrun notarytool store-credentials`
+保存的公证 profile。发布前可分别用下面两条命令做无密钥回显的检查：
+
+```bash
+security find-identity -v -p codesigning
+xcrun notarytool history --keychain-profile "$DOZYCAT_NOTARY_PROFILE"
+```
+
+本地正式打包时只传 profile 名称（它不是密码），例如：
+
+```bash
+DOZYCAT_NOTARY_PROFILE=dozycat-notary scripts/package-dmg.sh
+```
+
+`.env`、Apple 私钥/证书导出文件和 provisioning profile 均已由仓库根目录的
+`.gitignore` 排除；Apple ID 密码、app-specific password 和私钥不要写进脚本、
+文档、提交记录或构建日志。

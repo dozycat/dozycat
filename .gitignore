@@ -13,5 +13,15 @@ target/
 apps/ios/Vendor/
 apps/ios/Dozycat/Core/dozycat_core.swift
 
-# secrets
+# Secrets and local signing material. Keep examples/templates explicitly named
+# (for example, .env.example); real credentials belong in Keychain or CI secrets.
 .env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.key
+*.pem
+*.cer
+*.mobileprovision
+*.provisionprofile

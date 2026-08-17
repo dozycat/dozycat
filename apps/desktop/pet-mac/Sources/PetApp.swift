@@ -366,6 +366,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         Self.applyAppearancePreference()
+        _ = Updater.shared   // 起自动更新（后台按计划查 appcast）
 
         let hosting = NSHostingView(rootView: PetView().background(Color.clear))
         // NSHostingView 在 darkAqua 下会给没有 SwiftUI 内容的区域补窗口底色；
