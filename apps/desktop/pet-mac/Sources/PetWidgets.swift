@@ -23,9 +23,6 @@ struct EnergyCapsule: View {
             .frame(width: 220)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DS.paper)
                 .shadow(color: DS.ink.opacity(0.16), radius: 22, y: 16))
-            .contentShape(Rectangle())
-            // 点胶囊直接进能量 widgets（日历 / K 线 / 回血清单）
-            .onTapGesture { PetPanels.shared.toggleEnergy() }
 
             DS.lineStrong.frame(width: 1, height: 14)
         }

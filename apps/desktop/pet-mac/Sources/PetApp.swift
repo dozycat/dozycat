@@ -52,20 +52,13 @@ struct MenuBarDropdown: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // 点数字进能量 widgets：日历、K 线、回血清单、明日计划
-            Button {
-                PetPanels.shared.toggleEnergy()
-            } label: {
-                HStack(spacing: 0) {
-                    energyCell("心理", value: feed.mind, color: DS.blue, warn: false)
-                    DS.line.frame(width: 1).padding(.horizontal, 14)
-                    energyCell("生理", value: feed.phys, color: DS.coral, warn: feed.phys < 50)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .contentShape(Rectangle())
+            // 能量对：纯展示（能量 widgets 面板已去掉）
+            HStack(spacing: 0) {
+                energyCell("心理", value: feed.mind, color: DS.blue, warn: false)
+                DS.line.frame(width: 1).padding(.horizontal, 14)
+                energyCell("生理", value: feed.phys, color: DS.coral, warn: feed.phys < 50)
             }
-            .buttonStyle(.plain)
-            .help("能量日历与今天的走势")
+            .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 0) {
                 actionRow(rest.isActive
@@ -74,8 +67,6 @@ struct MenuBarDropdown: View {
                           shortcut: "⌥R") { PetPanels.shared.startRest() }
                 DS.lineSoft.frame(height: 1)
                 actionRow("找点什么 / 问问回忆", shortcut: "⌥␣") { PetPanels.shared.toggleSearch() }
-                DS.lineSoft.frame(height: 1)
-                actionRow("能量 · 日历与 K 线", shortcut: "⌥E") { PetPanels.shared.toggleEnergy() }
                 DS.lineSoft.frame(height: 1)
                 actionRow(bookRowLabel, shortcut: "") { PetPanels.shared.toggleBook() }
                 DS.lineSoft.frame(height: 1)
@@ -201,8 +192,7 @@ final class PetPanels {
     weak var petWindow: NSWindow?
 
     private var searchPanel: CardPanel?
-    private var chatPanel: CardPanel?
-    private var energyPanel: CardPanel?
+    private var notesPanel: CardPanel?
     private var bookPanel: CardPanel?
     private var restCountdownPanel: CardPanel?
     private var restOverlayWindow: RestOverlayWindow?
@@ -247,39 +237,21 @@ final class PetPanels {
     }
     #endif
 
-    /// 对话 · 点猫猫展开（设计稿「对话」）。
-    func toggleChat() {
-        if chatVisible {
-            closeChat()
+    /// 记事本 · 点猫猫展开：你记，它读（取代了从前的实时对话）。
+    func toggleNotes() {
+        if notesVisible {
+            closeNotes()
             return
         }
-        let panel = CardPanel(content: ChatPanelView(), width: 380, cornerRadius: 20)
-        adopt(panel, into: \.chatPanel)
+        let panel = CardPanel(content: NotesPanelView(), width: 380, cornerRadius: 20)
+        adopt(panel, into: \.notesPanel)
         panel.show(near: petWindow)
     }
 
-    private var chatVisible: Bool { chatPanel?.isVisible ?? false }
+    private var notesVisible: Bool { notesPanel?.isVisible ?? false }
 
-    func closeChat() {
-        chatPanel?.dismiss()
-    }
-
-    /// 能量 widgets：日历、K 线、回血清单、明日计划（设计稿「能量 WIDGETS」）。
-    func toggleEnergy() {
-        if energyVisible {
-            closeEnergy()
-            return
-        }
-        RechargeStore.shared.refreshRecommendation()
-        let panel = CardPanel(content: EnergyPanelView(), width: 900, cornerRadius: 24)
-        adopt(panel, into: \.energyPanel)
-        panel.showCentered(yRatio: 0.54)
-    }
-
-    private var energyVisible: Bool { energyPanel?.isVisible ?? false }
-
-    func closeEnergy() {
-        energyPanel?.dismiss()
+    func closeNotes() {
+        notesPanel?.dismiss()
     }
 
     /// 《传》——正文书页（书脊上的「传」印切目录）。
@@ -300,7 +272,7 @@ final class PetPanels {
     }
 
     private func syncPanelMood() {
-        SenseFeed.shared.panelsOpen = searchVisible || chatVisible || energyVisible || bookVisible
+        SenseFeed.shared.panelsOpen = searchVisible || notesVisible || bookVisible
     }
 
     // MARK: 两段式休息
@@ -427,9 +399,6 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         })
         hotKeys.append(HotKey(keyCode: UInt32(kVK_ANSI_R), modifiers: UInt32(optionKey)) {
             PetPanels.shared.startRest()
-        })
-        hotKeys.append(HotKey(keyCode: UInt32(kVK_ANSI_E), modifiers: UInt32(optionKey)) {
-            PetPanels.shared.toggleEnergy()
         })
 
         // 首次见面先把权限一页一页说明白，感知等用户看完才启动——

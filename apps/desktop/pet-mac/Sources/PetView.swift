@@ -43,17 +43,8 @@ struct PetView: View {
                         debugHoverLocked = true
                     }
                     if defaults.bool(forKey: "showMoods") { PetPanels.shared.showMoodBoard() }
-                    if defaults.bool(forKey: "showChat") { PetPanels.shared.toggleChat() }
-                    if defaults.bool(forKey: "showEnergy") { PetPanels.shared.toggleEnergy() }
+                    if defaults.bool(forKey: "showNotes") { PetPanels.shared.toggleNotes() }
                     if defaults.bool(forKey: "showBook") { PetPanels.shared.toggleBook() }
-                    if defaults.bool(forKey: "demoChat") {
-                        ChatModel.shared.messages = [
-                            ChatMsg(role: .me, text: "好烦，方案又被打回来了", memoryRef: nil),
-                            ChatMsg(role: .cat,
-                                    text: "第三稿了对吧，换谁都会烦的。先不想它——你从中午到现在还没喝过水，去接一杯，回来要是还想说，我在。",
-                                    memoryRef: "它记下了：这个项目最近让你很耗"),
-                        ]
-                    }
                     if defaults.bool(forKey: "demoReport") {
                         SearchModel.shared.query = "上次牙疼是什么时候来着？"
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
@@ -93,8 +84,7 @@ struct PetView: View {
                                 ("rest", AnyView(RestOverlayView(previewSeconds: 272)
                                     .frame(width: 1200, height: 760))),
                                 ("menu", AnyView(MenuBarDropdown())),
-                                ("chat", AnyView(ChatPanelView())),
-                                ("energy", AnyView(EnergyPanelView())),
+                                ("notes", AnyView(NotesPanelView())),
                                 ("book", AnyView(BookPanelView())),
                                 ("search", AnyView(SearchPanelView())),
                                 ("pet", AnyView(
@@ -204,7 +194,7 @@ struct PetView: View {
                 DeskCat(mood: feed.mood, size: 110)
                     .onHover { setHovering($0) }
                     // 点猫猫展开对话（设计稿「对话」）
-                    .onTapGesture { PetPanels.shared.toggleChat() }
+                    .onTapGesture { PetPanels.shared.toggleNotes() }
             }
             .frame(width: 230, height: 230, alignment: .bottomTrailing)
             .padding(.trailing, 20)

@@ -22,9 +22,10 @@ enum Garden {
     static var biography: URL { root.appendingPathComponent("biography") }
     static var links: URL { root.appendingPathComponent("links") }
     static var cases: URL { root.appendingPathComponent("cases") }
+    static var jots: URL { root.appendingPathComponent("jots") }
 
     static func ensure() {
-        for dir in [notes, people, journal, biography, links, cases] {
+        for dir in [notes, people, journal, biography, links, cases, jots] {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
     }
@@ -186,9 +187,11 @@ enum DreamAgent {
             MomentsBridge.writeSnapshot()
             let system = """
             你是「懒猫」的梦（一片一片），工作目录就是懒猫的花园（notes/<日期>/ 时间笔记、
-            people/ 人物卡、journal/ 梦记、links/ 链接卡、raw/ 原料段、moments_snapshot.md 小传快照）。
+            people/ 人物卡、journal/ 梦记、links/ 链接卡、raw/ 原料段、jots/ 用户便签、moments_snapshot.md 小传快照）。
             花园是搜索的地基：所有和用户相关的信息都要组织到这里。
-            用你的文件和 bash 工具翻今天的笔记，只搞清楚三件事：
+            jots/<日期>.md 是用户主动记给你的便签（一行一条）——这是他特意想让你
+            知道的事，优先读、优先当证据；比屏幕上偶然看到的更重要。
+            用你的文件和 bash 工具翻今天的笔记和便签，只搞清楚三件事：
             1) 人物——谁反复出现；2) 关系——对用户意味着什么、最近温度（亲近/紧张/疏远）
             及带日期的证据；3) 用户本人——累不累、答应过什么、情绪与身体信号。
             然后：更新/合并 people/<名>.md（保留旧证据）。人物卡的证据优先引用笔记
@@ -209,7 +212,8 @@ enum DreamAgent {
             }
         }
         let system = """
-        你是「懒猫」的梦（一片一片）。你翻用户的时间笔记，只搞清楚三件事：
+        你是「懒猫」的梦（一片一片）。你翻用户的时间笔记和便签（jots/<日期>.md
+        是用户主动记给你的，优先读、优先当证据），只搞清楚三件事：
         1) 人物——谁在用户生活里反复出现；
         2) 关系——这个人对用户意味着什么，最近的温度（亲近/紧张/疏远）有没有变化，证据是什么；
         3) 用户本人——累不累、答应过自己或别人什么、情绪走向、身体信号（睡眠/久坐/疼痛）。
@@ -251,6 +255,13 @@ enum DreamAgent {
                 let url = Garden.notes.appendingPathComponent(day)
                     .appendingPathComponent(args["name"] as? String ?? "")
                 return (try? String(contentsOf: url, encoding: .utf8)) ?? "（读不到）"
+            },
+            AgentTool(name: "read_jots",
+                      description: "读用户主动记给你的便签（jots/<日期>.md，一行一条）。day 省略 = 今天",
+                      parameters: ["day": ["type": "string"]]) { args in
+                let day = args["day"] as? String ?? Garden.day()
+                let url = Garden.jots.appendingPathComponent("\(day).md")
+                return (try? String(contentsOf: url, encoding: .utf8)) ?? "（这天没有便签）"
             },
             AgentTool(name: "list_people",
                       description: "列出已有的人物卡",
