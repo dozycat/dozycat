@@ -32,10 +32,8 @@ struct BookPanelView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(width: 760, height: 520)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(DS.paper.opacity(0.82)))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .strokeBorder(DS.lineStrong, lineWidth: 1))
+        .clipShape(DesktopCardChrome.shape())
+        .background(DesktopCardChrome.surface())
         .onExitCommand { PetPanels.shared.closeBook() }
     }
 
@@ -348,8 +346,7 @@ struct BookNewsCard: View {
         .padding(.vertical, 20)
         .padding(.horizontal, 22)
         .frame(width: 340, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(DS.paper)
-            .shadow(color: DS.ink.opacity(0.16), radius: 25, y: 20))
+        .background(DesktopCardChrome.surface())
     }
 
     /// 摘第一句当引文。

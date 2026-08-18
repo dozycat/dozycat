@@ -50,14 +50,8 @@ struct OnboardingView: View {
                 .padding(.bottom, 20)
         }
         .frame(width: 480)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(DS.paper.opacity(0.96))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(DS.lineStrong, lineWidth: 1)
-        )
+        .clipShape(DesktopCardChrome.shape())
+        .background(DesktopCardChrome.surface())
         .onExitCommand { finish() }
         .task(id: page) {
             while !Task.isCancelled, page == 1 {

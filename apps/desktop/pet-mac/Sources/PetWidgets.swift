@@ -17,14 +17,13 @@ struct EnergyCapsule: View {
                     .foregroundStyle(DS.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 10)
-                    .overlay(alignment: .top) { DS.lineSoft.frame(height: 1) }
+                    .overlay(alignment: .top) { DesktopCardChrome.divider.frame(height: 1) }
             }
             .padding(16)
             .frame(width: 220)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DS.paper)
-                .shadow(color: DS.ink.opacity(0.16), radius: 22, y: 16))
+            .background(DesktopCardChrome.surface())
 
-            DS.lineStrong.frame(width: 1, height: 14)
+            DesktopCardChrome.divider.frame(width: 1, height: 14)
         }
     }
 
@@ -89,8 +88,7 @@ struct ReminderCard: View {
         .padding(.vertical, 18)
         .padding(.horizontal, 20)
         .frame(width: 360, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(DS.paper)
-            .shadow(color: DS.ink.opacity(0.16), radius: 25, y: 20))
+        .background(DesktopCardChrome.surface())
     }
 }
 
@@ -109,7 +107,7 @@ struct SmallGhostPill: ButtonStyle {
         configuration.label
             .font(.system(size: 13)).foregroundStyle(DS.inkSoft)
             .padding(.vertical, 8).padding(.horizontal, 18)
-            .background(Capsule().stroke(DS.lineStrong, lineWidth: 1))
+            .background(Capsule().stroke(DesktopCardChrome.controlStroke, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }

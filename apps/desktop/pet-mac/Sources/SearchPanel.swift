@@ -58,7 +58,7 @@ struct SearchPanelView: View {
         case intake, evidence, report
     }
 
-    private let panelShape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+    private let panelShape = DesktopCardChrome.shape()
 
     private var stage: Stage {
         if model.answering || model.caseReport != nil { return .report }
@@ -127,8 +127,16 @@ struct SearchPanelView: View {
             if stage != .report { footer }
         }
         .frame(width: panelWidth)
-        .background(panelShape.fill(SearchDS.paper))
-        .overlay(panelShape.strokeBorder(SearchDS.line, lineWidth: 1))
+        // 搜索始终是固定白纸，但外沿跟桌面浮卡一致：不画描边，只留柔和阴影。
+        .background(
+            panelShape
+                .fill(SearchDS.paper)
+                .shadow(
+                    color: SearchDS.ink.opacity(0.16),
+                    radius: DesktopCardChrome.shadowRadius,
+                    y: DesktopCardChrome.shadowY
+                )
+        )
         .environment(\.openURL, OpenURLAction { url in
             SearchOpenTarget.open(url: url) ? .handled : .discarded
         })

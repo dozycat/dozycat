@@ -1,5 +1,16 @@
 import SwiftUI
 
+/// 桌宠可见内容仍按原来的 420pt 画布布局；宿主窗只向左、向上扩出透明区，
+/// 承接提醒卡、能量卡和小传卡的柔影。这样卡片与猫在屏幕上的位置不变，
+/// 阴影也不会再被窗口边界切成直线。
+enum PetWindowLayout {
+    static let canvasWidth: CGFloat = 420
+    static let canvasHeight: CGFloat = 420
+    static let shadowInsetX: CGFloat = 60
+    static let windowWidth: CGFloat = 520
+    static let windowHeight: CGFloat = 480
+}
+
 /// 桌宠本体：提醒卡 + 悬停能量胶囊 + 会换表情的猫（桌面套件）。
 /// 原则：猫本身就是能量表——数字只在悬停时出现。
 struct PetView: View {
@@ -28,11 +39,14 @@ struct PetView: View {
                             PetPanels.shared.writeSearchSnapshot(to: path)
                         }
                     }
+                    if let path = defaults.string(forKey: "captureNotes") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            PetPanels.shared.writeNotesSnapshot(to: path)
+                        }
+                    }
                     if let path = defaults.string(forKey: "capturePet") {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                            NSApp.windows.first(where: {
-                                abs($0.frame.width - 420) < 1 && abs($0.frame.height - 420) < 1
-                            })?.contentView?.writeDebugPNG(to: path)
+                            PetPanels.shared.petWindow?.contentView?.writeDebugPNG(to: path)
                         }
                     }
                     if let q = defaults.string(forKey: "searchQuery") {
@@ -73,33 +87,47 @@ struct PetView: View {
                         Task { @MainActor in
                             try? await Task.sleep(nanoseconds: 800_000_000)
                             var panels: [(String, AnyView)] = [
-                                ("onboarding-1", AnyView(OnboardingView(initialPage: 0))),
-                                ("onboarding-2", AnyView(OnboardingView(initialPage: 1))),
-                                ("onboarding-3", AnyView(OnboardingView(initialPage: 2))),
-                                ("onboarding-4", AnyView(OnboardingView(initialPage: 3))),
+                                ("onboarding-1", AnyView(OnboardingView(initialPage: 0)
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
+                                ("onboarding-2", AnyView(OnboardingView(initialPage: 1)
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
+                                ("onboarding-3", AnyView(OnboardingView(initialPage: 2)
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
+                                ("onboarding-4", AnyView(OnboardingView(initialPage: 3)
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
                                 ("settings-general", AnyView(PetSettingsView(initialPane: .general))),
                                 ("settings-sensing", AnyView(PetSettingsView(initialPane: .sensing))),
                                 ("settings-model", AnyView(PetSettingsView(initialPane: .model))),
-                                ("rest-countdown", AnyView(RestCountdownCard(previewSeconds: 47))),
+                                ("rest-countdown", AnyView(RestCountdownCard(previewSeconds: 47)
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
+                                ("reminder", AnyView(ReminderCard(
+                                    message: "坐久了。写完这句就去接杯水？",
+                                    countLine: "今天第 2 次提醒 · 你答应过自己的",
+                                    onGo: {}, onSnooze: {}
+                                ).padding(DesktopCardChrome.windowShadowPadding))),
                                 ("rest", AnyView(RestOverlayView(previewSeconds: 272)
                                     .frame(width: 1200, height: 760))),
                                 ("menu", AnyView(MenuBarDropdown())),
-                                ("notes", AnyView(NotesPanelView())),
-                                ("book", AnyView(BookPanelView())),
-                                ("search", AnyView(SearchPanelView())),
+                                ("notes", AnyView(NotesPanelView()
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
+                                ("book", AnyView(BookPanelView()
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
+                                ("search", AnyView(SearchPanelView()
+                                    .padding(DesktopCardChrome.windowShadowPadding))),
                                 ("pet", AnyView(
                                     VStack(alignment: .trailing, spacing: 0) {
                                         EnergyCapsule()
                                         DeskCat(mood: .doze, size: 110)
                                             .padding(.trailing, 24)
                                     }
-                                    .padding(36)
+                                    .padding(DesktopCardChrome.windowShadowPadding)
                                 )),
                                 ("moods", AnyView(MoodBoardGrid())),
                             ]
                             // 截图用：news 读过后为 nil，退回最新一回，好让官网侧图用真实数据
                             if let chapter = BiographyStore.shared.news ?? BiographyStore.shared.latest {
-                                panels.append(("booknews", AnyView(BookNewsCard(chapter: chapter))))
+                                panels.append(("booknews", AnyView(BookNewsCard(chapter: chapter)
+                                    .padding(DesktopCardChrome.windowShadowPadding))))
                             }
                             let renderOnly = defaults.string(forKey: "renderOnly")
                             for (name, view) in panels where renderOnly == nil || renderOnly == name {
@@ -201,7 +229,15 @@ struct PetView: View {
             .padding(.trailing, 20)
         }
         .padding(20)
-        .frame(width: 420, height: 420, alignment: .bottomTrailing)
+        .frame(width: PetWindowLayout.canvasWidth,
+               height: PetWindowLayout.canvasHeight,
+               alignment: .bottomTrailing)
+        // 原 420pt 画布放在新窗口的右下区域：左侧多 60pt、上侧多 60pt，
+        // 右侧仍有 40pt。窗口同时左移 60pt，所以用户看到的位置完全不动。
+        .padding(.leading, PetWindowLayout.shadowInsetX)
+        .frame(width: PetWindowLayout.windowWidth,
+               height: PetWindowLayout.windowHeight,
+               alignment: .bottomLeading)
         .animation(.easeOut(duration: 0.25), value: feed.reminder)
     }
 

@@ -66,6 +66,40 @@ enum DS {
     static let catLine = Color(hex: 0xE8E6E0)    // 轮廓描边
 }
 
+#if os(macOS)
+/// 桌面常驻小件的共同外观。
+///
+/// 能量卡是这类组件的视觉基准：实色纸面、无外描边、柔和阴影。独立窗口
+/// 会在内容外留透明缓冲承接同一份 SwiftUI 阴影，避免 NSPanel 系统阴影带出
+/// 一圈硬边。
+enum DesktopCardChrome {
+    static let cornerRadius: CGFloat = 16
+    static let divider = DS.lineSoft
+    static let controlStroke = DS.line
+    static let shadowColor = DS.ink.opacity(0.16)
+    static let shadowRadius: CGFloat = 22
+    static let shadowY: CGFloat = 16
+    /// 22pt 模糊核加 16pt 下偏移在 40pt 处仍有可见 alpha；留到约 3.5σ
+    /// 之外，让透明窗边界处的阴影真正衰减到肉眼不可见，避免矩形截断线。
+    static let windowShadowPadding: CGFloat = 96
+
+    static func shape(radius: CGFloat = cornerRadius) -> RoundedRectangle {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+    }
+
+    static func surface(radius: CGFloat = cornerRadius,
+                        elevated: Bool = true) -> some View {
+        shape(radius: radius)
+            .fill(DS.paper)
+            .shadow(
+                color: elevated ? shadowColor : .clear,
+                radius: elevated ? shadowRadius : 0,
+                y: elevated ? shadowY : 0
+            )
+    }
+}
+#endif
+
 // MARK: - Shared button styles
 
 struct InkPillStyle: ButtonStyle {

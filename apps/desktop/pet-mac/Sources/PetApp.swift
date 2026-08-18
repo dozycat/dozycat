@@ -215,8 +215,11 @@ final class PetPanels {
         }
         SearchModel.shared.query = ""
         SearchModel.shared.caseReport = nil
-        let panel = CardPanel(content: SearchPanelView(), width: 680, cornerRadius: 20,
-                              vibrancy: false)
+        let panel = CardPanel(content: SearchPanelView(), width: 680,
+                              cornerRadius: DesktopCardChrome.cornerRadius,
+                              vibrancy: false,
+                              shadowPadding: DesktopCardChrome.windowShadowPadding,
+                              systemShadow: false)
         adopt(panel, into: \.searchPanel)
         panel.showCentered()
     }
@@ -235,6 +238,10 @@ final class PetPanels {
     func writeSearchSnapshot(to path: String) {
         searchPanel?.writeDebugSnapshot(to: path)
     }
+
+    func writeNotesSnapshot(to path: String) {
+        notesPanel?.writeDebugSnapshot(to: path)
+    }
     #endif
 
     /// 记事本 · 点猫猫展开：你记，它读（取代了从前的实时对话）。
@@ -243,7 +250,13 @@ final class PetPanels {
             closeNotes()
             return
         }
-        let panel = CardPanel(content: NotesPanelView(), width: 380, cornerRadius: 20)
+        // 记事本与猫旁能量卡都用实色纸面；关闭 vibrancy，避免同一套 token
+        // 在窗口宿主里被染成另一种灰。
+        let panel = CardPanel(content: NotesPanelView(), width: 380,
+                              cornerRadius: DesktopCardChrome.cornerRadius,
+                              vibrancy: false,
+                              shadowPadding: DesktopCardChrome.windowShadowPadding,
+                              systemShadow: false)
         adopt(panel, into: \.notesPanel)
         panel.show(near: petWindow)
     }
@@ -260,7 +273,11 @@ final class PetPanels {
             closeBook()
             return
         }
-        let panel = CardPanel(content: BookPanelView(), width: 760, cornerRadius: 20)
+        let panel = CardPanel(content: BookPanelView(), width: 760,
+                              cornerRadius: DesktopCardChrome.cornerRadius,
+                              vibrancy: false,
+                              shadowPadding: DesktopCardChrome.windowShadowPadding,
+                              systemShadow: false)
         adopt(panel, into: \.bookPanel)
         panel.showCentered(yRatio: 0.56)
     }
@@ -280,7 +297,10 @@ final class PetPanels {
     func presentRestCountdown() {
         guard restCountdownPanel == nil else { return }
         let panel = CardPanel(content: RestCountdownCard(), width: 500,
-                              cornerRadius: 20, dismissOnResignKey: false)
+                              cornerRadius: DesktopCardChrome.cornerRadius,
+                              vibrancy: false,
+                              shadowPadding: DesktopCardChrome.windowShadowPadding,
+                              systemShadow: false, dismissOnResignKey: false)
         restCountdownPanel = panel
         panel.onClose = { [weak self] in self?.restCountdownPanel = nil }
         panel.showTopRight()
@@ -310,7 +330,10 @@ final class PetPanels {
     /// 面板不因失焦收起——用户中途要去系统设置授权。
     func showOnboarding(completion: @escaping () -> Void) {
         let panel = CardPanel(content: OnboardingView(), width: 480,
-                              dismissOnResignKey: false)
+                              cornerRadius: DesktopCardChrome.cornerRadius,
+                              vibrancy: false,
+                              shadowPadding: DesktopCardChrome.windowShadowPadding,
+                              systemShadow: false, dismissOnResignKey: false)
         onboardingPanel = panel
         panel.onClose = { [weak self] in
             self?.onboardingPanel = nil
@@ -344,7 +367,16 @@ final class PetPanels {
         }
         .padding(28)
         .background(DS.bg)
-        let panel = CardPanel(content: grid, width: 900)
+        let panel = CardPanel(
+            content: grid
+                .clipShape(DesktopCardChrome.shape())
+                .background(DesktopCardChrome.surface()),
+            width: 900,
+            cornerRadius: DesktopCardChrome.cornerRadius,
+            vibrancy: false,
+            shadowPadding: DesktopCardChrome.windowShadowPadding,
+            systemShadow: false
+        )
         adopt(panel, into: \.searchPanel)
         panel.showCentered(yRatio: 0.5)
     }
@@ -375,7 +407,9 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         hosting.layer?.backgroundColor = NSColor.clear.cgColor
         hosting.layer?.isOpaque = false
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 420),
+            contentRect: NSRect(x: 0, y: 0,
+                                width: PetWindowLayout.windowWidth,
+                                height: PetWindowLayout.windowHeight),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -389,7 +423,10 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = hosting
         if let screen = NSScreen.main {
             let frame = screen.visibleFrame
-            window.setFrameOrigin(NSPoint(x: frame.maxX - 460, y: frame.minY + 40))
+            // 窗口向左、向上扩容，但 420pt 可见画布仍落在旧位置；右侧透明区
+            // 贴住可见屏幕边缘，柔影有完整的衰减距离。
+            window.setFrameOrigin(NSPoint(x: frame.maxX - PetWindowLayout.windowWidth,
+                                          y: frame.minY + 40))
         }
         window.orderFrontRegardless()
         self.window = window

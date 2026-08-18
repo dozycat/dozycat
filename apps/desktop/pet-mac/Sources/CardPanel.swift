@@ -18,21 +18,25 @@ final class CardPanel: NSPanel {
     private let hosting: NSHostingView<AnyView>
     private var resignObserver: NSObjectProtocol?
     private var dismissing = false
+    /// 给 SwiftUI 自绘阴影留出的透明窗内缓冲；默认面板仍为 0。
+    private let shadowPadding: CGFloat
     /// onboarding 这类流程面板要挺住失焦（用户中途去系统设置授权，回来还得在）。
     private let dismissOnResignKey: Bool
 
     init(content: some View, width: CGFloat, cornerRadius: CGFloat = 22,
-         vibrancy: Bool = true, dismissOnResignKey: Bool = true) {
+         vibrancy: Bool = true, shadowPadding: CGFloat = 0,
+         systemShadow: Bool = true, dismissOnResignKey: Bool = true) {
+        self.shadowPadding = shadowPadding
         self.dismissOnResignKey = dismissOnResignKey
-        hosting = NSHostingView(rootView: AnyView(content))
+        hosting = NSHostingView(rootView: AnyView(content.padding(shadowPadding)))
         super.init(contentRect: NSRect(x: 0, y: 0, width: width, height: 100),
                    styleMask: [.borderless, .nonactivatingPanel],
                    backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
-        // 阴影交给窗口系统绘制。SwiftUI shadow 不参与 fittingSize，会在透明
-        // NSPanel 的矩形边界被裁成直角残片（尤其明显在 Chat 左下角）。
-        hasShadow = true
+        // 常规面板交给窗口系统投影；需要能量卡式柔和阴影的面板会关闭它，
+        // 并借 shadowPadding 在透明窗口里完整绘制 SwiftUI shadow。
+        hasShadow = systemShadow
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
@@ -93,8 +97,11 @@ final class CardPanel: NSPanel {
         // clamp 进可见区：小屏上 900pt 宽的能量面板不能掉出屏幕
         var origin = NSPoint(x: f.midX - size.width / 2,
                              y: f.minY + f.height * yRatio - size.height / 2)
-        origin.x = max(f.minX + 16, min(origin.x, f.maxX - size.width - 16))
-        origin.y = max(f.minY + 16, min(origin.y, f.maxY - size.height - 16))
+        // 只约束可见卡片，不把透明阴影缓冲算进安全边距。
+        origin.x = max(f.minX + 16 - shadowPadding,
+                       min(origin.x, f.maxX - size.width - 16 + shadowPadding))
+        origin.y = max(f.minY + 16 - shadowPadding,
+                       min(origin.y, f.maxY - size.height - 16 + shadowPadding))
         present(origin: origin)
     }
 
@@ -107,10 +114,12 @@ final class CardPanel: NSPanel {
         let size = hosting.fittingSize
         setContentSize(size)
         let f = screen.visibleFrame
-        var origin = NSPoint(x: anchor.frame.maxX - size.width - 20,
-                             y: anchor.frame.minY + 200)
-        origin.x = max(f.minX + 16, min(origin.x, f.maxX - size.width - 16))
-        origin.y = max(f.minY + 16, min(origin.y, f.maxY - size.height - 16))
+        var origin = NSPoint(x: anchor.frame.maxX - size.width - 20 + shadowPadding,
+                             y: anchor.frame.minY + 200 - shadowPadding)
+        origin.x = max(f.minX + 16 - shadowPadding,
+                       min(origin.x, f.maxX - size.width - 16 + shadowPadding))
+        origin.y = max(f.minY + 16 - shadowPadding,
+                       min(origin.y, f.maxY - size.height - 16 + shadowPadding))
         present(origin: origin)
     }
 
@@ -120,8 +129,8 @@ final class CardPanel: NSPanel {
         let size = hosting.fittingSize
         setContentSize(size)
         let f = screen.visibleFrame
-        let origin = NSPoint(x: f.maxX - size.width - margin,
-                             y: f.maxY - size.height - margin)
+        let origin = NSPoint(x: f.maxX - size.width - margin + shadowPadding,
+                             y: f.maxY - size.height - margin + shadowPadding)
         present(origin: origin)
     }
 

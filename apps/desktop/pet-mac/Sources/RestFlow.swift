@@ -199,14 +199,8 @@ struct RestCountdownCard: View {
         .padding(.vertical, 20)
         .padding(.horizontal, 22)
         .frame(width: 500, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(DS.paper.opacity(0.94))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(DS.lineStrong, lineWidth: 1)
-        )
+        .clipShape(DesktopCardChrome.shape())
+        .background(DesktopCardChrome.surface())
     }
 }
 

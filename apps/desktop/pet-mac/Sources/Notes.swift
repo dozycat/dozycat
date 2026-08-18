@@ -83,9 +83,9 @@ struct NotesPanelView: View {
             inputBar
         }
         .frame(width: 380, height: 480)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(DS.paper.opacity(0.82)))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .strokeBorder(DS.lineStrong, lineWidth: 1))
+        .clipShape(DesktopCardChrome.shape())
+        // 阴影画在裁切后的卡片背后；CardPanel 会为它留出透明缓冲。
+        .background(DesktopCardChrome.surface())
         .onExitCommand { PetPanels.shared.closeNotes() }
         .onAppear { focused = true; store.reload() }
     }
@@ -112,7 +112,7 @@ struct NotesPanelView: View {
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 20)
-        .overlay(alignment: .bottom) { DS.line.frame(height: 1) }
+        .overlay(alignment: .bottom) { DesktopCardChrome.divider.frame(height: 1) }
     }
 
     @ViewBuilder
@@ -173,7 +173,7 @@ struct NotesPanelView: View {
             .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .padding(.leading, 16).padding(.trailing, 7).padding(.vertical, 7)
-        .overlay(Capsule().stroke(DS.lineStrong, lineWidth: 1))
+        .overlay(Capsule().stroke(DesktopCardChrome.controlStroke, lineWidth: 1))
         .padding(.horizontal, 16).padding(.bottom, 16).padding(.top, 4)
     }
 
