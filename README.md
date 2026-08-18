@@ -4,6 +4,8 @@
 和「生理能量」两条刻度轻轻记着你的状态，提醒你休息、喝水、睡觉。
 工作交给别的 AI，它只负责你。
 
+💬 [加入 dozycat Discord 社区](https://discord.gg/W6nKme7cB8)
+
 设计源（spec）：[dozycat v2 · Claude Design](https://claude.ai/design/p/17a7d3cc-5126-44af-8c0d-a3e54757796f?file=dozycat+v2.dc.html)
 
 ## 仓库结构
