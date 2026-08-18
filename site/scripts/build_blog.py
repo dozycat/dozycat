@@ -264,12 +264,12 @@ def render_index(posts: list[Post]) -> str:
     </article>"""
         )
 
-    return f"""{page_head('懒猫手记 — 懒猫君', '懒猫君的产品、设计与生活观察。', '../')}
+    return f"""{page_head('懒猫君手记', '懒猫君的产品、设计与生活观察。', '../')}
 <body class="blog-page">
 {blog_nav('../', './')}
 <main class="blog-index">
   <header class="blog-index-hero">
-    <div class="kicker">懒猫手记 · 偶尔更新</div>
+    <div class="kicker">懒猫君手记 · 偶尔更新</div>
     <h1>把猫是怎么想的，<br>慢慢写下来。</h1>
     <p>关于感知、记忆和陪伴，也关于我们为什么这样做。这里不赶连载，想明白一件，就写一件。</p>
   </header>
@@ -284,7 +284,7 @@ def render_index(posts: list[Post]) -> str:
 
 
 def render_post(post: Post, body_html: str) -> str:
-    return f"""{page_head(f'{post.title} — 懒猫手记', post.description, '../../')}
+    return f"""{page_head(f'{post.title} — 懒猫君手记', post.description, '../../')}
 <body class="blog-page article-page">
 {blog_nav('../../', '../')}
 <main>

@@ -1,9 +1,9 @@
 [
   {
     "slug": "fatigue",
-    "source": "../../docs/FATIGUE.md",
+    "source": "posts/fatigue.md",
     "category": "产品手记",
     "date": "2026-08-18",
-    "description": "懒猫怎样只凭输入节奏、在位状态与活动类别感知疲劳，同时不记录键值、不截屏，也不读取窗口内容。"
+    "description": "它不看你写了什么，只从忙碌的节奏里，轻轻提醒你什么时候该歇一歇。"
   }
 ]
