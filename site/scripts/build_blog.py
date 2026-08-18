@@ -20,7 +20,7 @@ MANIFEST_PATH = BLOG_DIR / "posts.json"
 class Post:
     slug: str
     source: Path
-    category: str
+    tags: tuple[str, ...]
     date: str
     description: str
     title: str
@@ -225,7 +225,7 @@ def blog_nav(home_href: str, blog_href: str) -> str:
   <div class="nav-links">
     <a href="{home_href}">小传</a>
     <a class="nav-blog active" href="{blog_href}">手记</a>
-    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat/releases/latest/download/dozycat-0.1.1-arm64.dmg">领养一只懒猫</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat/releases/latest/download/dozycat-0.1.2-arm64.dmg">领养一只懒猫</a>
   </div>
 </nav>"""
 
@@ -243,6 +243,13 @@ def blog_footer(home_href: str, blog_href: str) -> str:
 </footer>"""
 
 
+def render_tags(tags: tuple[str, ...]) -> str:
+    rendered = "".join(
+        f'<span class="post-tag">{html.escape(tag)}</span>' for tag in tags
+    )
+    return f'<span class="post-tags" aria-label="标签">{rendered}</span>'
+
+
 def render_index(posts: list[Post]) -> str:
     cards: list[str] = []
     for post in posts:
@@ -255,7 +262,10 @@ def render_index(posts: list[Post]) -> str:
           <span class="signal-caption">72&nbsp;&nbsp;·&nbsp;&nbsp;45</span>
         </span>
         <span class="blog-card-copy">
-          <span class="article-meta">{html.escape(post.category)} · {post.display_date} · {post.reading_minutes} 分钟</span>
+          <span class="post-meta">
+            {render_tags(post.tags)}
+            <span class="article-meta">{post.display_date} · {post.reading_minutes} 分钟</span>
+          </span>
           <span class="blog-card-title">{html.escape(post.title)}</span>
           <span class="blog-card-description">{html.escape(post.description)}</span>
         </span>
@@ -291,7 +301,10 @@ def render_post(post: Post, body_html: str) -> str:
   <article class="blog-article">
     <header class="article-hero">
       <a class="article-back" href="../">← 返回全部手记</a>
-      <div class="article-meta">{html.escape(post.category)} · {post.display_date} · {post.reading_minutes} 分钟</div>
+      <div class="post-meta">
+        {render_tags(post.tags)}
+        <span class="article-meta">{post.display_date} · {post.reading_minutes} 分钟</span>
+      </div>
       <h1>{html.escape(post.title)}</h1>
       <p class="article-dek">{html.escape(post.description)}</p>
       <div class="article-energy" aria-hidden="true">
@@ -322,10 +335,13 @@ def load_posts() -> list[tuple[Post, str]]:
         source = (BLOG_DIR / item["source"]).resolve()
         markdown = source.read_text(encoding="utf-8")
         title, body_html = markdown_to_html(markdown)
+        tags = tuple(item["tags"])
+        if not tags:
+            raise ValueError(f"Blog post {item['slug']} needs at least one tag")
         post = Post(
             slug=item["slug"],
             source=source,
-            category=item["category"],
+            tags=tags,
             date=item["date"],
             description=item["description"],
             title=title,

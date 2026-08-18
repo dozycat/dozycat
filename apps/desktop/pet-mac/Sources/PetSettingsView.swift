@@ -51,18 +51,23 @@ struct PetSettingsView: View {
             header
             panePicker
 
-            Group {
-                switch pane {
-                case .general: generalPane
-                case .sensing: sensingPane
-                case .model: modelPane
+            ScrollView(.vertical) {
+                Group {
+                    switch pane {
+                    case .general: generalPane
+                    case .sensing: sensingPane
+                    case .model: modelPane
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.bottom, 4)
+                .id(pane)
+                .transition(.opacity)
             }
+            .scrollIndicators(.hidden)
             .frame(height: 322, alignment: .top)
             .padding(.horizontal, 28)
             .padding(.top, 22)
-            .id(pane)
-            .transition(.opacity)
 
             footer
         }
@@ -132,7 +137,7 @@ struct PetSettingsView: View {
     }
 
     private var generalPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 18) {
             settingGroup(title: "语言") {
                 settingLine(title: "界面语言", detail: languageChanged ? "重启懒猫后生效" : nil) {
                     pillPicker(values: [
@@ -172,8 +177,12 @@ struct PetSettingsView: View {
 
             settingGroup(title: "更新") {
                 settingLine(title: "当前版本", detail: nil) {
-                    Text(verbatim: appVersion)
-                        .font(.system(size: 13)).foregroundStyle(DS.muted)
+                    HStack(spacing: 10) {
+                        Text(verbatim: appVersion)
+                            .font(.system(size: 13)).foregroundStyle(DS.muted)
+                        Button("检查更新") { Updater.shared.checkForUpdates() }
+                            .buttonStyle(SmallGhostPill())
+                    }
                 }
                 settingLine(title: "自动检查更新",
                             detail: "后台每天看一次官网有没有新版本") {
@@ -182,11 +191,6 @@ struct PetSettingsView: View {
                         .onChange(of: autoUpdate) { _, on in
                             Updater.shared.automaticallyChecks = on
                         }
-                }
-                HStack {
-                    Spacer()
-                    Button("检查更新") { Updater.shared.checkForUpdates() }
-                        .buttonStyle(SmallGhostPill())
                 }
             }
         }
@@ -357,7 +361,7 @@ struct PetSettingsView: View {
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
                 .background(Capsule().fill(active ? DS.ink : Color.clear))
-                .overlay(Capsule().stroke(active ? Color.clear : DS.lineStrong, lineWidth: 1))
+                .overlay(Capsule().strokeBorder(active ? Color.clear : DS.lineStrong, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -392,7 +396,7 @@ struct PetSettingsView: View {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
             .fill(DS.card)
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(DS.line, lineWidth: 1))
+                .strokeBorder(DS.line, lineWidth: 1))
     }
 
     private func fieldLine(_ label: LocalizedStringKey, text: Binding<String>,
@@ -438,6 +442,10 @@ struct PetSettingsView: View {
     }
 
     private func requestScreenAccess() {
+        if CGPreflightScreenCaptureAccess() {
+            screenGranted = true
+            return
+        }
         if !CGRequestScreenCaptureAccess(),
            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
             NSWorkspace.shared.open(url)

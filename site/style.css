@@ -502,6 +502,20 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 .signal-body i { background: var(--coral); }
 .signal-caption { font-size: 11px; letter-spacing: .18em; color: var(--muted); }
 .blog-card-copy { display: flex; flex-direction: column; align-items: flex-start; }
+.post-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.post-tags { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.post-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #FFF0ED;
+  color: #D96552;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: .08em;
+}
 .article-meta {
   font-size: 11px;
   letter-spacing: .16em;

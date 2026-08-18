@@ -240,12 +240,12 @@ fn main() {
     let store = open_store();
 
     // 初始能量：宿主注入（DOZYCAT_INIT_*，pet 持库时由它提供）优先，
-    // 其次从自己的账本恢复（独立运行模式），最后默认 72/72。
+    // 其次从自己的账本恢复（独立运行模式），最后给新用户默认 60/60。
     let resume = store.as_ref().and_then(|s| s.latest_energy());
     let phys0 = std::env::var("DOZYCAT_INIT_PHYS").ok().and_then(|v| v.parse().ok())
-        .or(resume.as_ref().map(|e| e.phys as f32)).unwrap_or(72.0);
+        .or(resume.as_ref().map(|e| e.phys as f32)).unwrap_or(60.0);
     let mind0 = std::env::var("DOZYCAT_INIT_MIND").ok().and_then(|v| v.parse().ok())
-        .or(resume.as_ref().map(|e| e.mind as f32)).unwrap_or(72.0);
+        .or(resume.as_ref().map(|e| e.mind as f32)).unwrap_or(60.0);
 
     let mut model = EnergyModel::new(phys0, mind0);
     let mut prev_keys = counter(KEY_DOWN);

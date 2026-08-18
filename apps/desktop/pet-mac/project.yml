@@ -43,6 +43,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
+        LSMultipleInstancesProhibited: true
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前（只产出在/不在，一张画面都不保存）。
         NSHumanReadableCopyright: © 2026 dozycat
@@ -59,6 +60,16 @@ targets:
         # scheme 仍叫 DozycatPet。改这行要同步改 package-dmg.sh 的 dozycat.app。
         PRODUCT_NAME: dozycat
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_IDENTITY: "-"
-        MARKETING_VERSION: "0.1.1"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: "0.1.2"
+        CURRENT_PROJECT_VERSION: "3"
+      configs:
+        # 屏幕录制授权绑定代码签名。ad-hoc Debug 的 designated requirement 只有
+        # 每次构建都变化的 CDHash，会让 TCC 把同一个 bundle 当成新 app；官方
+        # 开发机用稳定的 Developer ID，CI 仍可传 CODE_SIGNING_ALLOWED=NO。
+        Debug:
+          CODE_SIGN_STYLE: Manual
+          DEVELOPMENT_TEAM: PR5A8VMY8S
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+        # 正式包由 package-dmg.sh 在嵌入 helper 后 inside-out 重签并公证。
+        Release:
+          CODE_SIGN_IDENTITY: "-"

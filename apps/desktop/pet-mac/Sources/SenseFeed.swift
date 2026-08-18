@@ -28,8 +28,8 @@ private final class JSONLineBuffer: @unchecked Sendable {
 final class SenseFeed: ObservableObject {
     static let shared = SenseFeed()
 
-    @Published var phys = 45
-    @Published var mind = 72
+    @Published var phys: Int
+    @Published var mind: Int
     @Published var activeStreakMin = 0
     @Published var mood: CatMood = .doze
     /// 最近一分钟的劳动强度（0-1，键鼠折算）。「一段一段」写进笔记 frontmatter，
@@ -50,15 +50,22 @@ final class SenseFeed: ObservableObject {
     private var reminderDismissTask: Task<Void, Never>?
     private var happyUntil: Date?
 
+    private init() {
+        let restored = PetStore.shared.latestEnergy()
+        phys = restored.phys
+        mind = restored.mind
+    }
+
     func start() {
+        guard process == nil else { return }
         if UserDefaults.standard.bool(forKey: "demoBubble") {
             show(reminder: String(localized: "坐了 1 小时 50 分，生理能量掉到 45 了。写完这段就去接杯水？"))
         }
         // 账本归 pet（单写者）；重启从账本接续能量
-        if let saved = PetStore.shared.latestEnergy() {
-            phys = saved.phys
-            mind = saved.mind
-        }
+        let saved = PetStore.shared.latestEnergy()
+        phys = saved.phys
+        mind = saved.mind
+        NSLog("SenseFeed: restored energy phys=%d mind=%d", phys, mind)
         refreshMood()
         RestSession.shared.considerAutoStart(phys: phys)
         guard let bin = Self.senseBinary() else {
@@ -92,6 +99,16 @@ final class SenseFeed: ObservableObject {
         } catch {
             NSLog("SenseFeed: failed to launch sense: \(error)")
         }
+    }
+
+    func stop() {
+        reminderDismissTask?.cancel()
+        reminderDismissTask = nil
+        if let pipe = process?.standardOutput as? Pipe {
+            pipe.fileHandleForReading.readabilityHandler = nil
+        }
+        if process?.isRunning == true { process?.terminate() }
+        process = nil
     }
 
     private func consume(_ obj: [String: Any]) {

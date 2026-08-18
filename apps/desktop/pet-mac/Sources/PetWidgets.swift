@@ -107,7 +107,7 @@ struct SmallGhostPill: ButtonStyle {
         configuration.label
             .font(.system(size: 13)).foregroundStyle(DS.inkSoft)
             .padding(.vertical, 8).padding(.horizontal, 18)
-            .background(Capsule().stroke(DesktopCardChrome.controlStroke, lineWidth: 1))
+            .background(Capsule().strokeBorder(DesktopCardChrome.controlStroke, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }

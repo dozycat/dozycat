@@ -2,7 +2,7 @@
   {
     "slug": "fatigue",
     "source": "posts/fatigue.md",
-    "category": "产品手记",
+    "tags": ["产品"],
     "date": "2026-08-18",
     "description": "它不看你写了什么，只从忙碌的节奏里，轻轻提醒你什么时候该歇一歇。"
   }

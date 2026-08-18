@@ -289,7 +289,7 @@ struct BookPanelView: View {
                 .foregroundStyle(DS.ink)
             Text(bio.writing
                 ? "正在写…写完会从桌面递给你。"
-                : "它把你的回忆写成一部还在连载的传记——数据是素材，日子是章节。每月初一更新一回；这个月聊过、记过的事攒够了，就能开第一回。")
+                : "它把你的回忆写成一部还在连载的传记——数据是素材，日子是章节。每周写好一回；这一周聊过、记过的事，会在下周成为新的一章。")
                 .font(.system(size: 13))
                 .lineSpacing(7)
                 .foregroundStyle(DS.inkSoft)

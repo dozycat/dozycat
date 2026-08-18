@@ -137,6 +137,10 @@ enum RawCapture {
     /// 这一个窗口的像素，直接取成内存里的 CGImage（ScreenCaptureKit）——
     /// **不落盘，没有截图文件存在过**，OCR 完即弃。权限同屏幕录制。
     static func windowImage(windowID: CGWindowID) async -> CGImage? {
+        // SCShareableContent 本身会触发系统的屏幕录制授权提示。后台采集只能在
+        // 当前这份签名已获授权时继续；未授权时静默跳过，弹窗只允许由设置页／
+        // onboarding 里的「去授权」按钮显式触发。
+        guard CGPreflightScreenCaptureAccess() else { return nil }
         guard let content = try? await SCShareableContent
                 .excludingDesktopWindows(false, onScreenWindowsOnly: true),
               let window = content.windows.first(where: { $0.windowID == windowID })

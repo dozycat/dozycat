@@ -41,6 +41,23 @@ enum EnergyLog {
         }
     }
 
+    /// 最近一次落盘的能量。正式账本暂时被别的进程锁住时，用它接续状态，
+    /// 避免重启回退到写死的初始值。按月份倒序找，兼容跨月后的第一次启动。
+    static func latestSample() -> Sample? {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+
+        for file in files
+            .filter({ $0.pathExtension == "jsonl" })
+            .sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+            if let sample = parse(file).last { return sample }
+        }
+        return nil
+    }
+
     /// 某一天的样本（按时间升序）。
     static func samples(on day: Date) -> [Sample] {
         let calendar = Calendar.current

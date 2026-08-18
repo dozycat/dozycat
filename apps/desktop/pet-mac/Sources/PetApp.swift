@@ -29,7 +29,11 @@ struct DozycatPetApp: App {
             HStack(spacing: 4) {
                 Image(systemName: rest.isActive ? "moon.zzz.fill" : "cat.fill")
                     .accessibilityLabel("懒猫")
-                Text(verbatim: rest.menuLabel ?? "\(feed.phys)")
+                if let label = rest.menuLabel {
+                    Text(verbatim: label)
+                } else {
+                    MenuEnergySignal(value: feed.phys)
+                }
             }
             .accessibilityElement(children: .combine)
         }
@@ -38,6 +42,33 @@ struct DozycatPetApp: App {
         Settings {
             PetSettingsView()
         }
+    }
+}
+
+/// 菜单栏只表达能量档位，精确数字留在展开面板里，避免看起来像未读角标。
+private struct MenuEnergySignal: View {
+    let value: Int
+
+    private let barHeights: [CGFloat] = [4, 6, 8, 10]
+    private var filledCount: Int {
+        guard value > 0 else { return 0 }
+        return min(barHeights.count,
+                   Int(ceil(Double(min(value, 100)) / (100 / Double(barHeights.count)))))
+    }
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 1.5) {
+            ForEach(barHeights.indices, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Color.primary.opacity(index < filledCount ? 0.92 : 0.2))
+                    .frame(width: 3, height: barHeights[index])
+            }
+        }
+        .frame(height: 11, alignment: .bottom)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("生理能量")
+        .accessibilityValue("\(value)%")
+        .help("生理能量 \(value)%")
     }
 }
 
@@ -475,7 +506,21 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
                 await BiographyStore.shared.backfillHistory()
             }
         }
+        // Claude sessions → 历史周记。参数可指向导出根目录或 cognitive_index.json；
+        // 源数据只读，周章按文件名幂等续写。
+        if let path = UserDefaults.standard.string(forKey: "backfillSessionArchive") {
+            Task { @MainActor in
+                let count = await BiographyStore.shared.backfillSessionArchive(
+                    at: URL(fileURLWithPath: path, isDirectory: true)
+                )
+                NSLog("backfillSessionArchive: wrote %d weeks from %@", count, path)
+            }
+        }
         #endif
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        SenseFeed.shared.stop()
     }
 
     /// 感知与 agent 全家桶：见过面（onboarded）之后才启动。
@@ -487,7 +532,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             FollowUpStore.shared.start()
         }
         startAgents()
-        // 《传》：启动后看看是不是该写了（月初定稿上一回 / 本月开新的一回）
+        // 《传》：启动后看看刚结束的自然周是不是该写成新的一回。
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             BiographyStore.shared.tickIfNeeded()

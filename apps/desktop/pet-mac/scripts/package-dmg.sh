@@ -9,6 +9,7 @@
 #     DOZYCAT_NOTARY_KEYCHAIN="$HOME/Library/Keychains/login.keychain-db" \
 #     scripts/package-dmg.sh
 #   scripts/package-dmg.sh --adhoc
+#   scripts/package-dmg.sh --keep-version
 #   scripts/package-dmg.sh --skip-notarize --output dist
 set -euo pipefail
 
@@ -18,6 +19,7 @@ REPO_ROOT="$(cd "$PROJECT_DIR/../../.." && pwd)"
 OUT="$PROJECT_DIR/dist"
 MODE="release"
 NOTARIZE=1
+BUMP_VERSION=1
 MIN_MACOS="14.0"
 ARCH="arm64"
 NOTARY_ARGS=()
@@ -34,6 +36,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --skip-notarize)
       NOTARIZE=0
+      ;;
+    --keep-version)
+      BUMP_VERSION=0
       ;;
     --output)
       shift
@@ -116,7 +121,7 @@ DOZYCAT_MACOS_DEPLOYMENT_TARGET="$MIN_MACOS" \
 
 cd "$PROJECT_DIR"
 # 版本号自动 +1 只在正式发布时做——adhoc 验证不消耗版本号。
-if [ "$MODE" = "release" ]; then
+if [ "$MODE" = "release" ] && [ "$BUMP_VERSION" -eq 1 ]; then
   echo "==> 版本号自动 +1（project.yml，patch 位）"
   CURRENT="$(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)"
   BUILD="$(sed -n 's/.*CURRENT_PROJECT_VERSION: "\(.*\)"/\1/p' project.yml)"
@@ -125,6 +130,10 @@ if [ "$MODE" = "release" ]; then
   sed -i '' "s/MARKETING_VERSION: \"$CURRENT\"/MARKETING_VERSION: \"$NEXT\"/" project.yml
   sed -i '' "s/CURRENT_PROJECT_VERSION: \"$BUILD\"/CURRENT_PROJECT_VERSION: \"$NEXT_BUILD\"/" project.yml
   echo "    $CURRENT (build $BUILD) → $NEXT (build $NEXT_BUILD)；记得连 project.yml 一起提交"
+elif [ "$MODE" = "release" ]; then
+  CURRENT="$(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)"
+  BUILD="$(sed -n 's/.*CURRENT_PROJECT_VERSION: "\(.*\)"/\1/p' project.yml)"
+  echo "==> 保留版本号：$CURRENT (build $BUILD)"
 fi
 
 echo "==> xcodegen + xcodebuild (Release)"

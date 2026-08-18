@@ -298,6 +298,10 @@ struct OnboardingView: View {
     }
 
     private func requestScreenAccess() {
+        if CGPreflightScreenCaptureAccess() {
+            screenGranted = true
+            return
+        }
         if !CGRequestScreenCaptureAccess() {
             Task {
                 try? await Task.sleep(nanoseconds: 700_000_000)
