@@ -5,9 +5,10 @@ import AVFoundation
 /// 疲劳感知的语义提示（v2）：pet 侧产出两枚原子——摄像头在位布尔 + 活动类别——
 /// 写进 ~/.dozycat/sense_hints.json，dozycat-sense 每分钟带保鲜期地读。
 ///
-/// 隐私边界（对齐 docs/FATIGUE.md）：摄像头帧在内存里过一遍人脸检测就丢，
-/// 不落盘不出进程，跨过文件边界的只有 true/false；OCR 文本留在 sequence 管线，
-/// 跨过边界的只有六选一的类别标签。
+/// 隐私边界（对齐 docs/FATIGUE.md）：摄像头帧在内存里过一遍人脸检测 + 表情
+/// 分类就丢，不落盘不出进程，跨过文件边界的只有在/不在的 true/false 和一个
+/// 七选一的表情标签（happy/sad 这类词，模型在本地，见 model/emotion/）；
+/// OCR 文本留在 sequence 管线，跨过边界的只有六选一的类别标签。
 enum ActivityClass: String {
     case unknown, deep, comms, meeting, browse, fun
 
@@ -69,6 +70,7 @@ final class SenseHintsPump {
 
     private var timer: Timer?
     private var present: (value: Bool, at: Date)?
+    private var mood: (value: Emotion, at: Date)?
     private var activity: (value: ActivityClass, at: Date) = (.unknown, .distantPast)
 
     private static var hintsURL: URL {
@@ -98,9 +100,10 @@ final class SenseHintsPump {
                 activity = (cls, Date())
             }
         }
-        PresenceSensor.shared.sampleIfEnabled { [weak self] present in
+        PresenceSensor.shared.sampleIfEnabled { [weak self] present, mood in
             guard let self else { return }
             if let present { self.present = (present, Date()) }
+            if let mood { self.mood = (mood, Date()) }
             self.flush()
         }
     }
@@ -118,6 +121,10 @@ final class SenseHintsPump {
             fields.append("\"present\":\(present.value)")
             fields.append("\"presentAtMs\":\(Int64(present.at.timeIntervalSince1970 * 1000))")
         }
+        if let mood {
+            fields.append("\"mood\":\"\(mood.value.rawValue)\"")
+            fields.append("\"moodAtMs\":\(Int64(mood.at.timeIntervalSince1970 * 1000))")
+        }
         if activity.value != .unknown {
             fields.append("\"activity\":\"\(activity.value.rawValue)\"")
             fields.append("\"activityAtMs\":\(Int64(activity.at.timeIntervalSince1970 * 1000))")
@@ -129,9 +136,10 @@ final class SenseHintsPump {
     }
 }
 
-/// 摄像头在位：低分辨率常开会话，30 秒抽一帧过 Vision 人脸检测。
-/// 帧只在内存里活到检测完，没有截图、没有落盘；开启期间摄像头指示灯常亮——
-/// 这是诚实的代价，设置里写明。默认关。
+/// 摄像头在位 + 表情：低分辨率常开会话，30 秒抽一帧过 Vision 人脸检测，
+/// 有脸再过一遍本地表情小模型（EmotionNet，222KB）。帧只在内存里活到推理完，
+/// 没有截图、没有落盘；开启期间摄像头指示灯常亮——这是诚实的代价，设置里写明。
+/// 默认关。
 final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     static let shared = PresenceSensor()
 
@@ -141,7 +149,10 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     private var lastDetection = Date.distantPast
     /// 最近一次检测结果（nil = 还没有 / 未开启）
     private var lastPresent: Bool?
-    private var pendingCallback: (@MainActor @Sendable (Bool?) -> Void)?
+    /// 最近一次表情判定（nil = 没脸 / 置信度不够 / 模型没加载）
+    private var lastMood: Emotion?
+    /// 懒加载：第一次用到才从 bundle 读权重；加载失败就一直是 nil，在位感知照常
+    private lazy var emotionClassifier: EmotionClassifier? = EmotionClassifier()
 
     var enabled: Bool {
         UserDefaults.standard.bool(forKey: "presenceSensing")
@@ -158,20 +169,22 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
             queue.async {
                 if self.session.isRunning { self.session.stopRunning() }
                 self.lastPresent = nil
+                self.lastMood = nil
             }
         }
     }
 
-    /// SenseHintsPump 的 30s tick 入口：回调最近的在位判定（未开启回 nil）。
-    func sampleIfEnabled(_ callback: @escaping @MainActor @Sendable (Bool?) -> Void) {
+    /// SenseHintsPump 的 30s tick 入口：回调最近的在位 + 表情判定（未开启回 nil）。
+    func sampleIfEnabled(_ callback: @escaping @MainActor @Sendable (Bool?, Emotion?) -> Void) {
         guard enabled else {
-            Task { @MainActor in callback(nil) }
+            Task { @MainActor in callback(nil, nil) }
             return
         }
         queue.async {
             if !self.session.isRunning { self.startSession() }
-            let value = self.lastPresent
-            Task { @MainActor in callback(value) }
+            let present = self.lastPresent
+            let mood = self.lastMood
+            Task { @MainActor in callback(present, mood) }
         }
     }
 
@@ -193,15 +206,27 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
-        // 30 秒抽一帧就够——在位状态的变化尺度是分钟级
-        guard Date().timeIntervalSince(lastDetection) >= 30,
+        // 5 秒抽一帧：在位状态是分钟级的，但微笑转瞬即逝，30 秒一拍会漏掉大半。
+        // 人脸检测 + 6 万参数的小模型，5 秒一次的开销是毫秒级，可以承受。
+        guard Date().timeIntervalSince(lastDetection) >= 5,
               let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         lastDetection = Date()
-        let request = VNDetectFaceRectanglesRequest { [weak self] req, _ in
-            let faces = (req.results as? [VNFaceObservation]) ?? []
-            self?.lastPresent = !faces.isEmpty
-        }
-        // 帧的生命周期到这里为止：检测完即弃，不留任何图像数据
+        let request = VNDetectFaceRectanglesRequest()
         try? VNImageRequestHandler(cvPixelBuffer: pixels, options: [:]).perform([request])
+        let faces = request.results ?? []
+        lastPresent = !faces.isEmpty
+        // 有脸就顺手认一下表情：取最大的脸（屏幕前的人），置信度不够记 nil
+        if let face = faces.max(by: { $0.boundingBox.width < $1.boundingBox.width }) {
+            let mood = emotionClassifier?.classify(pixelBuffer: pixels, face: face)
+            lastMood = mood?.0
+            // 笑了（置信度要够高，别把嘴角的错觉当成乐子）→ 微笑时刻去看一眼屏幕。
+            // 冷却和去重都在 SmileMoments 里，这里只管报信。
+            if let mood, mood.0 == .happy, mood.1 >= 0.6 {
+                Task { @MainActor in SmileMoments.shared.smiled() }
+            }
+        } else {
+            lastMood = nil
+        }
+        // 帧的生命周期到这里为止：推理完即弃，不留任何图像数据
     }
 }

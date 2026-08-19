@@ -18,6 +18,8 @@ apps/
     crates/dozycat-sense/   内容盲疲劳感知守护（喂 JSONL 给桌宠，见 docs/FATIGUE.md）
 core/
   dozycat-core/   小传+能量共享内核（CRDT 同步，见 docs/MEMORY-SYNC.md）
+model/
+  emotion/        端上表情小模型（mini-Xception 222KB，MLX 推理，见 model/emotion/README.md）
 docs/
   MEMORY-SYNC.md        多端同步选型（Loro + E2EE + CloudKit）
   FATIGUE.md            疲劳模型（内容盲感知 → 能量 → 补血）

@@ -114,6 +114,7 @@ struct OnboardingView: View {
                   title: "要不要让我知道你在不在？") {
             VStack(spacing: 0) {
                 statusRow("帧过完人脸检测就丢", trailing: "不存 · 不传")
+                statusRow("顺带认个表情", trailing: "本地小模型 · 只出标签")
                 statusRow("开着时指示灯常亮", trailing: "这盏灯是诚实的",
                           accent: DS.blue)
                 statusRow("默认不开", trailing: "以后随时能改")

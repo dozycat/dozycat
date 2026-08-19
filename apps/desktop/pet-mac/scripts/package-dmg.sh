@@ -142,6 +142,7 @@ xcodebuild -project DozycatPet.xcodeproj -scheme DozycatPet -configuration Relea
   -derivedDataPath "$DERIVED" \
   ARCHS="$ARCH" ONLY_ACTIVE_ARCH=YES MACOSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+  -skipPackagePluginValidation \
   -quiet build
 APP="$DERIVED/Build/Products/Release/dozycat.app"
 [ -d "$APP" ] || { echo "构建失败：$APP 不存在"; exit 1; }

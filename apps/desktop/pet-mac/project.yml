@@ -11,6 +11,11 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: "2.6.0"
+  # 表情识别的推理框架。模型本体只有 222KB（model/emotion/，随 bundle 打包），
+  # MLX 静态链进主二进制，Metal 上跑，一次推理毫秒级。
+  MLX:
+    url: https://github.com/ml-explore/mlx-swift
+    exactVersion: "0.31.6"
 targets:
   DozycatPet:
     type: application
@@ -29,11 +34,18 @@ targets:
       - path: ../../ios/Dozycat/Models/LLMClient.swift
       - path: ../../ios/Dozycat/Models/PiAgent.swift
       - path: ../../ios/Dozycat/Core/dozycat_core.swift
+      # 表情小模型权重（mini-Xception/FER2013，BN 已折叠，见 model/emotion/README.md）
+      - path: ../../../model/emotion/emotion_mini_xception.safetensors
+        buildPhase: resources
     dependencies:
       - framework: ../../ios/Vendor/DozycatCore.xcframework
         embed: false
       - package: Sparkle
         product: Sparkle
+      - package: MLX
+        product: MLX
+      - package: MLX
+        product: MLXNN
     # 自定义 Info.plist：Sparkle 的 SUFeedURL / SUPublicEDKey 不在
     # GENERATE_INFOPLIST_FILE 的白名单里，只能自己写一份。
     info:
@@ -45,7 +57,7 @@ targets:
         LSUIElement: true
         LSMultipleInstancesProhibited: true
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
-        NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前（只产出在/不在，一张画面都不保存）。
+        NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前、心情大概怎么样（只产出在/不在和一个表情标签，模型在本地，一张画面都不保存）。
         NSHumanReadableCopyright: © 2026 dozycat
         # 更新清单托管在官网（GitHub Pages）；发布脚本更新这份 appcast.xml。
         SUFeedURL: https://dozycat.github.io/dozycat/appcast.xml
@@ -73,3 +85,6 @@ targets:
         # 正式包由 package-dmg.sh 在嵌入 helper 后 inside-out 重签并公证。
         Release:
           CODE_SIGN_IDENTITY: "-"
+          # MLX 静态链接后符号表有 ~14MB，发布件必须剥离（38MB → 24MB）。
+          DEPLOYMENT_POSTPROCESSING: YES
+          STRIP_INSTALLED_PRODUCT: YES

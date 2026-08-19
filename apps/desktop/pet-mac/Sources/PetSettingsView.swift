@@ -29,6 +29,7 @@ struct PetSettingsView: View {
     @AppStorage("uiLanguage") private var uiLanguage = "zh"
     @AppStorage("uiAppearance") private var uiAppearance = "system"
     @AppStorage("presenceSensing") private var presenceSensing = false
+    @AppStorage("smileMoments") private var smileMoments = true
     @State private var pane: Pane
     @State private var languageChanged = false
     @State private var screenGranted = CGPreflightScreenCaptureAccess()
@@ -216,7 +217,7 @@ struct PetSettingsView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("摄像头在位感知")
                             .font(.system(size: 13, weight: .medium)).foregroundStyle(DS.ink)
-                        Text("只判断人是否在屏幕前。帧过完人脸检测即丢；开启时系统指示灯会常亮。")
+                        Text("判断人是否在屏幕前，顺带用本地小模型认个表情（开心/伤心这类标签）。帧过完检测即丢；开启时系统指示灯会常亮。")
                             .font(.system(size: 11)).lineSpacing(5).foregroundStyle(DS.muted)
                     }
                     Spacer()
@@ -227,6 +228,26 @@ struct PetSettingsView: View {
                         .onChange(of: presenceSensing) { _, on in
                             PresenceSensor.shared.setEnabled(on)
                         }
+                }
+                if presenceSensing {
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: "face.smiling")
+                            .font(.system(size: 15))
+                            .foregroundStyle(DS.coral)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(DS.coral.opacity(0.10)))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("微笑时刻")
+                                .font(.system(size: 13, weight: .medium)).foregroundStyle(DS.ink)
+                            Text("笑的时候把屏幕上那几行字记进记事本，回头看看是什么逗笑了你。三分钟最多一条，同一个乐子不重复记。")
+                                .font(.system(size: 11)).lineSpacing(5).foregroundStyle(DS.muted)
+                        }
+                        Spacer()
+                        Toggle("", isOn: $smileMoments)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                    }
                 }
             }
             .padding(16)
