@@ -225,7 +225,7 @@ def blog_nav(home_href: str, blog_href: str) -> str:
   <div class="nav-links">
     <a href="{home_href}">小传</a>
     <a class="nav-blog active" href="{blog_href}">手记</a>
-    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat/releases/latest/download/dozycat-0.1.2-arm64.dmg">领养一只懒猫</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat/releases/latest/download/dozycat-0.1.3-arm64.dmg">领养一只懒猫</a>
   </div>
 </nav>"""
 
