@@ -1,5 +1,12 @@
 [
   {
+    "slug": "smile",
+    "source": "posts/smile.md",
+    "tags": ["产品"],
+    "date": "2026-08-19",
+    "description": "它认出你在笑，就把屏幕上逗笑你的那几行字，轻轻抄进记事本。"
+  },
+  {
     "slug": "fatigue",
     "source": "posts/fatigue.md",
     "tags": ["产品"],
