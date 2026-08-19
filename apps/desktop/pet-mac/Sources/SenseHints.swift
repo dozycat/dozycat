@@ -193,15 +193,29 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         if !configured {
             configured = true
             session.sessionPreset = .vga640x480
-            guard let device = AVCaptureDevice.default(for: .video),
-                  let input = try? AVCaptureDeviceInput(device: device) else { return }
-            if session.canAddInput(input) { session.addInput(input) }
             let output = AVCaptureVideoDataOutput()
             output.alwaysDiscardsLateVideoFrames = true
             output.setSampleBufferDelegate(self, queue: queue)
             if session.canAddOutput(output) { session.addOutput(output) }
         }
+        // 合盖（外接屏工作）时内置摄像头会从设备列表整个消失，启动时抓不到
+        // 不等于永远没有——每次采样缺输入就再找一次，开盖后下一拍自动接上。
+        if session.inputs.isEmpty {
+            guard let device = Self.pickCamera(),
+                  let input = try? AVCaptureDeviceInput(device: device) else { return }
+            if session.canAddInput(input) { session.addInput(input) }
+        }
         if !session.isRunning { session.startRunning() }
+    }
+
+    /// 只用内置或有线外接摄像头。刻意不碰 Continuity Camera——为了看你在不在
+    /// 而悄悄点亮你手机的摄像头，太吓人了。
+    private static func pickCamera() -> AVCaptureDevice? {
+        let discovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera, .external],
+            mediaType: .video, position: .unspecified)
+        let devices = discovery.devices
+        return devices.first { $0.deviceType == .builtInWideAngleCamera } ?? devices.first
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
