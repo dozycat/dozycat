@@ -72,8 +72,8 @@ targets:
         # scheme 仍叫 DozycatPet。改这行要同步改 package-dmg.sh 的 dozycat.app。
         PRODUCT_NAME: dozycat
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        MARKETING_VERSION: "0.1.2"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "0.1.3"
+        CURRENT_PROJECT_VERSION: "4"
       configs:
         # 屏幕录制授权绑定代码签名。ad-hoc Debug 的 designated requirement 只有
         # 每次构建都变化的 CDHash，会让 TCC 把同一个 bundle 当成新 app；官方
