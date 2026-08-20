@@ -7,8 +7,8 @@ import AppKit
 enum Garden {
     static var root: URL {
         let path = ProcessInfo.processInfo.environment["DOZYCAT_GARDEN"]
-            ?? (NSHomeDirectory() + "/.dozycat/garden")
-        return URL(fileURLWithPath: path)
+        return path.map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? AppPaths.directory("garden")
     }
 
     static func day(_ date: Date = Date()) -> String {
@@ -65,6 +65,13 @@ enum SequenceAgent {
         let classifyText = segments.map(\.text).joined(separator: "\n") + fallbackOCR
         SenseHintsPump.shared.updateActivity(
             ActivityClass.classify(app: app, bundleID: appBundleID, ocr: classifyText))
+        guard !segments.isEmpty || !fallbackOCR.isEmpty else {
+            let reason = RawCapture.hasScreenCaptureAccess
+                ? "OCR returned no text"
+                : "screen recording permission unavailable"
+            NSLog("SequenceAgent: skipped — %@", reason)
+            return nil
+        }
 
         // 控制上下文：从最新往回收，总量 ~7000 字放得下几段对话
         var budget = 7000

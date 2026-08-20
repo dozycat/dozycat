@@ -45,6 +45,13 @@ GitHub 只接收已经签名并公证好的 dmg Release 附件，以及公开的
 私钥和 Apple 登录凭证不上传到 GitHub（包括 GitHub Secrets）。版本纪律：
 `MARKETING_VERSION` 的单一来源在 project.yml。
 
+开发版与正式版必须是两只独立的 app。Release 固定使用
+`com.paperboytm.dozycat.pet` /「懒猫」/ `~/.dozycat`；Debug 固定使用
+`com.paperboytm.dozycat.pet.debug` /「懒猫 Debug」/ `~/.dozycat-debug`。
+因此两边的屏幕录制、摄像头 TCC 权限和 UserDefaults 各自管理，开发重签名不会再
+让正式版出现“系统开关是绿的、运行时却未授权”的假绿灯；两边同时运行也不会争
+同一份 store。Debug 关闭 Sparkle，不能被生产 appcast 原地升级成正式版。
+
 ## iOS 上架前的清单
 
 App Store Connect 建 app，类目选生活或健康，隐私标签如实填（诊断无；用户内容
@@ -74,6 +81,8 @@ TestFlight 首个构建，提交后约一天。App Store 首次提审，准备�
   **Sparkle.framework inside-out 签名**（XPC 服务、Autoupdate、Updater.app 逐层）
   → Developer ID 签 app（hardened runtime）→ dmg → 公证 → 钉票。正式模式每次
   自动把 `MARKETING_VERSION` 的 patch 位 +1（adhoc 验证不消耗版本号）。
+  打包脚本还会硬校验 Release bundle id 与 Developer ID designated requirement；
+  一旦误用 Debug id 或 ad-hoc/CDHash 签名会直接失败，避免发布后重置 TCC 权限。
 - **appcast**：`scripts/make-appcast.sh` 从 dist 里的 dmg 生成并签名
   `site/appcast.xml`，下载地址指向 GitHub Releases（`DOZYCAT_DL_PREFIX` 可改）。
 
@@ -81,7 +90,8 @@ TestFlight 首个构建，提交后约一天。App Store 首次提审，准备�
 
 1. `scripts/package-dmg.sh`（需 Developer ID 证书 + `DOZYCAT_NOTARY_PROFILE`）
    出 `dist/dozycat-<版本>-arm64.dmg`，已公证钉票。
-2. 把这个 dmg 传到 GitHub Releases（tag = 版本号）。
+2. 把这个 dmg 和 `generate_appcast` 新生成的 delta 传到 GitHub Releases
+   （tag = 版本号）。
 3. `scripts/make-appcast.sh` 生成 `site/appcast.xml`，连同 project.yml 的版本号
    一起提交、推到 main。
 4. GitHub Pages 部署 `site/`，`SUFeedURL`（`https://dozycat.github.io/dozycat/appcast.xml`）

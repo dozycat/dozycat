@@ -49,8 +49,10 @@ final class RechargeStore: ObservableObject {
     private var dismissed: Set<String> = []
 
     private var file: URL {
-        URL(fileURLWithPath: ProcessInfo.processInfo.environment["DOZYCAT_RECHARGE"]
-            ?? (NSHomeDirectory() + "/.dozycat/recharge.json"))
+        if let path = ProcessInfo.processInfo.environment["DOZYCAT_RECHARGE"] {
+            return URL(fileURLWithPath: path)
+        }
+        return AppPaths.file("recharge.json")
     }
 
     private struct Book: Codable {

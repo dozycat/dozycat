@@ -146,6 +146,12 @@ xcodebuild -project DozycatPet.xcodeproj -scheme DozycatPet -configuration Relea
   -quiet build
 APP="$DERIVED/Build/Products/Release/dozycat.app"
 [ -d "$APP" ] || { echo "构建失败：$APP 不存在"; exit 1; }
+APP_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
+[ "$APP_BUNDLE_ID" = "com.paperboytm.dozycat.pet" ] || {
+  echo "错误：Release bundle id 异常：$APP_BUNDLE_ID" >&2
+  echo "Debug 必须是 com.paperboytm.dozycat.pet.debug，正式包只能是 com.paperboytm.dozycat.pet。" >&2
+  exit 1
+}
 
 echo "==> 捆入 dozycat-sense"
 install -m 755 "$SENSE" "$APP/Contents/Resources/dozycat-sense"
@@ -174,6 +180,23 @@ echo "==> 签名：helper 与 app（${IDENTITY}）"
 codesign "${SIGN_ARGS[@]}" "$APP/Contents/Resources/dozycat-sense"
 codesign "${SIGN_ARGS[@]}" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
+if [ "$MODE" = "release" ]; then
+  DESIGNATED_REQUIREMENT="$(codesign -d -r- "$APP" 2>&1)"
+  case "$DESIGNATED_REQUIREMENT" in
+    *'identifier "com.paperboytm.dozycat.pet"'*'certificate leaf[subject.OU] = PR5A8VMY8S'*) ;;
+    *)
+      echo "错误：正式 app 的 designated requirement 不稳定：$DESIGNATED_REQUIREMENT" >&2
+      exit 1
+      ;;
+  esac
+  case "$DESIGNATED_REQUIREMENT" in
+    *cdhash*)
+      echo "错误：正式 app 被 ad-hoc/CDHash 签名，发布会导致 TCC 权限失效。" >&2
+      exit 1
+      ;;
+  esac
+  echo "    TCC 身份校验通过：稳定 bundle id + Team ID"
+fi
 echo "    app 签名结构校验通过"
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"

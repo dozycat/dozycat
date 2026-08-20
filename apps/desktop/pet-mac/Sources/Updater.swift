@@ -12,25 +12,30 @@ import Sparkle
 final class Updater {
     static let shared = Updater()
 
-    private let controller: SPUStandardUpdaterController
+    private let controller: SPUStandardUpdaterController?
 
     private init() {
+        #if DEBUG
+        // Debug 是独立 app（独立 bundle id），不能被生产 appcast 原地升级成正式版。
+        controller = nil
+        #else
         // startingUpdater: true —— 起进程即开始按计划后台查更。
         controller = SPUStandardUpdaterController(
             startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        #endif
     }
 
     /// 手动检查（设置里的按钮）：无更新也会给用户一个明确的回应。
     func checkForUpdates() {
-        controller.checkForUpdates(nil)
+        controller?.checkForUpdates(nil)
     }
 
     /// 后台自动检查开关（持久化在 Sparkle 自己的 defaults）。
     var automaticallyChecks: Bool {
-        get { controller.updater.automaticallyChecksForUpdates }
-        set { controller.updater.automaticallyChecksForUpdates = newValue }
+        get { controller?.updater.automaticallyChecksForUpdates ?? false }
+        set { controller?.updater.automaticallyChecksForUpdates = newValue }
     }
 
     /// 上次检查时间——设置里显示「刚刚检查过」。
-    var lastCheckDate: Date? { controller.updater.lastUpdateCheckDate }
+    var lastCheckDate: Date? { controller?.updater.lastUpdateCheckDate }
 }

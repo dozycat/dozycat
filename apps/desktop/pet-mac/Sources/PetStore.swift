@@ -15,7 +15,7 @@ final class PetStore: ObservableObject {
 
     private init() {
         let configuredPath = ProcessInfo.processInfo.environment["DOZYCAT_STORE"]
-            ?? (NSHomeDirectory() + "/.dozycat/store.db")
+            ?? AppPaths.file("store.db").path
         storageDisabled = configuredPath == "off"
         path = storageDisabled ? nil : configuredPath
         guard let path else { return }
