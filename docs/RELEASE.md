@@ -84,7 +84,9 @@ TestFlight 首个构建，提交后约一天。App Store 首次提审，准备�
   打包脚本还会硬校验 Release bundle id 与 Developer ID designated requirement；
   一旦误用 Debug id 或 ad-hoc/CDHash 签名会直接失败，避免发布后重置 TCC 权限。
 - **appcast**：`scripts/make-appcast.sh` 从 dist 里的 dmg 生成并签名
-  `site/appcast.xml`，下载地址指向 GitHub Releases（`DOZYCAT_DL_PREFIX` 可改）。
+  `site/appcast.xml`，下载地址固定到各自 GitHub Release tag
+  （`DOZYCAT_DL_PREFIX` 必须包含 `__VERSION__`）。脚本还会检查官网和博客模板的
+  `releases/latest` 下载按钮，版本没同步就拒绝发布，避免新 Release 上线后按钮 404。
 
 发一版的完整动作：
 
@@ -92,8 +94,8 @@ TestFlight 首个构建，提交后约一天。App Store 首次提审，准备�
    出 `dist/dozycat-<版本>-arm64.dmg`，已公证钉票。
 2. 把这个 dmg 和 `generate_appcast` 新生成的 delta 传到 GitHub Releases
    （tag = 版本号）。
-3. `scripts/make-appcast.sh` 生成 `site/appcast.xml`，连同 project.yml 的版本号
-   一起提交、推到 main。
+3. 把官网与博客模板的下载文件名更新到新版本；`scripts/make-appcast.sh` 生成
+   `site/appcast.xml` 并校验这些按钮，连同 project.yml 的版本号一起提交、推到 main。
 4. GitHub Pages 部署 `site/`，`SUFeedURL`（`https://dozycat.github.io/dozycat/appcast.xml`）
    即生效，老版本下次检查就能看到更新。
 
