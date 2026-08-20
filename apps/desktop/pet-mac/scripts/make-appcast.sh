@@ -86,4 +86,26 @@ if ! awk -v template="$DL_PREFIX" '
   exit 1
 fi
 
+# 官网按钮使用 releases/latest，但文件名仍带版本号；漏改会在新 release 成为
+# Latest 的瞬间全部 404。发布前把 HTML 与博客模板里的旧版本一并拦住。
+LATEST_VERSION="$(awk '
+  /<sparkle:shortVersionString>/ {
+    version = $0
+    sub(/^.*<sparkle:shortVersionString>/, "", version)
+    sub(/<\/sparkle:shortVersionString>.*$/, "", version)
+    print version
+    exit
+  }
+' "$SITE/appcast.xml")"
+[ -n "$LATEST_VERSION" ] || { echo "错误：appcast 没有版本号。" >&2; exit 1; }
+STALE_DOWNLOADS="$({
+  find "$SITE" -type f \( -name '*.html' -o -name '*.py' \) \
+    -exec grep -nHE 'releases/latest/download/dozycat-[0-9]+\.[0-9]+\.[0-9]+-arm64\.dmg' {} +
+} | grep -v "dozycat-${LATEST_VERSION}-arm64.dmg" || true)"
+if [ -n "$STALE_DOWNLOADS" ]; then
+  echo "错误：官网仍有旧版本下载链接（当前 appcast 是 $LATEST_VERSION）：" >&2
+  echo "$STALE_DOWNLOADS" >&2
+  exit 1
+fi
+
 echo "==> appcast -> $SITE/appcast.xml"
