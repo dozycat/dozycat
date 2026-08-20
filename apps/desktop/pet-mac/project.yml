@@ -51,7 +51,7 @@ targets:
     info:
       path: Info.plist
       properties:
-        CFBundleDisplayName: 懒猫
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
@@ -71,14 +71,19 @@ targets:
         # 产物名 dozycat（= CFBundleName，隐私列表/强制退出的短名）；xcodeproj /
         # scheme 仍叫 DozycatPet。改这行要同步改 package-dmg.sh 的 dozycat.app。
         PRODUCT_NAME: dozycat
+        APP_DISPLAY_NAME: 懒猫
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        MARKETING_VERSION: "0.1.3"
-        CURRENT_PROJECT_VERSION: "4"
+        MARKETING_VERSION: "0.1.4"
+        CURRENT_PROJECT_VERSION: "5"
       configs:
         # 屏幕录制授权绑定代码签名。ad-hoc Debug 的 designated requirement 只有
         # 每次构建都变化的 CDHash，会让 TCC 把同一个 bundle 当成新 app；官方
         # 开发机用稳定的 Developer ID，CI 仍可传 CODE_SIGNING_ALLOWED=NO。
         Debug:
+          # Debug 是独立应用：TCC 权限、UserDefaults 和默认数据目录都不碰正式版。
+          PRODUCT_BUNDLE_IDENTIFIER: com.paperboytm.dozycat.pet.debug
+          PRODUCT_NAME: dozycat-debug
+          APP_DISPLAY_NAME: 懒猫 Debug
           CODE_SIGN_STYLE: Manual
           DEVELOPMENT_TEAM: PR5A8VMY8S
           CODE_SIGN_IDENTITY: "Developer ID Application"

@@ -21,6 +21,7 @@ enum RawCapture {
     }
 
     static var rawDir: URL { Garden.root.appendingPathComponent("raw") }
+    static var hasScreenCaptureAccess: Bool { CGPreflightScreenCaptureAccess() }
 
     // MARK: - 采一段
 
@@ -52,10 +53,15 @@ enum RawCapture {
         \(body)
         """
         let dir = rawDir.appendingPathComponent(Garden.day(now))
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let name = "\(stamp.string(from: now))_raw.md"
         let file = dir.appendingPathComponent(name)
-        try? md.write(to: file, atomically: true, encoding: .utf8)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try md.write(to: file, atomically: true, encoding: .utf8)
+        } catch {
+            NSLog("RawCapture: failed to write %@ (%@)", file.path, error.localizedDescription)
+            return nil
+        }
         return "raw/\(Garden.day(now))/\(name)"
     }
 
@@ -140,7 +146,7 @@ enum RawCapture {
         // SCShareableContent 本身会触发系统的屏幕录制授权提示。后台采集只能在
         // 当前这份签名已获授权时继续；未授权时静默跳过，弹窗只允许由设置页／
         // onboarding 里的「去授权」按钮显式触发。
-        guard CGPreflightScreenCaptureAccess() else { return nil }
+        guard hasScreenCaptureAccess else { return nil }
         guard let content = try? await SCShareableContent
                 .excludingDesktopWindows(false, onScreenWindowsOnly: true),
               let window = content.windows.first(where: { $0.windowID == windowID })
@@ -310,6 +316,7 @@ final class RawCapturePump {
     private var timer: Timer?
     private var lastLines: Set<String> = []
     private var busy = false
+    private var screenAccessUnavailable = false
 
     func start() {
         let secs = ProcessInfo.processInfo.environment["DOZYCAT_RAW_SECS"]
@@ -327,6 +334,19 @@ final class RawCapturePump {
         guard !busy else { return }
         // 人不在（上一分钟无输入）不采——省的不是钱是隐私面
         guard SenseFeed.shared.activeStreakMin > 0 else { return }
+        guard RawCapture.hasScreenCaptureAccess else {
+            if !screenAccessUnavailable {
+                NSLog("RawCapture: paused — screen recording permission unavailable")
+                screenAccessUnavailable = true
+            }
+            return
+        }
+        if screenAccessUnavailable {
+            NSLog("RawCapture: screen recording permission recovered")
+            screenAccessUnavailable = false
+            // 中断可能持续很久；恢复后的第一屏必须落盘，不能拿旧屏去重。
+            lastLines.removeAll()
+        }
         busy = true
         defer { busy = false }
         _ = await RawCapture.captureOnce { [weak self] lines in

@@ -202,7 +202,9 @@ struct PetSettingsView: View {
             permissionCard(
                 icon: "rectangle.dashed.badge.record",
                 title: "屏幕文字",
-                detail: "本机 OCR 只产出时间笔记；截图不落盘，密码框会闭眼。",
+                detail: screenGranted
+                    ? "本机 OCR 只产出时间笔记；截图不落盘，密码框会闭眼。"
+                    : "若系统里已开启但这里仍未授权，请关闭再打开该权限，然后重启懒猫。",
                 granted: screenGranted,
                 action: requestScreenAccess
             )

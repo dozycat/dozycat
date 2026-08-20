@@ -22,9 +22,10 @@ enum EnergyLog {
     }
 
     static var dir: URL {
-        let path = ProcessInfo.processInfo.environment["DOZYCAT_ENERGY_DIR"]
-            ?? (NSHomeDirectory() + "/.dozycat/energy")
-        return URL(fileURLWithPath: path)
+        if let path = ProcessInfo.processInfo.environment["DOZYCAT_ENERGY_DIR"] {
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+        return AppPaths.directory("energy")
     }
 
     static func append(phys: Double, mind: Double, at: Date = Date()) {

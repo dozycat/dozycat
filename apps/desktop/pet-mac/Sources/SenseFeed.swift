@@ -77,6 +77,7 @@ final class SenseFeed: ObservableObject {
         // sense 是纯传感器：不碰账本，初始能量由 pet 注入
         var env = ProcessInfo.processInfo.environment
         env["DOZYCAT_STORE"] = "off"
+        env["DOZYCAT_HINTS"] = env["DOZYCAT_HINTS"] ?? AppPaths.file("sense_hints.json").path
         env["DOZYCAT_INIT_PHYS"] = "\(phys)"
         env["DOZYCAT_INIT_MIND"] = "\(mind)"
         process.environment = env
@@ -218,8 +219,25 @@ final class SenseFeed: ObservableObject {
             ProcessInfo.processInfo.environment["DOZYCAT_SENSE_BIN"],
             UserDefaults.standard.string(forKey: "senseBin"),
             Bundle.main.path(forResource: "dozycat-sense", ofType: nil),
+            developmentSenseBinary,
         ]
         return candidates.compactMap { $0 }
             .first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    /// Xcode 的 Debug app 不走发布打包脚本，helper 留在 Cargo target 目录。
+    /// 用编译期源码路径找到它，避免 Debug bundle id 拆开后因为没有旧 defaults
+    /// 里的 senseBin 而悄悄退成静态 UI。
+    private static var developmentSenseBinary: String? {
+        #if DEBUG
+        return URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // Sources
+            .deletingLastPathComponent() // pet-mac
+            .deletingLastPathComponent() // desktop
+            .appendingPathComponent("target/debug/dozycat-sense")
+            .path
+        #else
+        return nil
+        #endif
     }
 }

@@ -94,6 +94,8 @@ save_moment 宁缺毋滥，工具侧硬性卡在每天三条；笔记里没有�
 ## 自动化与测试的缝
 
 环境变量：`DOZYCAT_LLM_KEY`（BYOK 注入）、`DOZYCAT_GARDEN`（花园根）、
+`DOZYCAT_HOME`（整套本机数据根目录；正式版默认 `~/.dozycat`，Debug 默认
+`~/.dozycat-debug`）、
 `DOZYCAT_SEQ_SECS`（一段一段周期，默认 300）、`DOZYCAT_RAW_SECS`（原料层
 周期，默认 45，0 = 关）、`DOZYCAT_FAKE_OCR`、`DOZYCAT_DEBUG_OUT`（searcher
 的答案落文件）。debug 启动参数：`-runSequence` / `-runDream` / `-searchQuery` /

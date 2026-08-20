@@ -77,7 +77,7 @@ final class SenseHintsPump {
         if let p = ProcessInfo.processInfo.environment["DOZYCAT_HINTS"] {
             return URL(fileURLWithPath: p)
         }
-        return URL(fileURLWithPath: NSHomeDirectory() + "/.dozycat/sense_hints.json")
+        return AppPaths.file("sense_hints.json")
     }
 
     func start() {

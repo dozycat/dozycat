@@ -17,7 +17,7 @@ final class FollowUpStore: ObservableObject {
     private var timer: Timer?
 
     private var file: URL {
-        URL(fileURLWithPath: NSHomeDirectory() + "/.dozycat/followups.json")
+        AppPaths.file("followups.json")
     }
 
     private init() {
