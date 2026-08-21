@@ -85,8 +85,8 @@ final class AppModel: ObservableObject {
 
     // MARK: 能量
 
-    @Published var mentalEnergy = 72
-    @Published var physicalEnergy = 45
+    @Published var mentalEnergy = 60
+    @Published var physicalEnergy = 60
 
     // MARK: 今日
 

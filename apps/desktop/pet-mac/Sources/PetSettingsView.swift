@@ -26,6 +26,7 @@ struct PetSettingsView: View {
     }
 
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var presenceSensor = PresenceSensor.shared
     @AppStorage("uiLanguage") private var uiLanguage = "zh"
     @AppStorage("uiAppearance") private var uiAppearance = "system"
     @AppStorage("presenceSensing") private var presenceSensing = false
@@ -80,6 +81,10 @@ struct PetSettingsView: View {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification)) { _ in
+                if presenceSensing { presenceSensor.retryIfEnabled() }
+            }
     }
 
     private var header: some View {
@@ -221,6 +226,19 @@ struct PetSettingsView: View {
                             .font(.system(size: 13, weight: .medium)).foregroundStyle(DS.ink)
                         Text("判断人是否在屏幕前，顺带用本地小模型认个表情（开心/伤心这类标签）。帧过完检测即丢；开启时系统指示灯会常亮。")
                             .font(.system(size: 11)).lineSpacing(5).foregroundStyle(DS.muted)
+                        if presenceSensing {
+                            HStack(spacing: 5) {
+                                Circle().fill(cameraStatusColor).frame(width: 5, height: 5)
+                                Text(cameraStatusText)
+                                if presenceSensor.status == .permissionDenied {
+                                    Button("修复权限", action: openCameraPrivacy)
+                                        .buttonStyle(.plain)
+                                        .underline()
+                                }
+                            }
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(cameraStatusColor)
+                        }
                     }
                     Spacer()
                     Toggle("", isOn: $presenceSensing)
@@ -420,6 +438,31 @@ struct PetSettingsView: View {
             .fill(DS.card)
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(DS.line, lineWidth: 1))
+    }
+
+    private var cameraStatusText: LocalizedStringKey {
+        switch presenceSensor.status {
+        case .disabled: "尚未启动"
+        case .starting: "正在启动摄像头…"
+        case .running: "正在采集"
+        case .permissionDenied: "系统权限未生效；请先关闭再打开懒猫的权限"
+        case .cameraUnavailable: "没有可用摄像头；合盖时请连接外置摄像头"
+        case .failed: "摄像头未能采集，将自动重试"
+        }
+    }
+
+    private var cameraStatusColor: Color {
+        switch presenceSensor.status {
+        case .running: DS.blue
+        case .starting: DS.faint
+        default: DS.coral
+        }
+    }
+
+    private func openCameraPrivacy() {
+        guard let url = URL(string:
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func fieldLine(_ label: LocalizedStringKey, text: Binding<String>,

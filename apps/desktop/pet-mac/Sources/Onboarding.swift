@@ -5,6 +5,7 @@ import CoreGraphics
 /// 首次见面：四页、四个决定。解释永远先于系统弹窗。
 struct OnboardingView: View {
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var presenceSensor = PresenceSensor.shared
     @AppStorage("presenceSensing") private var cameraOn = false
     @State private var page: Int
     @State private var screenGranted = CGPreflightScreenCaptureAccess()
@@ -120,19 +121,20 @@ struct OnboardingView: View {
                 statusRow("默认不开", trailing: "以后随时能改")
                 if cameraStatus == .denied || cameraStatus == .restricted {
                     statusRow("摄像头权限", trailing: "系统已关闭", accent: DS.coral)
-                } else if cameraOn && cameraStatus == .authorized {
-                    statusRow("摄像头在位感知", trailing: "✓ 已开启", accent: DS.blue)
+                } else if cameraOn {
+                    statusRow("摄像头在位感知", trailing: onboardingCameraStatus,
+                              accent: presenceSensor.status == .running ? DS.blue : DS.coral)
                 }
             }
 
             HStack(spacing: 12) {
                 Button("先不用") { move(to: 3) }
                     .buttonStyle(InkPillStyle())
-                Button(cameraOn && cameraStatus == .authorized ? "已开启" : "让它看") {
+                Button(presenceSensor.status == .running ? "已开启" : "让它看") {
                     requestCameraAccess()
                 }
                 .buttonStyle(GhostPillStyle())
-                .disabled(cameraOn && cameraStatus == .authorized)
+                .disabled(presenceSensor.status == .running)
             }
             .frame(maxWidth: .infinity)
             .padding(.top, 22)
@@ -140,6 +142,17 @@ struct OnboardingView: View {
             if cameraOn && cameraStatus == .authorized {
                 quietButton("下一页") { move(to: 3) }
             }
+        }
+    }
+
+    private var onboardingCameraStatus: LocalizedStringKey {
+        switch presenceSensor.status {
+        case .running: "✓ 正在采集"
+        case .starting: "正在启动…"
+        case .permissionDenied: "权限未生效"
+        case .cameraUnavailable: "没有可用摄像头"
+        case .failed: "未能采集"
+        case .disabled: "尚未启动"
         }
     }
 

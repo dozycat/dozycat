@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import Combine
 @preconcurrency import Vision
 
 /// 疲劳感知的语义提示（v2）：pet 侧产出两枚原子——摄像头在位布尔 + 活动类别——
@@ -140,12 +141,23 @@ final class SenseHintsPump {
 /// 有脸再过一遍本地表情小模型（EmotionNet，222KB）。帧只在内存里活到推理完，
 /// 没有截图、没有落盘；开启期间摄像头指示灯常亮——这是诚实的代价，设置里写明。
 /// 默认关。
-final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+final class PresenceSensor: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     static let shared = PresenceSensor()
+
+    enum Status: Equatable {
+        case disabled
+        case starting
+        case running
+        case permissionDenied
+        case cameraUnavailable
+        case failed
+    }
 
     private let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "dozycat.presence", qos: .utility)
-    private var configured = false
+    private var videoOutput: AVCaptureVideoDataOutput?
+    private var sessionStartedAt: Date?
+    private var lastFrameAt: Date?
     private var lastDetection = Date.distantPast
     /// 最近一次检测结果（nil = 还没有 / 未开启）
     private var lastPresent: Bool?
@@ -154,6 +166,10 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     /// 懒加载：第一次用到才从 bundle 读权重；加载失败就一直是 nil，在位感知照常
     private lazy var emotionClassifier: EmotionClassifier? = EmotionClassifier()
 
+    /// 开关表示用户意愿；这里才是摄像头是否真的开始交付画面。
+    /// 所有写入都经主线程，供设置页安全观察。
+    @Published private(set) var status: Status = .disabled
+
     var enabled: Bool {
         UserDefaults.standard.bool(forKey: "presenceSensing")
     }
@@ -161,16 +177,47 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     func setEnabled(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: "presenceSensing")
         if on {
-            AVCaptureDevice.requestAccess(for: .video) { granted in
-                guard granted else { return }
-                self.queue.async { self.startSession() }
-            }
+            requestPermissionAndStart()
         } else {
             queue.async {
                 if self.session.isRunning { self.session.stopRunning() }
+                self.sessionStartedAt = nil
+                self.lastFrameAt = nil
                 self.lastPresent = nil
                 self.lastMood = nil
+                self.publish(.disabled)
             }
+        }
+    }
+
+    /// 从系统设置回到懒猫时再查一次。用户把残留的旧 TCC 条目关闭再打开后，
+    /// 不必再次拨动产品开关，会话会立刻按新的授权状态启动。
+    func retryIfEnabled() {
+        guard enabled else { return }
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else {
+            publish(.permissionDenied)
+            return
+        }
+        queue.async { self.ensureSession() }
+    }
+
+    private func requestPermissionAndStart() {
+        publish(.starting)
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            queue.async { self.ensureSession() }
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                guard granted else {
+                    self.publish(.permissionDenied)
+                    return
+                }
+                self.queue.async { self.ensureSession() }
+            }
+        case .denied, .restricted:
+            publish(.permissionDenied)
+        @unknown default:
+            publish(.failed)
         }
     }
 
@@ -181,31 +228,105 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
             return
         }
         queue.async {
-            if !self.session.isRunning { self.startSession() }
+            self.ensureSession()
             let present = self.lastPresent
             let mood = self.lastMood
             Task { @MainActor in callback(present, mood) }
         }
     }
 
-    private func startSession() {
-        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
-        if !configured {
-            configured = true
-            session.sessionPreset = .vga640x480
+    /// 确保会话不只是 `isRunning`，而且最近真的收到过帧。设备断开、合盖或
+    /// AVFoundation 偶发进入「运行但零帧」时，下一拍会拆掉旧输入再建一次。
+    private func ensureSession() {
+        guard enabled else {
+            publish(.disabled)
+            return
+        }
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else {
+            NSLog("PresenceSensor: camera permission is not authorized (%ld)",
+                  AVCaptureDevice.authorizationStatus(for: .video).rawValue)
+            publish(.permissionDenied)
+            return
+        }
+
+        let now = Date()
+        if session.isRunning {
+            let lastDelivery = lastFrameAt ?? sessionStartedAt ?? .distantPast
+            if now.timeIntervalSince(lastDelivery) < 12 { return }
+            NSLog("PresenceSensor: capture stalled; rebuilding camera input")
+            session.stopRunning()
+            sessionStartedAt = nil
+            lastFrameAt = nil
+            removeInputs()
+        }
+
+        publish(.starting)
+        session.beginConfiguration()
+        session.sessionPreset = .vga640x480
+
+        if videoOutput == nil {
             let output = AVCaptureVideoDataOutput()
             output.alwaysDiscardsLateVideoFrames = true
             output.setSampleBufferDelegate(self, queue: queue)
-            if session.canAddOutput(output) { session.addOutput(output) }
+            guard session.canAddOutput(output) else {
+                session.commitConfiguration()
+                NSLog("PresenceSensor: cannot add video output")
+                publish(.failed)
+                return
+            }
+            session.addOutput(output)
+            videoOutput = output
         }
-        // 合盖（外接屏工作）时内置摄像头会从设备列表整个消失，启动时抓不到
-        // 不等于永远没有——每次采样缺输入就再找一次，开盖后下一拍自动接上。
-        if session.inputs.isEmpty {
-            guard let device = Self.pickCamera(),
-                  let input = try? AVCaptureDeviceInput(device: device) else { return }
-            if session.canAddInput(input) { session.addInput(input) }
+
+        // `session.inputs` 里可能残留已经断开的设备；只判断 isEmpty 会让会话
+        // 永久卡在 running-but-no-frames。每次重启都明确换成当前连接的设备。
+        removeInputs()
+        guard let device = Self.pickCamera() else {
+            session.commitConfiguration()
+            NSLog("PresenceSensor: no connected built-in or external camera")
+            publish(.cameraUnavailable)
+            return
         }
-        if !session.isRunning { session.startRunning() }
+        do {
+            let input = try AVCaptureDeviceInput(device: device)
+            guard session.canAddInput(input) else {
+                session.commitConfiguration()
+                NSLog("PresenceSensor: cannot add camera input %@", device.localizedName)
+                publish(.failed)
+                return
+            }
+            session.addInput(input)
+        } catch {
+            session.commitConfiguration()
+            NSLog("PresenceSensor: camera input failed: %@", error.localizedDescription)
+            publish(.failed)
+            return
+        }
+        session.commitConfiguration()
+
+        session.startRunning()
+        guard session.isRunning else {
+            NSLog("PresenceSensor: AVCaptureSession did not start")
+            publish(.failed)
+            return
+        }
+        sessionStartedAt = Date()
+        NSLog("PresenceSensor: waiting for first frame from %@", device.localizedName)
+
+        // isRunning 只说明 session graph 启动，不保证摄像头交付了画面。
+        // 五秒仍无首帧就公开失败状态；30 秒 pump 会自动重新建输入再试。
+        queue.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self, self.enabled, self.session.isRunning,
+                  self.lastFrameAt == nil else { return }
+            NSLog("PresenceSensor: session is running but delivered no frames")
+            self.publish(.failed)
+        }
+    }
+
+    private func removeInputs() {
+        for input in session.inputs {
+            session.removeInput(input)
+        }
     }
 
     /// 只用内置或有线外接摄像头。刻意不碰 Continuity Camera——为了看你在不在
@@ -214,12 +335,25 @@ final class PresenceSensor: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         let discovery = AVCaptureDevice.DiscoverySession(
             deviceTypes: [.builtInWideAngleCamera, .external],
             mediaType: .video, position: .unspecified)
-        let devices = discovery.devices
+        let devices = discovery.devices.filter(\.isConnected)
         return devices.first { $0.deviceType == .builtInWideAngleCamera } ?? devices.first
+    }
+
+    private func publish(_ newStatus: Status) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.status != newStatus else { return }
+            self.status = newStatus
+        }
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
+        let isFirstFrame = lastFrameAt == nil
+        lastFrameAt = Date()
+        if isFirstFrame {
+            NSLog("PresenceSensor: first camera frame received")
+            publish(.running)
+        }
         // 5 秒抽一帧：在位状态是分钟级的，但微笑转瞬即逝，30 秒一拍会漏掉大半。
         // 人脸检测 + 6 万参数的小模型，5 秒一次的开销是毫秒级，可以承受。
         guard Date().timeIntervalSince(lastDetection) >= 5,
