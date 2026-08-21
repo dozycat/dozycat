@@ -250,7 +250,10 @@ final class PetPanels {
                               cornerRadius: DesktopCardChrome.cornerRadius,
                               vibrancy: false,
                               shadowPadding: DesktopCardChrome.windowShadowPadding,
-                              systemShadow: false)
+                              systemShadow: false,
+                              // 搜索是一块持续取证的证物板。点证物会切去 Finder、
+                              // 浏览器或编辑器；失去焦点时保留面板，回来才能接着查。
+                              dismissOnResignKey: false)
         adopt(panel, into: \.searchPanel)
         panel.showCentered()
     }
