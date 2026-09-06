@@ -75,8 +75,15 @@ TestFlight 首个构建，提交后约一天。App Store 首次提审，准备�
   和「检查更新」按钮。默认后台每天查一次官网的 appcast（`Updater.swift`，
   Info.plist 的 `SUEnableAutomaticChecks` / `SUScheduledCheckInterval`）。
 - **签名密钥**：更新包用 EdDSA 签名。私钥在发布者本机钥匙串（`generate_keys`
-  生成），公钥 `SUPublicEDKey` 写在 project.yml 的 Info.plist 段。换发布者要
-  重新 `generate_keys` 并同步改公钥、重签所有历史 appcast。
+  生成），公钥 `SUPublicEDKey` 写在 project.yml 的 Info.plist 段。换电脑应从
+  旧机器用 `generate_keys -x <安全路径>` 导出，再在新机器用
+  `generate_keys -f <安全路径>` 导入同一把私钥；`generate_keys -p` 只查看公钥。
+  不要因为换电脑就生成新密钥或重签历史 appcast。私钥丢失时必须按
+  [Sparkle 密钥轮换规则](https://sparkle-project.org/documentation/#rotating-signing-keys)
+  单独处理，必须保留旧版本接受的 Apple 代码签名身份或旧 EdDSA 密钥。
+  同 Team 重签发证书后，仍需从实际已发布的旧 App 提取 designated requirement，
+  验证新 App 满足该要求，并验证新包能通过内嵌新公钥的 EdDSA 校验；
+  仅看 Team ID 相同不足以确认升级兼容。完成公证和实际升级测试后再发布。
 - **一条命令出 dmg**：`scripts/package-dmg.sh`——Release 构建 → 嵌 sense →
   **Sparkle.framework inside-out 签名**（XPC 服务、Autoupdate、Updater.app 逐层）
   → Developer ID 签 app（hardened runtime）→ dmg → 公证 → 钉票。正式模式每次
@@ -113,6 +120,34 @@ xcrun notarytool history --keychain-profile "$DOZYCAT_NOTARY_PROFILE"
 ```bash
 DOZYCAT_NOTARY_PROFILE=dozycat-notary scripts/package-dmg.sh
 ```
+
+## 新 Mac 初始化与验证
+
+以下打包命令从 `apps/desktop/pet-mac` 执行。需要 Apple Silicon Mac、完整
+Xcode（`xcode-select -p` 应指向 Xcode.app）、Metal 编译器、Rust 和 XcodeGen。
+首次安装 Xcode 后执行 `xcodebuild -runFirstLaunch`，并用
+`xcrun metal --version` 验证实际编译器；若只安装了命令入口而没有工具链，执行
+`xcodebuild -downloadComponent MetalToolchain`。
+Rust 使用 rustup 官方安装器；XcodeGen 可通过 Homebrew 安装，或把官方 Release
+的二进制装到 `~/.local/bin` 并加入 PATH。当前共享内核构建也包含 iOS slices，
+因此还需 Xcode 的 iOS SDK 和两个 Rust targets：
+
+```bash
+rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+cd apps/desktop/pet-mac
+scripts/package-dmg.sh --adhoc
+```
+
+验证包输出到 `build/adhoc/`，不会递增版本号，也不应上传给用户。正式包仍输出到
+`dist/`。Swift Package 缓存保留在 `build/SourcePackages/`，后续生成 appcast
+直接使用其中的 Sparkle 工具；也可用 `DOZYCAT_GENERATE_APPCAST` 指定工具路径。
+
+正式发布前，把旧机器含私钥的 Developer ID Application 证书导入登录钥匙串
+（Team ID 必须是 `PR5A8VMY8S`），迁移上述 Sparkle 私钥，并通过交互式
+`xcrun notarytool store-credentials dozycat-notary` 配置公证。密码只在本机提示中
+输入。检查 GitHub SSH 推送权限以及 Releases 的上传登录状态；克隆成功不等于
+拥有 Release 写权限。运行 `scripts/check-release.sh` 检查构建工具与发布凭证。
+正式打包会在开始编译前验证公证 profile，缺失时直接退出。
 
 `.env`、Apple 私钥/证书导出文件和 provisioning profile 均已由仓库根目录的
 `.gitignore` 排除；Apple ID 密码、app-specific password 和私钥不要写进脚本、

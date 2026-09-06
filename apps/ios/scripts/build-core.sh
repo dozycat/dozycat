@@ -12,19 +12,19 @@ GEN="$OUT/uniffi-generated"
 MACOS_MIN="${DOZYCAT_MACOS_DEPLOYMENT_TARGET:-14.0}"
 
 echo "▸ building rust (host cdylib for bindgen)"
-cargo build --release --manifest-path "$CORE/Cargo.toml"
+cargo build --locked --release --manifest-path "$CORE/Cargo.toml"
 
 echo "▸ building rust (iOS device + simulator + macOS staticlibs)"
-cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios
-cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios-sim
+cargo build --locked --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios
+cargo build --locked --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-ios-sim
 MACOSX_DEPLOYMENT_TARGET="$MACOS_MIN" \
-  cargo build --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-darwin
+  cargo build --locked --release --manifest-path "$CORE/Cargo.toml" --target aarch64-apple-darwin
 
 echo "▸ generating swift bindings"
 rm -rf "$GEN"
 # 注意：uniffi-bindgen 的 library 模式会从「当前目录」跑 cargo metadata，
 # 必须 cd 进 crate 所在 workspace，否则从任意目录调用本脚本会失败。
-(cd "$CORE" && cargo run --release --bin uniffi-bindgen -- \
+(cd "$CORE" && cargo run --locked --release --bin uniffi-bindgen -- \
   generate --library "$OUT/release/libdozycat_core.dylib" \
   --language swift --out-dir "$GEN")
 

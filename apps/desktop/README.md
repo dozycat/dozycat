@@ -30,15 +30,18 @@ UI 只见语义）。菜单栏显示「懒猫 45」，nudge 走猫旁气泡。
 
 ## 起步
 
-vendor 子模块尚未添加。本机开发期可以直接 path-dep 到旁边的 checkout：
+当前桌面应用从 `pet-mac` 构建，不依赖旁边的 `cat-poc` checkout。新电脑先按
+[发布说明](../../docs/RELEASE.md#新-mac-初始化与验证) 安装工具和迁移凭证，再执行：
 
-```toml
-# crates/dozycat-pet/Cargo.toml （开发期）
-pocket-widget = { path = "../../../../cat-poc/vendor/pocketjs/crates/pocket-widget" }
+```bash
+cd pet-mac
+scripts/check-release.sh
+scripts/package-dmg.sh --adhoc
 ```
 
-定型后改为本仓库的 git submodule（与 cat-poc 相同的 `vendor/` 布局），并对齐
-它固定的 `wgpu` / `winit` / `glam` 版本。
+本机验证包在 `pet-mac/build/adhoc/`；正式签名、公证和 appcast 流程见发布说明。
+上面的 pocket-widget 选型和下面的里程碑保留作早期规划记录，
+`crates/dozycat-pet` 仍是脚手架，不是当前发布入口。
 
 ## 里程碑
 

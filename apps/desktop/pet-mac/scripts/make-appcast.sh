@@ -20,17 +20,30 @@ case "$DL_PREFIX" in
     ;;
 esac
 
-GA="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*Sparkle*/bin/generate_appcast' 2>/dev/null | head -1)"
+GA="${DOZYCAT_GENERATE_APPCAST:-}"
+if [ -z "$GA" ]; then
+  # package-dmg 使用临时 DerivedData，但把 SPM 工具保留在项目 build/ 下。
+  # 兼容此前直接从 Xcode 构建的发布机；不存在的目录不应触发 pipefail。
+  for cache in "$PROJECT_DIR/build/SourcePackages" "$HOME/Library/Developer/Xcode/DerivedData"; do
+    [ -d "$cache" ] || continue
+    GA="$(find "$cache" -type f -name generate_appcast -print -quit)"
+    [ -z "$GA" ] || break
+  done
+fi
 [ -x "$GA" ] || { echo "generate_appcast not found (build once to fetch Sparkle)" >&2; exit 1; }
 
+WORK="$(mktemp -d "$SITE/.appcast.XXXXXX")"
+trap 'rm -rf "$WORK"' EXIT
+APPCAST="$WORK/appcast.xml"
+[ ! -f "$SITE/appcast.xml" ] || cp "$SITE/appcast.xml" "$APPCAST"
+
 echo "==> sign appcast (download prefix: $DL_PREFIX)"
-"$GA" --download-url-prefix "$DL_PREFIX" -o "$SITE/appcast.xml" "$DIST"
+"$GA" --download-url-prefix "$DL_PREFIX" -o "$APPCAST" "$DIST"
 
 # generate_appcast 只接受一个公共下载前缀。先用占位符签名生成，再按每个
 # item 的 shortVersionString 固定到对应 GitHub tag；否则 releases/latest 会在
 # 下一版发布后让全部历史 URL 指向错误的 release。
-APPCAST_TMP="$(mktemp "$SITE/appcast.xml.XXXXXX")"
-trap 'rm -f "$APPCAST_TMP"' EXIT
+APPCAST_TMP="$WORK/resolved.xml"
 awk -v template="$DL_PREFIX" '
   /<sparkle:shortVersionString>/ {
     version = $0
@@ -55,9 +68,8 @@ awk -v template="$DL_PREFIX" '
     $0 = before_url resolved_prefix asset "\"" after_url
   }
   { print }
-' "$SITE/appcast.xml" > "$APPCAST_TMP"
-mv "$APPCAST_TMP" "$SITE/appcast.xml"
-trap - EXIT
+' "$APPCAST" > "$APPCAST_TMP"
+mv "$APPCAST_TMP" "$APPCAST"
 
 # 每个 item（包括 delta）必须留在自己的 tag，主包文件名也必须匹配版本。
 if ! awk -v template="$DL_PREFIX" '
@@ -81,7 +93,7 @@ if ! awk -v template="$DL_PREFIX" '
       }
     }
   }
-' "$SITE/appcast.xml"; then
+' "$APPCAST"; then
   echo "错误：appcast tag、版本或文件名不一致。" >&2
   exit 1
 fi
@@ -96,16 +108,17 @@ LATEST_VERSION="$(awk '
     print version
     exit
   }
-' "$SITE/appcast.xml")"
+' "$APPCAST")"
 [ -n "$LATEST_VERSION" ] || { echo "错误：appcast 没有版本号。" >&2; exit 1; }
 STALE_DOWNLOADS="$({
   find "$SITE" -type f \( -name '*.html' -o -name '*.py' \) \
     -exec grep -nHE 'releases/latest/download/dozycat-[0-9]+\.[0-9]+\.[0-9]+-arm64\.dmg' {} +
 } | grep -v "dozycat-${LATEST_VERSION}-arm64.dmg" || true)"
 if [ -n "$STALE_DOWNLOADS" ]; then
-  echo "错误：官网仍有旧版本下载链接（当前 appcast 是 $LATEST_VERSION）：" >&2
+  echo "错误：官网仍有旧版本下载链接（当前 appcast 是 ${LATEST_VERSION}）：" >&2
   echo "$STALE_DOWNLOADS" >&2
   exit 1
 fi
 
+mv "$APPCAST" "$SITE/appcast.xml"
 echo "==> appcast -> $SITE/appcast.xml"

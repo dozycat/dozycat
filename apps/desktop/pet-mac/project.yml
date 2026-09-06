@@ -62,7 +62,7 @@ targets:
         # 更新清单托管在官网（GitHub Pages）；发布脚本更新这份 appcast.xml。
         SUFeedURL: https://dozycat.github.io/dozycat/appcast.xml
         # EdDSA 公钥：generate_keys 生成，私钥在本机钥匙串（发布者持有）。
-        SUPublicEDKey: orMMRU/a20tQnzy6zx9sK+cQ523Xrt/P+ia+vJupHRQ=
+        SUPublicEDKey: sxTrY/WDyXSnjIECkIOOQaJfhxSVkHR9gFjOZmdPwhs=
         SUEnableAutomaticChecks: true
         SUScheduledCheckInterval: 86400
     settings:
@@ -73,8 +73,8 @@ targets:
         PRODUCT_NAME: dozycat
         APP_DISPLAY_NAME: 懒猫
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        MARKETING_VERSION: "0.1.4"
-        CURRENT_PROJECT_VERSION: "5"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "6"
       configs:
         # 屏幕录制授权绑定代码签名。ad-hoc Debug 的 designated requirement 只有
         # 每次构建都变化的 CDHash，会让 TCC 把同一个 bundle 当成新 app；官方

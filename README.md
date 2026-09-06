@@ -62,8 +62,10 @@ design/       设计稿指针（源在 Claude Design）
 
 ## 桌宠（apps/desktop）
 
-单原生进程：pocket-widget（透明置顶壳）+ pocket-pi（QuickJS agent 脑），
-详见 [apps/desktop/README.md](apps/desktop/README.md)。目前是脚手架 + 计划。
+当前发布版本使用 `pet-mac`（AppKit + SwiftUI）和 `dozycat-sense`（Rust）。
+新电脑安装环境、验证 DMG、迁移签名凭证见 [发布说明](docs/RELEASE.md#新-mac-初始化与验证)。
+从仓库根目录执行 `apps/desktop/pet-mac/scripts/check-release.sh` 检查发布环境；
+执行 `apps/desktop/pet-mac/scripts/package-dmg.sh --adhoc` 生成本机验证包。
 
 ## 设计原则
 

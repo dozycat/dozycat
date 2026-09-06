@@ -5,6 +5,7 @@
 xcuserdata/
 DerivedData/
 build/
+apps/desktop/pet-mac/dist/
 
 # Rust
 target/

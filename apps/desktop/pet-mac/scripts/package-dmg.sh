@@ -17,6 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$PROJECT_DIR/../../.." && pwd)"
 OUT="$PROJECT_DIR/dist"
+OUTPUT_SET=0
 MODE="release"
 NOTARIZE=1
 BUMP_VERSION=1
@@ -44,6 +45,7 @@ while [ "$#" -gt 0 ]; do
       shift
       [ "$#" -gt 0 ] || { echo "错误：--output 需要目录" >&2; exit 2; }
       OUT="$1"
+      OUTPUT_SET=1
       ;;
     -h|--help)
       usage
@@ -58,6 +60,11 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+# 验证包不能进入 generate_appcast 扫描的正式分发目录。
+if [ "$MODE" = "adhoc" ] && [ "$OUTPUT_SET" -eq 0 ]; then
+  OUT="$PROJECT_DIR/build/adhoc"
+fi
+
 case "$OUT" in
   /*) ;;
   *) OUT="$PROJECT_DIR/$OUT" ;;
@@ -66,6 +73,15 @@ esac
 for tool in cargo xcodegen xcodebuild codesign hdiutil ditto shasum; do
   command -v "$tool" >/dev/null || { echo "错误：缺少命令 $tool" >&2; exit 2; }
 done
+
+if ! xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
+  echo "错误：Xcode 尚未初始化，请先执行 xcodebuild -runFirstLaunch。" >&2
+  exit 2
+fi
+if ! xcrun metal --version >/dev/null 2>&1; then
+  echo "错误：缺少 Metal Toolchain，请执行 xcodebuild -downloadComponent MetalToolchain。" >&2
+  exit 2
+fi
 
 IDENTITY="${DOZYCAT_CODESIGN_IDENTITY:-}"
 if [ "$MODE" = "release" ]; then
@@ -89,6 +105,8 @@ if [ "$MODE" = "release" ]; then
     if [ -n "${DOZYCAT_NOTARY_KEYCHAIN:-}" ]; then
       NOTARY_ARGS+=(--keychain "$DOZYCAT_NOTARY_KEYCHAIN")
     fi
+    # 新电脑先验证凭证，避免长时间构建、递增版本号后才发现无法公证。
+    xcrun notarytool history "${NOTARY_ARGS[@]}" >/dev/null
   fi
 else
   IDENTITY="-"
@@ -112,7 +130,7 @@ echo "==> 配置：$MODE / $ARCH / macOS $MIN_MACOS+"
 echo "==> dozycat-sense (release)"
 MACOSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
   cargo build --manifest-path "$REPO_ROOT/apps/desktop/Cargo.toml" \
-  --release -p dozycat-sense
+  --locked --release -p dozycat-sense
 SENSE="$REPO_ROOT/apps/desktop/target/release/dozycat-sense"
 
 echo "==> dozycat-core (macOS $MIN_MACOS+)"
@@ -140,6 +158,7 @@ echo "==> xcodegen + xcodebuild (Release)"
 xcodegen generate >/dev/null
 xcodebuild -project DozycatPet.xcodeproj -scheme DozycatPet -configuration Release \
   -derivedDataPath "$DERIVED" \
+  -clonedSourcePackagesDirPath "$PROJECT_DIR/build/SourcePackages" \
   ARCHS="$ARCH" ONLY_ACTIVE_ARCH=YES MACOSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
   -skipPackagePluginValidation \
