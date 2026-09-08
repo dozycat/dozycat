@@ -430,6 +430,12 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeys: [HotKey] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+        if let report = ProcessInfo.processInfo.environment["DOZYCAT_MLX_SMOKE_REPORT"] {
+            Task { await LocalModelSmoke.run(reportURL: URL(fileURLWithPath: report)) }
+            return
+        }
+        #endif
         NSApp.setActivationPolicy(.accessory)
         Self.applyAppearancePreference()
         _ = Updater.shared   // 起自动更新（后台按计划查 appcast）

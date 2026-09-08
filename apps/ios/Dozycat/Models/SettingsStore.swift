@@ -2,12 +2,26 @@ import SwiftUI
 import Security
 
 enum LLMProvider: String, CaseIterable, Identifiable {
+    #if os(macOS)
+    case localMLX
+    #endif
     case openai, deepseek, custom
+
+    static var initial: Self {
+        #if os(macOS)
+        return .localMLX
+        #else
+        return .openai
+        #endif
+    }
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
+        #if os(macOS)
+        case .localMLX: return "本地 MLX"
+        #endif
         case .openai: return "OpenAI"
         case .deepseek: return "DeepSeek"
         case .custom: return String(localized: "自定义")
@@ -16,6 +30,9 @@ enum LLMProvider: String, CaseIterable, Identifiable {
 
     var defaultBaseURL: String {
         switch self {
+        #if os(macOS)
+        case .localMLX: return ""
+        #endif
         case .openai: return "https://api.openai.com/v1"
         case .deepseek: return "https://api.deepseek.com"
         case .custom: return ""
@@ -24,6 +41,9 @@ enum LLMProvider: String, CaseIterable, Identifiable {
 
     var defaultModel: String {
         switch self {
+        #if os(macOS)
+        case .localMLX: return "mlx-community/Qwen3.5-4B-4bit"
+        #endif
         case .openai: return "gpt-5-mini"
         case .deepseek: return "deepseek-chat"
         case .custom: return ""
@@ -36,7 +56,7 @@ enum LLMProvider: String, CaseIterable, Identifiable {
 final class SettingsStore: ObservableObject {
     static let shared = SettingsStore()
 
-    @AppStorage("llmProvider") var providerRaw: String = LLMProvider.openai.rawValue
+    @AppStorage("llmProvider") var providerRaw: String = LLMProvider.initial.rawValue
     @AppStorage("llmModel") var model: String = ""
     @AppStorage("llmBaseURL") var baseURL: String = ""
     @Published var apiKey: String
@@ -48,8 +68,13 @@ final class SettingsStore: ObservableObject {
     }
 
     var provider: LLMProvider {
-        get { LLMProvider(rawValue: providerRaw) ?? .openai }
-        set { providerRaw = newValue.rawValue }
+        get { LLMProvider(rawValue: providerRaw) ?? .initial }
+        set {
+            providerRaw = newValue.rawValue
+            #if os(macOS)
+            if newValue != .localMLX { Task { await LocalModelRuntime.shared.unload() } }
+            #endif
+        }
     }
 
     func persistKey() {
@@ -58,6 +83,14 @@ final class SettingsStore: ObservableObject {
 
     /// 可用的模型配置；Key 或 URL 缺失时为 nil（聊天回退内置回复）。
     var llmConfig: LLMClient.Config? {
+        #if os(macOS)
+        if provider == .localMLX {
+            let id = model.isEmpty ? provider.defaultModel : model
+            guard LocalModelStore.supportedIDs.contains(id) else { return nil }
+            return LLMClient.Config(baseURL: LocalModelStore.directory(for: id), model: id,
+                                    apiKey: "", localModelDirectory: LocalModelStore.directory(for: id))
+        }
+        #endif
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return nil }
         let urlString = baseURL.isEmpty ? provider.defaultBaseURL : baseURL

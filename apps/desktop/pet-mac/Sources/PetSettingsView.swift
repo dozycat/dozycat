@@ -299,6 +299,13 @@ struct PetSettingsView: View {
                 Spacer()
             }
 
+            if settings.provider == .localMLX {
+                LocalModelControls()
+                Button(testButtonLabel) { testModel() }
+                    .buttonStyle(GhostPillStyle())
+                    .disabled(testState == .testing)
+                Text(testMessage).font(.caption).foregroundStyle(testColor)
+            } else {
             VStack(spacing: 0) {
                 if settings.provider == .custom {
                     fieldLine("Base URL", text: $settings.baseURL, prompt: "https://…/v1")
@@ -335,6 +342,7 @@ struct PetSettingsView: View {
             }
             .font(.system(size: 10))
             .foregroundStyle(DS.muted)
+            }
         }
         .onChange(of: settings.apiKey) {
             keySaved = false
@@ -520,7 +528,7 @@ struct PetSettingsView: View {
     }
 
     private func testModel() {
-        settings.persistKey()
+        if settings.provider != .localMLX { settings.persistKey() }
         guard let config = settings.llmConfig else { return }
         testState = .testing
         Task {

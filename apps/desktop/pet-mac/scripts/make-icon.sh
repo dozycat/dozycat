@@ -1,15 +1,19 @@
 #!/bin/bash
-# 从 iOS 的 1024px 主图重新生成 AppIcon asset catalog，桌面与手机保持同一张脸。
+# 从正式版和 Debug 主图重新生成两套 AppIcon asset catalog。
 # logo 换了跑一次即可；产物进 git，打包脚本不依赖本脚本。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SRC="$PROJECT_DIR/../../ios/Dozycat/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
-SET="$PROJECT_DIR/Assets/Assets.xcassets/AppIcon.appiconset"
-
-[ -f "$SRC" ] || { echo "找不到 logo：$SRC" >&2; exit 1; }
-mkdir -p "$SET"
+# 两种身份各自维护主图，重新生成时不会覆盖 Debug 图标。
+for variant in AppIcon AppIconDebug; do
+  SET="$PROJECT_DIR/Assets/Assets.xcassets/$variant.appiconset"
+  if [ "$variant" = AppIconDebug ]; then
+    SRC="$PROJECT_DIR/Assets/AppIconDebug.png"
+  fi
+  [ -f "$SRC" ] || { echo "找不到 logo：$SRC" >&2; exit 1; }
+  mkdir -p "$SET"
 
 for s in 16 32 128 256; do
   sips -z "$s" "$s" "$SRC" --out "$SET/icon_${s}.png" >/dev/null
@@ -38,3 +42,4 @@ cat > "$SET/Contents.json" <<'EOF'
 }
 EOF
 echo "已生成 $SET"
+done

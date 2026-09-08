@@ -78,7 +78,7 @@ enum PiCLI {
         case .openai:
             return ProviderArgs(name: "openai", model: config.model,
                                 key: config.apiKey, keyEnv: "OPENAI_API_KEY")
-        case .custom:
+        case .localMLX, .custom:
             return nil // 自定义端点走内置循环
         }
     }

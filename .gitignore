@@ -5,6 +5,8 @@
 xcuserdata/
 DerivedData/
 build/
+build.noindex/
+apps/desktop/pet-mac/build
 apps/desktop/pet-mac/dist/
 
 # Rust

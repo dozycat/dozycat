@@ -3,6 +3,15 @@
     <channel>
         <title>dozycat</title>
         <item>
+            <title>0.1.6</title>
+            <pubDate>Tue, 08 Sep 2026 14:52:52 +0800</pubDate>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/dozycat/dozycat/releases/download/0.1.6/dozycat-0.1.6-arm64.dmg" length="20581706" type="application/octet-stream" sparkle:edSignature="A03255PnCtzXn6Lt677PZ7R1x7QUX7lLVJ21nYEetpgem+7wCOvuC9E70Gbp4a6IrUTPMgA8G/3KKtO/iGBUCQ=="/>
+        </item>
+        <item>
             <title>0.1.4</title>
             <pubDate>Thu, 20 Aug 2026 14:13:23 +0800</pubDate>
             <sparkle:version>5</sparkle:version>
@@ -27,18 +36,6 @@
             <sparkle:deltas>
                 <enclosure url="https://github.com/dozycat/dozycat/releases/download/0.1.3/dozycat4-3.delta" sparkle:deltaFrom="3" length="3402402" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="412b2SAsTFiYJe2Ef9gHElc42V3WJal4ZWZGFITRAjqLWgmnheSuQTeawzJcJfR2xS9B6H5fSlDSLqMz/5wuAA=="/>
                 <enclosure url="https://github.com/dozycat/dozycat/releases/download/0.1.3/dozycat4-2.delta" sparkle:deltaFrom="2" length="3466806" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="fgdN0Me82PIl2lrgi3AhUJj/36k5PmeN5P3/d6cag2dDEeWUABkvxxepqrK0OaEGuETx6fXQZJcIDuUGo0LbDw=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>0.1.2</title>
-            <pubDate>Tue, 18 Aug 2026 14:50:15 +0800</pubDate>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/dozycat/dozycat/releases/download/0.1.2/dozycat-0.1.2-arm64.dmg" length="10112699" type="application/octet-stream" sparkle:edSignature="cHRA3D6VqgbTCHrrvLzxjQzsOzJ7X3hZh37hzISDACqZZ1QYAr7JeRa3iOO7qwcPPkKThkcK6GuOzCIWJarMCw=="/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/dozycat/dozycat/releases/download/0.1.2/dozycat3-2.delta" sparkle:deltaFrom="2" length="522566" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="zmqU38iPJwABfo1HKkk0IqLuTrSxUmedDPXbKm5NtcvkqGAPRF2Q4tE/3sCYEpHt1H+MrzvlPWiyWAEUKfqPBA=="/>
             </sparkle:deltas>
         </item>
     </channel>

@@ -61,11 +61,18 @@ enum SequenceAgent {
         if segments.isEmpty {
             fallbackOCR = await screenText()
         }
+        // A current frame supplements OCR for local inference only; it never leaves memory.
+        var imageData: Data?
+        if SettingsStore.shared.provider == .localMLX,
+           let config = SettingsStore.shared.llmConfig, LocalModelStore.isInstalled(config.model),
+           let image = await RawCapture.frontWindowImage() {
+            imageData = NSBitmapImageRep(cgImage: image).representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+        }
         // 活动类别（带屏幕文字的精分类）喂给疲劳感知——跨边界的只有类别标签
         let classifyText = segments.map(\.text).joined(separator: "\n") + fallbackOCR
         SenseHintsPump.shared.updateActivity(
             ActivityClass.classify(app: app, bundleID: appBundleID, ocr: classifyText))
-        guard !segments.isEmpty || !fallbackOCR.isEmpty else {
+        guard !segments.isEmpty || !fallbackOCR.isEmpty || imageData != nil else {
             let reason = RawCapture.hasScreenCaptureAccess
                 ? "OCR returned no text"
                 : "screen recording permission unavailable"
@@ -73,21 +80,27 @@ enum SequenceAgent {
             return nil
         }
 
-        // 控制上下文：从最新往回收，总量 ~7000 字放得下几段对话
-        var budget = 7000
+        if let config = SettingsStore.shared.llmConfig, config.isLocal,
+           !LocalModelStore.isInstalled(config.model) {
+            NSLog("SequenceAgent: local model not installed; OCR remains in raw notes")
+            return nil
+        }
+        // 从最新原料往回收；本地模型给图片和工具预留上下文空间。
+        var budget = SettingsStore.shared.provider == .localMLX ? 1400 : 7000
         var kept: [RawCapture.Segment] = []
         for seg in segments.reversed() {
-            budget -= seg.text.count
-            if budget < 0 && !kept.isEmpty { break }
-            kept.append(seg)
+            guard budget > 0 else { break }
+            let text = String(seg.text.prefix(budget))
+            kept.append(RawCapture.Segment(ref: seg.ref, text: text))
+            budget -= text.count
         }
         segments = kept.reversed()
 
         var body = ""
         if let config = SettingsStore.shared.llmConfig,
-           !(segments.isEmpty && fallbackOCR.isEmpty) {
+           !(segments.isEmpty && fallbackOCR.isEmpty && imageData == nil) {
             let material = segments.isEmpty
-                ? "【原料】（瞬时 OCR，无存档）\n\(fallbackOCR.prefix(3000))"
+                ? "【原料】（瞬时 OCR，无存档）\n\(fallbackOCR.prefix(config.isLocal ? 1400 : 3000))"
                 : segments.enumerated().map { i, seg in
                     "【原料\(i + 1) \(seg.ref)】\n\(seg.text)"
                 }.joined(separator: "\n\n")
@@ -107,8 +120,14 @@ enum SequenceAgent {
             没有完整路径不要猜。出现的具体人名（含「X医生」这类称呼）最后单独一行
             写「人物：名字1、名字2」，没有则写「人物：无」。
             """
-            body = (try? await LLMClient.reply(history: [(role: "user", content: prompt)],
-                                               config: config)) ?? ""
+            if config.isLocal {
+                let visualNote = imageData == nil ? "" : "\n附图是此刻前台窗口，仅用于补充画面理解，不代表前几分钟的内容。图片事实标注（当前画面），不要给它编原料编号。"
+                body = (try? await PiAgent.run(system: LLMClient.persona,
+                    history: [(role: "user", content: prompt + visualNote)], config: config,
+                    imageData: imageData)) ?? ""
+            } else {
+                body = (try? await LLMClient.reply(history: [(role: "user", content: prompt)], config: config)) ?? ""
+            }
         }
 
         let time = DateFormatter(); time.dateFormat = "HHmm"
@@ -257,7 +276,7 @@ enum DreamAgent {
             },
             AgentTool(name: "read_note",
                       description: "读一条时间笔记。name = 文件名，day 省略 = 今天",
-                      parameters: ["name": ["type": "string"], "day": ["type": "string"]]) { args in
+                      parameters: ["name": ["type": "string"], "day": ["type": "string"]], requiredParameters: ["name"]) { args in
                 let day = args["day"] as? String ?? Garden.day()
                 let url = Garden.notes.appendingPathComponent(day)
                     .appendingPathComponent(args["name"] as? String ?? "")
@@ -278,14 +297,14 @@ enum DreamAgent {
             },
             AgentTool(name: "read_person",
                       description: "读一张人物卡。name 可带或不带 .md",
-                      parameters: ["name": ["type": "string"]]) { args in
+                      parameters: ["name": ["type": "string"]], requiredParameters: ["name"]) { args in
                 let name = normalized(args["name"])
                 let url = Garden.people.appendingPathComponent("\(name).md")
                 return (try? String(contentsOf: url, encoding: .utf8)) ?? "（还没有这张卡）"
             },
             AgentTool(name: "write_person",
                       description: "写/覆盖一张人物卡。content 用 markdown：关系一句话、最近温度、证据（带日期）",
-                      parameters: ["name": ["type": "string"], "content": ["type": "string"]]) { args in
+                      parameters: ["name": ["type": "string"], "content": ["type": "string"]], requiredParameters: ["name", "content"]) { args in
                 let name = normalized(args["name"])
                 guard !name.isEmpty, let content = args["content"] as? String else { return "参数缺失" }
                 let url = Garden.people.appendingPathComponent("\(name).md")
@@ -294,7 +313,7 @@ enum DreamAgent {
             },
             AgentTool(name: "save_moment",
                       description: "把一件值得记住的小事存进用户小传。text ≤40字白描；note 情绪词（可选 · 跟进）",
-                      parameters: ["text": ["type": "string"], "note": ["type": "string"]]) { args in
+                      parameters: ["text": ["type": "string"], "note": ["type": "string"]], requiredParameters: ["text"]) { args in
                 guard let text = args["text"] as? String, !text.isEmpty else { return "text 缺失" }
                 let todayCount = PetStore.shared.recent(limit: 50).filter {
                     $0.source.hasPrefix(String(localized: "今天"))
@@ -307,7 +326,7 @@ enum DreamAgent {
             },
             AgentTool(name: "link_file",
                       description: "把一个和用户相关的本机文件收进花园（links/ 链接卡）。path 绝对路径；why 一句话为什么值得留",
-                      parameters: ["path": ["type": "string"], "why": ["type": "string"]]) { args in
+                      parameters: ["path": ["type": "string"], "why": ["type": "string"]], requiredParameters: ["path"]) { args in
                 let raw = (args["path"] as? String ?? "").trimmingCharacters(in: .whitespaces)
                 let expanded = (raw as NSString).expandingTildeInPath
                 guard !expanded.isEmpty, FileManager.default.fileExists(atPath: expanded) else {
@@ -320,7 +339,7 @@ enum DreamAgent {
             AgentTool(name: "link_url",
                       description: "把一个和用户相关的网页链接收进花园（links/ 链接卡）。url 完整地址；title 名字；why 一句话",
                       parameters: ["url": ["type": "string"], "title": ["type": "string"],
-                                   "why": ["type": "string"]]) { args in
+                                   "why": ["type": "string"]], requiredParameters: ["url"]) { args in
                 let raw = (args["url"] as? String ?? "").trimmingCharacters(in: .whitespaces)
                 guard let url = URL(string: raw),
                       ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
@@ -333,7 +352,7 @@ enum DreamAgent {
             },
             AgentTool(name: "write_journal",
                       description: "写今天的梦记（≤5 句 markdown）",
-                      parameters: ["content": ["type": "string"]]) { args in
+                      parameters: ["content": ["type": "string"]], requiredParameters: ["content"]) { args in
                 guard let content = args["content"] as? String else { return "参数缺失" }
                 let url = Garden.journal.appendingPathComponent("\(Garden.day()).md")
                 try? content.write(to: url, atomically: true, encoding: .utf8)
@@ -407,7 +426,7 @@ enum SearcherAgent {
         let tools: [AgentTool] = [
             AgentTool(name: "search_moments",
                       description: "按关键词搜用户的小传（子串匹配，中文建议用 1-2 个字的关键词多试几次）",
-                      parameters: ["q": ["type": "string"]]) { args in
+                      parameters: ["q": ["type": "string"]], requiredParameters: ["q"]) { args in
                 let q = args["q"] as? String ?? ""
                 let hits = PetStore.shared.search(q)
                 for hit in hits where !collectedHits.contains(where: { $0.id == hit.id }) {
@@ -419,7 +438,7 @@ enum SearcherAgent {
             },
             AgentTool(name: "grep_notes",
                       description: "在最近 7 天的时间笔记里全文找关键词，返回命中行和文件",
-                      parameters: ["q": ["type": "string"]]) { args in
+                      parameters: ["q": ["type": "string"]], requiredParameters: ["q"]) { args in
                 let q = args["q"] as? String ?? ""
                 guard !q.isEmpty else { return "q 缺失" }
                 var out: [String] = []
@@ -438,7 +457,7 @@ enum SearcherAgent {
             },
             AgentTool(name: "read_note",
                       description: "读某天的一条时间笔记原文。day 形如 2026-08-06",
-                      parameters: ["day": ["type": "string"], "name": ["type": "string"]]) { args in
+                      parameters: ["day": ["type": "string"], "name": ["type": "string"]], requiredParameters: ["name"]) { args in
                 let url = Garden.notes.appendingPathComponent(args["day"] as? String ?? Garden.day())
                     .appendingPathComponent(args["name"] as? String ?? "")
                 return (try? String(contentsOf: url, encoding: .utf8)) ?? "（读不到）"
@@ -450,7 +469,7 @@ enum SearcherAgent {
             },
             AgentTool(name: "read_person",
                       description: "读一张人物卡",
-                      parameters: ["name": ["type": "string"]]) { args in
+                      parameters: ["name": ["type": "string"]], requiredParameters: ["name"]) { args in
                 var name = (args["name"] as? String ?? "")
                 if name.hasSuffix(".md") { name = String(name.dropLast(3)) }
                 let url = Garden.people.appendingPathComponent("\(name).md")
@@ -458,7 +477,7 @@ enum SearcherAgent {
             },
             AgentTool(name: "grep_links",
                       description: "在花园的链接卡（links/）里找关键词，返回卡名和指向",
-                      parameters: ["q": ["type": "string"]]) { args in
+                      parameters: ["q": ["type": "string"]], requiredParameters: ["q"]) { args in
                 let q = args["q"] as? String ?? ""
                 guard !q.isEmpty else { return "q 缺失" }
                 var out: [String] = []
@@ -479,7 +498,7 @@ enum SearcherAgent {
             },
             AgentTool(name: "search_files",
                       description: "按文件名搜本机文件（Spotlight），返回路径",
-                      parameters: ["q": ["type": "string"]]) { args in
+                      parameters: ["q": ["type": "string"]], requiredParameters: ["q"]) { args in
                 let hits = await SearchModel.mdfind(args["q"] as? String ?? "")
                 return hits.isEmpty ? "（没搜到文件）"
                     : hits.map { "\($0.name) — \($0.folder)" }.joined(separator: "\n")

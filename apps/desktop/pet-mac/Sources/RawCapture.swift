@@ -136,6 +136,7 @@ enum RawCapture {
 
     /// 前台窗口的像素（sequence 兜底 OCR 用），同样内存直采、不落盘。
     static func frontWindowImage() async -> CGImage? {
+        guard !IsSecureEventInputEnabled() else { return nil }
         guard let window = frontWindow() else { return nil }
         return await windowImage(windowID: window.id)
     }

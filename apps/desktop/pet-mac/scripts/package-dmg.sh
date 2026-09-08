@@ -16,6 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$PROJECT_DIR/../../.." && pwd)"
+"$SCRIPT_DIR/prepare-build-dir.sh"
 OUT="$PROJECT_DIR/dist"
 OUTPUT_SET=0
 MODE="release"

@@ -10,6 +10,7 @@ struct AgentTool {
     let description: String
     /// JSON Schema（properties 部分）
     let parameters: [String: Any]
+    var requiredParameters: [String] = []
     let run: @MainActor ([String: Any]) async -> String
 }
 
@@ -26,7 +27,15 @@ enum PiAgent {
                     tools: [AgentTool] = [],
                     config: LLMClient.Config,
                     maxSteps: Int = 10,
+                    imageData: Data? = nil,
                     onStep: ((String) -> Void)? = nil) async throws -> String {
+        #if os(macOS)
+        if config.isLocal {
+            return try await LocalAgent.run(system: system, history: history, tools: tools,
+                                            config: config, maxSteps: maxSteps,
+                                            imageData: imageData, onStep: onStep)
+        }
+        #endif
         var messages: [[String: Any]] = [["role": "system", "content": system]]
         messages += history.map { ["role": $0.role, "content": $0.content] }
 
@@ -35,7 +44,8 @@ enum PiAgent {
              "function": ["name": tool.name,
                           "description": tool.description,
                           "parameters": ["type": "object",
-                                         "properties": tool.parameters] as [String: Any]]]
+                                         "properties": tool.parameters,
+                                         "required": tool.requiredParameters] as [String: Any]]]
         }
 
         for _ in 0..<maxSteps {

@@ -7,6 +7,8 @@ enum LLMClient {
         var baseURL: URL
         var model: String
         var apiKey: String
+        var localModelDirectory: URL? = nil
+        var isLocal: Bool { localModelDirectory != nil }
     }
 
     enum LLMError: Error {
@@ -25,6 +27,13 @@ enum LLMClient {
     static func reply(history: [(role: String, content: String)],
                       config: Config,
                       memoryContext: String? = nil) async throws -> String {
+        #if os(macOS)
+        if config.isLocal {
+            var system = persona
+            if let memoryContext, !memoryContext.isEmpty { system += "\n\n用户小传：\n" + memoryContext }
+            return try await PiAgent.run(system: system, history: Array(history.suffix(12)), config: config)
+        }
+        #endif
         let url = config.baseURL.appendingPathComponent("chat/completions")
         var request = URLRequest(url: url, timeoutInterval: 60)
         request.httpMethod = "POST"

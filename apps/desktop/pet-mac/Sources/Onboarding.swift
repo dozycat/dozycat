@@ -157,7 +157,7 @@ struct OnboardingView: View {
     }
 
     private var modelPage: some View {
-        pageShell(eyebrow: "四 · 模型 Key", cat: .doze,
+        pageShell(eyebrow: "四 · 模型", cat: .doze,
                   title: "配一个模型，我才会写字。") {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
@@ -181,6 +181,9 @@ struct OnboardingView: View {
                     }
                 }
 
+                if settings.provider == .localMLX {
+                    LocalModelControls()
+                } else {
                 HStack(spacing: 10) {
                     SecureField("sk-··············", text: $settings.apiKey)
                         .textFieldStyle(.plain)
@@ -199,11 +202,12 @@ struct OnboardingView: View {
 
                 statusRow("Key 只存系统钥匙串", trailing: "除了模型谁也不发")
                 statusRow("不配也能陪坐、记账、提醒", trailing: "批注和《传》会缺席")
+                }
             }
 
             primaryButton(settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                           ? "先开始" : "存好，开始") {
-                if !settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if settings.provider != .localMLX && !settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     settings.persistKey()
                 }
                 finish()
