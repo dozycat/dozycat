@@ -1,5 +1,12 @@
 [
   {
+    "slug": "local-first",
+    "source": "posts/local-first.md",
+    "tags": ["产品", "思考"],
+    "date": "2026-09-09",
+    "description": "模型会变强，产品形态也会变。但一个人的生活，应该始终由这个人自己保管。"
+  },
+  {
     "slug": "smile",
     "source": "posts/smile.md",
     "tags": ["产品"],
