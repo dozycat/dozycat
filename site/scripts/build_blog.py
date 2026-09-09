@@ -250,17 +250,30 @@ def render_tags(tags: tuple[str, ...]) -> str:
     return f'<span class="post-tags" aria-label="标签">{rendered}</span>'
 
 
+def render_cover(post: Post) -> str:
+    covers = {
+        "local-first": ("local", "laptop-minimal-check", "留在身边", "LOCAL FIRST"),
+        "smile": ("smile", "smile", "记住开心", "LITTLE JOYS"),
+        "fatigue": ("rest", "coffee", "歇一会儿", "TAKE A PAUSE"),
+    }
+    theme, icon, caption, eyebrow = covers.get(
+        post.slug, ("local", "laptop-minimal-check", "慢慢记下", "FIELD NOTES")
+    )
+    return f'''<span class="blog-card-visual cover-{theme}" aria-hidden="true">
+          <span class="cover-eyebrow">{eyebrow}</span>
+          <span class="cover-orbit"></span>
+          <img class="cover-icon" src="../assets/blog/{icon}.svg" alt="" width="52" height="52">
+          <span class="cover-caption">{caption}</span>
+        </span>'''
+
+
 def render_index(posts: list[Post]) -> str:
     cards: list[str] = []
     for post in posts:
         cards.append(
             f"""<article class="blog-card">
       <a class="blog-card-link" href="{html.escape(post.slug)}/">
-        <span class="blog-card-visual" aria-hidden="true">
-          <span class="signal signal-mind"><i style="width:72%"></i></span>
-          <span class="signal signal-body"><i style="width:45%"></i></span>
-          <span class="signal-caption">72&nbsp;&nbsp;·&nbsp;&nbsp;45</span>
-        </span>
+        {render_cover(post)}
         <span class="blog-card-copy">
           <span class="post-meta">
             {render_tags(post.tags)}
