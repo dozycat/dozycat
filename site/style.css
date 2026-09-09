@@ -351,6 +351,14 @@ h1, h2, h3, p { margin: 0; }
 .platform-unavailable { color: var(--faint); cursor: not-allowed; }
 .cta-note { font-size: 13px; color: var(--muted); }
 
+/* Quiet contact links at the foot of every page. */
+.footer-contact { display: flex; justify-content: center; gap: 12px; padding: 0 24px 24px; }
+.footer-contact a { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: var(--muted); border-radius: 50%; }
+.footer-contact a:hover { color: var(--coral); background: rgba(128, 128, 128, .06); }
+.footer-contact a:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.footer-contact svg { width: 21px; height: 21px; }
+.contact-xhs { width: 30px; height: 30px; background: currentColor; -webkit-mask: url('assets/contact/xiaohongshu.svg') center / contain no-repeat; mask: url('assets/contact/xiaohongshu.svg') center / contain no-repeat; }
+
 /* ---- footer ---- */
 .footer { border-top: 1px solid var(--line); }
 .footer-inner {
