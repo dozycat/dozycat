@@ -134,6 +134,21 @@ def markdown_to_html(markdown: str) -> tuple[str, str]:
             code_lines.append(line)
             continue
 
+        picture = re.fullmatch(r'!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)', line.strip())
+        if picture:
+            flush_paragraph()
+            flush_list()
+            alt, src, caption = picture.groups()
+            caption_html = (
+                f"<figcaption>{html.escape(caption)}</figcaption>" if caption else ""
+            )
+            blocks.append(
+                f'<figure><img src="{html.escape(src, quote=True)}" '
+                f'alt="{html.escape(alt, quote=True)}" loading="lazy" decoding="async">'
+                f"{caption_html}</figure>"
+            )
+            continue
+
         heading = re.match(r"^(#{1,3})\s+(.+)$", line)
         if heading:
             flush_paragraph()

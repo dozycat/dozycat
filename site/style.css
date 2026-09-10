@@ -629,6 +629,9 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 .markdown-body p,
 .markdown-body li { font-size: 16px; line-height: 2.25; }
 .markdown-body p + p { margin-top: 24px; }
+.markdown-body figure { margin: 36px 0; }
+.markdown-body figure img { display: block; width: 100%; max-width: 540px; height: auto; margin: 0 auto; border-radius: 8px; }
+.markdown-body figcaption { margin-top: 12px; text-align: center; font-size: 13px; line-height: 1.8; color: var(--muted); }
 .markdown-body strong { color: var(--ink); font-weight: 600; }
 .markdown-body em { color: var(--blue); font-style: normal; }
 .markdown-body a { border-bottom: 1px solid var(--line-strong); }

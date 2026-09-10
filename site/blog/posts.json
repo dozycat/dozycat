@@ -1,5 +1,12 @@
 [
   {
+    "slug": "my-sports-story",
+    "source": "posts/my-sports-story.md",
+    "tags": ["生活", "运动"],
+    "date": "2026-09-10",
+    "description": "从爬楼都喘气，到完成 113 公里铁三。一张体检报告让我开始运动，一点毅力让我慢慢改变了自己的人生。"
+  },
+  {
     "slug": "local-first",
     "source": "posts/local-first.md",
     "tags": ["产品", "思考"],
