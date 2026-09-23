@@ -138,6 +138,8 @@ echo "==> dozycat-core (macOS $MIN_MACOS+)"
 DOZYCAT_MACOS_DEPLOYMENT_TARGET="$MIN_MACOS" \
   "$REPO_ROOT/apps/ios/scripts/build-core.sh"
 
+DOZYCAT_LINK_PROFILE=release "$REPO_ROOT/core/dozycat-link/scripts/build-apple.sh"
+
 cd "$PROJECT_DIR"
 # 版本号自动 +1 只在正式发布时做——adhoc 验证不消耗版本号。
 if [ "$MODE" = "release" ] && [ "$BUMP_VERSION" -eq 1 ]; then

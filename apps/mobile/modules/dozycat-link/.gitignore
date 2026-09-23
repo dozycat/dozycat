@@ -1,0 +1,4 @@
+ios/Generated/
+ios/Shared/
+ios/dozycat_linkFFI.xcframework/
+ios/DozycatLink.xcframework/

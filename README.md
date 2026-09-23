@@ -8,10 +8,15 @@
 
 设计源（spec）：[dozycat v2 · Claude Design](https://claude.ai/design/p/17a7d3cc-5126-44af-8c0d-a3e54757796f?file=dozycat+v2.dc.html)
 
+手机端新路线（2026-09-23，本地功能与 Apple 局域网加密配对已实现，自动同步待接入）：[iOS / Android 与无账号 E2EE 绑定](docs/MOBILE-PAIRING.md)。
+使用 Expo SDK 57 + 配套 React Native 0.86 + Rust 加密内核；下文 SwiftUI iOS 是既有实现，
+CloudKit 后续计划由新方案替代。
+
 ## 仓库结构
 
 ```
 apps/
+  mobile/     Expo SDK 57 手机端（今日/小传/设置，iOS 开发包支持局域网加密配对，自动同步待接入）
   ios/        SwiftUI 原生 app（iOS 优先，目标 App Store 上架）
   desktop/
     pet-mac/                macOS 桌宠（AppKit 壳 + SwiftUI 内容，与 iOS 共用 CatFace/DS，见 docs/DESKTOP-UI.md）
@@ -72,3 +77,5 @@ design/       设计稿指针（源在 Claude Design）
 奶油纸感底色（#FAFAF8/#EDECE8）、墨色 #2E2E33、生理 = 珊瑚 #FF8A75、
 心理 = 蓝灰 #7C8DB5；猫是纯代码几何（无切图），一直「有点活着」——
 呼吸 3.4s、每 ~6s 眨一次眼。文案永远是懒猫的第一人称，轻、短、不说教。
+
+设备连接后端与加密内核的当前实现、验证及剩余工作见 [LINK-IMPLEMENTATION](docs/LINK-IMPLEMENTATION.md)。

@@ -1,0 +1,23 @@
+[package]
+name = "dozycat-link"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Accountless device authentication and bounded encrypted sessions"
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+uniffi = { version = "0.32.0", features = ["cli"] }
+snow = "0.10.0"
+zeroize = { version = "1.8", features = ["derive"] }
+getrandom = "0.3"
+sha2 = "0.10"
+hmac = "0.12"
+hkdf = "0.12"
+thiserror = "2"
+
+[dev-dependencies]
+dozycat-core = { path = "../dozycat-core" }
+tempfile = "3"

@@ -3,7 +3,7 @@ options:
   bundleIdPrefix: com.paperboytm
   deploymentTarget:
     macOS: "14.0"
-  createIntermediateGroups: true
+  createIntermediateGroups: false
   developmentLanguage: zh-Hans
 packages:
   # 自动更新：直发（非 MAS）版更新器。Xcode 把二进制 Sparkle.framework
@@ -28,6 +28,8 @@ targets:
     platform: macOS
     sources:
       - path: Sources
+      - path: ../../../core/dozycat-link/native/apple
+      - path: ../../../core/dozycat-link/target/generated/dozycat_link.swift
       # 安装包图标：site/assets/icon.png（懒猫 logo）生成的 asset catalog，
       # logo 换了跑 scripts/make-icon.sh 重做
       - path: Assets/Assets.xcassets
@@ -44,6 +46,8 @@ targets:
       - path: ../../../model/emotion/emotion_mini_xception.safetensors
         buildPhase: resources
     dependencies:
+      - framework: ../../../core/dozycat-link/target/apple/dozycat_linkFFI.xcframework
+        embed: false
       - framework: ../../ios/Vendor/DozycatCore.xcframework
         embed: false
       - package: Sparkle
@@ -69,6 +73,9 @@ targets:
         LSUIElement: true
         LSMultipleInstancesProhibited: true
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSLocalNetworkUsageDescription: 懒猫在同一 Wi-Fi 中发现你允许连接的手机，并建立端到端加密连接。
+        NSBonjourServices:
+          - _dozycat._tcp
         NSCameraUsageDescription: 懒猫用摄像头判断你在不在屏幕前、心情大概怎么样（只产出在/不在和一个表情标签，模型在本地，一张画面都不保存）。
         NSHumanReadableCopyright: © 2026 dozycat
         # 更新清单托管在官网（GitHub Pages）；发布脚本更新这份 appcast.xml。

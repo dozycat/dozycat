@@ -1,0 +1,9 @@
+{
+  "name": "@dozycat/signaling",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": { "start": "node src/main.mjs", "test": "node --test test/*.test.mjs" },
+  "dependencies": { "ws": "^8.18.3" }
+}

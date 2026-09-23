@@ -3,13 +3,14 @@ import CoreGraphics
 
 struct PetSettingsView: View {
     enum Pane: String, CaseIterable, Identifiable {
-        case general, sensing, model
+        case general, sensing, model, devices
         var id: String { rawValue }
         var label: LocalizedStringKey {
             switch self {
             case .general: "常规"
             case .sensing: "感知"
             case .model: "模型"
+            case .devices: "设备"
             }
         }
         var icon: String {
@@ -17,6 +18,7 @@ struct PetSettingsView: View {
             case .general: "slider.horizontal.3"
             case .sensing: "eye"
             case .model: "sparkles"
+            case .devices: "iphone"
             }
         }
     }
@@ -59,6 +61,7 @@ struct PetSettingsView: View {
                     case .general: generalPane
                     case .sensing: sensingPane
                     case .model: modelPane
+                    case .devices: DeviceLinkView()
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)

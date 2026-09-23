@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 "$SCRIPT_DIR/prepare-build-dir.sh"
 cargo build --manifest-path "$PROJECT_DIR/../Cargo.toml" --locked -p dozycat-sense
+"$PROJECT_DIR/../../../core/dozycat-link/scripts/build-apple.sh"
 cd "$PROJECT_DIR"
 xcodegen generate
 xcodebuild -project DozycatPet.xcodeproj -scheme DozycatPet -configuration Debug \

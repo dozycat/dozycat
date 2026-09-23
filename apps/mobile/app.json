@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "dozycat",
+    "slug": "dozycat",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/dozycat-icon.png",
+    "scheme": "dozycat",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.paperboytm.dozycat",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "懒猫在同一 Wi-Fi 中寻找你允许连接的电脑，并建立端到端加密连接。",
+        "NSBonjourServices": [
+          "_dozycat._tcp"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.paperboytm.dozycat",
+      "allowBackup": false,
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/dozycat-icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAFAF8",
+          "image": "./assets/images/dozycat-icon.png",
+          "imageWidth": 96
+        }
+      ],
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "允许懒猫使用相机扫描电脑上的连接码。",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ef1ec4c9-8b22-49d3-90a2-80faed3598d5"
+      }
+    }
+  }
+}
