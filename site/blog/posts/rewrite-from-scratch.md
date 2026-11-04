@@ -131,37 +131,17 @@ The framework actually has a tool for this. `knownIssue` marks a known problem, 
 
 It reminded me of Goodhart's law: when a measure becomes a target, it stops being a good measure. "The failure list matches the baseline" was a reasonable approximation. Once it became the bar for merging, all it measured was whether the lists matched.
 
-**False alarms.**
-
-It went the other way too. Several red lights turned out to be problems in the tests themselves. `contact-card-confirm` reported "POST action missing" and `meeting-brief-timeline` reported "confirmation card missing". In both cases, the timing matcher was still looking for `/api/v1/tasks/:id/action`, while card decisions had moved to `POST /api/v2/cards/:id/decision`. `voice-message` reported "key = not connected" because, after a security fix, the voice service now uses a short-lived key issued by the backend.
-
-The most misleading was `journey-duplicate-person`. Its failure message read "merge was blocked… blocked false, duplicate still present", which looks exactly like a product bug. It was only the regex for `HTTP 409 POST /api/v1/contacts/:id/merge` no longer matching the new route.
-
-None of these makes the checkup looser, but each one takes time to sort out: is the product wrong, or the test? After enough of them, people start assuming red probably means a test problem, and the next real red light is easier to wave through. Those 76 route regexes are 76 places where that can happen.
-
 **What it can't see.**
 
-After the merge, 2.0 ran for a day with internal accounts on the zero-v2 environment. The most serious problems it turned up were ones the checkup can't see by design:
+After the merge, 2.0 ran for a day with internal accounts. The worst problems it turned up were ones the checkup can't see by design. On real phones, the JavaScript engine was missing a function the browser has, so device and push registration silently never went out. Large accounts took too long on their first sync over a slow network, because Kiwi's data is small and the test database sits on the same machine. And a piece of native-only code kept piling up push registrations, a path the virtual iPhone never takes.
 
-- **Hermes has no `crypto.randomUUID`.** Generating idempotency keys threw an error, so on TestFlight builds, device registration, push registration, and every PATCH never went out. The checkup runs in Chromium and the tests run in Bun, and both have that global.
-- **First sync for a large account was too slow.** One page of the snapshot query took 15 seconds, migrated accounts pulled everything again, and over a trans-ocean link a page couldn't finish downloading in 15 seconds. After a reinstall, task details just spun. Kiwi's data is small and PGlite runs on localhost, so the checkup has neither scale nor a slow network.
-- **Every token refresh created a new push registration.** Seventeen piled up in 11 hours, and the Live Activity binding got lost. That's native-only code, and the virtual iPhone never takes that path.
-- **The data migration stalled on a production copy.** The new tables had no statistics, and a query plan got stuck for more than ten minutes. The checkup doesn't cover data migrations.
-
-Code review caught the client's recovery paths. Greptile raised four P1 issues on the PR: an older edit to a record overwriting a newer one after a retry; deleted events staying in local storage after a snapshot restarted halfway; the 409 for `idempotency_key_in_progress` being treated as a final failure, which dropped pending writes; and the cursor moving forward even when the local database had only saved part of a batch. The checkup's weak-network tests touched very few of these.
-
-None of this contradicts the four layers. I used to describe the fast L0 web checkup as the main line, with the slower L1 to L3 layers there to calibrate it. What I learned this time is that the lower layers aren't just calibration. The Hermes runtime, real data volumes, slow networks, and native-only code are things L0 will never see, however we change it. The rewrite listed real-device testing, real-database testing, eval replays, and a cutover rehearsal as launch gates, and those are exactly where the problems surfaced. They just surfaced after the merge.
+I used to think the slower layers, L1 to L3, were only there to calibrate the fast one. Now I think each of them guards something L0 will never see: the real runtime, real data, real networks, and native code.
 
 **What we'll change next.**
 
-In order of priority:
-
-- **Compare against the baseline down to the assertion.** Compare the first failing assertion and its reason, not just the test name. Assertions that don't depend on the failure point keep running. Known failures get a `knownIssue` mark on the specific assertion, instead of someone checking lists by hand.
-- **Run the full suite on CI for big changes.** The rewrite only ran the core 6 tests on CI, three times, and never added `checkup:full`. The full runs, the bisecting, and the baseline comparison all happened locally, with no record on the PR. Pull requests above a certain size should run the full suite automatically and post the per-assertion comparison.
-- **Move middle-layer assertions into semantic helpers.** Table queries and route regexes go into a small set of helpers, like "card was decided", "merge was rejected", and "duplicate still present". Routes and table names appear only inside the helpers, so the next migration changes one place, and failure messages say what they mean.
-- **Turn what it can't see into stories.** Strip the globals Hermes doesn't have from the web checkup. Add a large-account version of Kiwi. Write the client's recovery paths as scenes with fault injection, like Kiwi editing a note about Monica on the subway.
-
-All of this is still a plan. None of it has shipped yet.
+- **Compare down to the assertion, not the test name.** Assertions after an unrelated failure keep running, so a blind spot like `contact-merge` can't hide again.
+- **Run the full suite on CI for big changes,** and post the comparison on the pull request.
+- **Write what it can't see into the story:** a Kiwi with a lot more data, and a Kiwi on a weak connection in the subway.
 
 **Back to Spolsky.**
 
