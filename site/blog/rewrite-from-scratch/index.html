@@ -39,7 +39,7 @@
       <a class="article-back" href="../">← 返回全部手记</a>
       <div class="post-meta">
         <span class="post-tags" aria-label="标签"><span class="post-tag">技术</span></span>
-        <span class="article-meta">2026.11.04 · 13 分钟</span>
+        <span class="article-meta">2026.11.04 · 15 分钟</span>
       </div>
       <h1 lang="en">We Rewrote It Anyway</h1>
       <p class="article-dek" lang="en">Joel Spolsky said never rewrite from scratch. With AI writing code faster than anyone can review it, we rewrote anyway: four days, a hundred thousand lines, and one user&#x27;s Wednesday as the safety net.</p>
@@ -167,6 +167,42 @@
 <p>We skipped a gradual migration because of what the audit found: the compatibility layer was itself the biggest piece of code. To match the old Java and Python backends byte for byte, the code had 147 places with things like <code>javaBlank</code>, <code>LegacyJsonNumber</code>, and Jackson fingerprints, all locked down by golden fixtures exported from a sibling repo. The state of a single confirmation card was spread across six to eight fields. Each agent pod ran 13 pollers, each writing in its own way. A gradual migration would have kept old and new side by side for a long time, and all of that would have lived on.</p>
 <p>The price of doing it at once is that there&#x27;s no gradual rollout. A gradual migration finds problems through dual writes, feature flags, and a small group of users going first. A one-shot switch can only find them before the merge. Our refactoring plan had a single acceptance rule: correctness no longer means matching the old implementation byte for byte. Behavior is defined by the product checkup and by eval replays.</p>
 <p>This was also our answer to Spolsky. Some of the knowledge collected in the old code no longer lives in the code. It lives in the story of <em>Kiwi&#x27;s Wednesday</em>. As long as the story survives, a rewrite only throws away the implementation. Whether that holds up is what the rest of this post is about.</p>
+<p><strong>What changed underneath.</strong></p>
+<p>The audit had one more finding. The personal-assistant part of Zero was the only part with clean layers, so we rebuilt everything else in its shape:</p>
+<figure class="dg dg-arch" role="img" aria-label="Zero 1.x compared with 2.0 across background work, realtime, cards, API, client and data. 1.x polls the database constantly; 2.0 queues work in one table and notifies, and sends only a change signal to the phone.">
+  <div class="dg-panel">
+    <div class="dg-title">ZERO 1.X → 2.0 · WHAT CHANGED UNDERNEATH</div>
+    <div class="dg-arch-head" aria-hidden="true"><span></span><b>1.x</b><b>2.0</b></div>
+    <div class="dg-arch-row">
+        <span class="dg-arch-label">Background work</span>
+        <span class="dg-arch-cell dg-arch-old"><span class="dg-act dg-act-busy dg-act-poll" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i><i style="--k:5"></i><i style="--k:6"></i><i style="--k:7"></i><i style="--k:8"></i><i style="--k:9"></i></span><span>13 hand-written pollers per agent pod, each asking the database on its own schedule</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span class="dg-act dg-act-calm" aria-hidden="true"><i></i></span><span>One <code>jobs</code> table; workers wake on <code>LISTEN/NOTIFY</code>, with shared leases and retries</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Realtime</span>
+        <span class="dg-arch-cell dg-arch-old"><span class="dg-act dg-act-busy dg-act-ws" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i><i style="--k:5"></i><i style="--k:6"></i><i style="--k:7"></i></span><span>Every WebSocket queries the database twice every 250 ms; a reconnect pulls the full history</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span class="dg-act dg-act-calm" aria-hidden="true"><i></i></span><span>The socket only says “changes”; the phone pulls <code>/sync</code> after its last sequence number</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Cards</span>
+        <span class="dg-arch-cell dg-arch-old"><span>One card's state spread over 6–8 fields in a Java-era queue</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>Its own <code>cards</code> table with a single state machine</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">API</span>
+        <span class="dg-arch-cell dg-arch-old"><span>~290 routes, 6 success shapes, 114 error codes, 6 ways to do idempotency</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>One <code>/api/v2</code>: one envelope, a closed set of error codes, one idempotency ledger</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Client</span>
+        <span class="dg-arch-cell dg-arch-old"><span>One 2,665-line <code>AgentClient</code>; 41 screens call the API directly</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>A client runtime: a local database per account, an outbox, sync; screens only read stores</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Data</span>
+        <span class="dg-arch-cell dg-arch-old"><span>106 tables; 38 core tables without row-level security</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>About 70 tables; row-level security forced on every user table</span></span>
+      </div>
+  </div>
+  <figcaption>The dots show how often the database gets asked. In 1.x it was asked all the time; in 2.0 it speaks up when something actually happens.</figcaption>
+</figure>
+<p>Two of these changes matter most for the rest of this story. Background work used to be 13 pollers per agent pod, each asking the database &quot;anything for me?&quot; on its own schedule, and every WebSocket connection queried the database twice every 250 ms. In 2.0, work is queued in one table and workers are woken by a notification. The server writes every change for a user into one ordered log, and the phone only hears &quot;something changed&quot;, then pulls what&#x27;s new since the last sequence number it saw. The server is the single source of truth; the client is a cache that catches up.</p>
+<p>That second change is also where a new kind of bug comes from, as you&#x27;ll see below.</p>
 <p><strong>How much the storybook changed.</strong></p>
 <p>Start with the most direct question: the foundation was replaced, so how much did the checkup have to change?</p>
 <p>All of <code>scripts/product-checkup</code> changed across 64 files, +511/−392. The tests themselves were 54 files, +359/−300. The assertions fall roughly into three layers, and they fared very differently:</p>
@@ -262,6 +298,54 @@
 <p><strong>What it can&#x27;t see.</strong></p>
 <p>After the merge, 2.0 ran for a day with internal accounts. The worst problems it turned up were ones the checkup can&#x27;t see by design. On real phones, the JavaScript engine was missing a function the browser has, so device and push registration silently never went out. Large accounts took too long on their first sync over a slow network, because Kiwi&#x27;s data is small and the test database sits on the same machine. And a piece of native-only code kept piling up push registrations, a path the virtual iPhone never takes.</p>
 <p>I used to think the slower layers, L1 to L3, were only there to calibrate the fast one. Now I think each of them guards something L0 will never see: the real runtime, real data, real networks, and native code.</p>
+<p><strong>Performance, before and after.</strong></p>
+<p>We never ran an end-to-end benchmark of 1.x against 2.0, so I can&#x27;t give you one headline number. The biggest change is in the shape of the load: the database used to be asked constantly whether anything had happened, and now it speaks up when something does.</p>
+<p>The hard numbers come from the days right after the merge, when we chased the slow first sync for large accounts:</p>
+<figure class="dg dg-perf" role="img" aria-label="Measured before and after the post-merge fixes: task snapshot query 15,261 ms to 213 ms; client sync apply 786 ms to 18 ms; store notifications 14,000 to 70; contacts migration over 14 minutes to 106 seconds; tasks migration over 9 minutes to 22 seconds.">
+  <div class="dg-panel">
+    <div class="dg-title">MEASURED BEFORE AND AFTER THE FIXES</div>
+    <div class="dg-legend" aria-hidden="true"><span><i class="dg-perf-before"></i>before</span><span><i class="dg-perf-after"></i>after</span></div>
+    <div class="dg-perf-row" style="--i:0;--w:1.40%">
+        <span class="dg-perf-name"><b>Task snapshot query</b><small>1,000 tasks on real v2 data</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: 15,261 ms"></i>
+          <i class="dg-perf-after" title="After: 213 ms"></i>
+        </span>
+        <span class="dg-perf-vals"><s>15,261 ms</s><b>213 ms</b><em>72× faster</em></span>
+      </div><div class="dg-perf-row" style="--i:1;--w:2.29%">
+        <span class="dg-perf-name"><b>Client applying a sync</b><small>synthetic account: 2,000 contacts, 2,000 tasks, 10,000 messages</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: 786 ms"></i>
+          <i class="dg-perf-after" title="After: 18 ms"></i>
+        </span>
+        <span class="dg-perf-vals"><s>786 ms</s><b>18 ms</b><em>44× faster</em></span>
+      </div><div class="dg-perf-row" style="--i:2;--w:0.60%">
+        <span class="dg-perf-name"><b>Store notifications</b><small>same synthetic account</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: 14,000"></i>
+          <i class="dg-perf-after" title="After: 70"></i>
+        </span>
+        <span class="dg-perf-vals"><s>14,000</s><b>70</b><em>200× fewer</em></span>
+      </div><div class="dg-perf-row" style="--i:3;--w:12.62%">
+        <span class="dg-perf-name"><b>Migrating contacts</b><small>production copy, 461 users</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: > 14 min, unfinished"></i>
+          <i class="dg-perf-after" title="After: 106 s"></i>
+        </span>
+        <span class="dg-perf-vals"><s>> 14 min, unfinished</s><b>106 s</b><em>8×+ faster</em></span>
+      </div><div class="dg-perf-row" style="--i:4;--w:4.07%">
+        <span class="dg-perf-name"><b>Migrating tasks</b><small>production copy, 461 users</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: > 9 min, unfinished"></i>
+          <i class="dg-perf-after" title="After: 22 s"></i>
+        </span>
+        <span class="dg-perf-vals"><s>> 9 min, unfinished</s><b>22 s</b><em>25×+ faster</em></span>
+      </div>
+  </div>
+  <figcaption>Each bar is scaled to its own “before”. The SQL time is database execution only; the client numbers are a local synthetic benchmark, not an end-to-end phone measurement.</figcaption>
+</figure>
+<p>The first one is almost funny. The snapshot query looked up each task&#x27;s latest messages by task id alone, so it couldn&#x27;t use the index that starts with the user id. Adding the owner condition back was a one-line change. The second came from the client rebuilding a whole contact, task, or thread view for every single change, instead of once per page. The migration numbers came from the database planning queries against brand-new tables that had no statistics yet.</p>
+<p>None of this means first sync is solved. A large account is 50,827 entities over 51 pages, about 105 MB of JSON, and replaying it on an iPhone 11 still took 31 to 42 seconds. In one experiment, moving the assistant&#x27;s 30 messages from the last page to the first put them on screen 2.9 seconds after launch. Sending what people look at first, and the rest later, is the next step.</p>
 <p><strong>What we&#x27;ll change next.</strong></p>
 <ul><li><strong>Compare down to the assertion, not the test name.</strong> Assertions after an unrelated failure keep running, so a blind spot like <code>contact-merge</code> can&#x27;t hide again.</li><li><strong>Run the full suite on CI for big changes,</strong> and post the comparison on the pull request.</li><li><strong>Write what it can&#x27;t see into the story:</strong> a Kiwi with a lot more data, and a Kiwi on a weak connection in the subway.</li></ul>
 <p><strong>Back to Spolsky.</strong></p>

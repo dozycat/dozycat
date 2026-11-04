@@ -1,0 +1,32 @@
+<figure class="dg dg-arch" role="img" aria-label="Zero 1.x compared with 2.0 across background work, realtime, cards, API, client and data. 1.x polls the database constantly; 2.0 queues work in one table and notifies, and sends only a change signal to the phone.">
+  <div class="dg-panel">
+    <div class="dg-title">ZERO 1.X → 2.0 · WHAT CHANGED UNDERNEATH</div>
+    <div class="dg-arch-head" aria-hidden="true"><span></span><b>1.x</b><b>2.0</b></div>
+    <div class="dg-arch-row">
+        <span class="dg-arch-label">Background work</span>
+        <span class="dg-arch-cell dg-arch-old"><span class="dg-act dg-act-busy dg-act-poll" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i><i style="--k:5"></i><i style="--k:6"></i><i style="--k:7"></i><i style="--k:8"></i><i style="--k:9"></i></span><span>13 hand-written pollers per agent pod, each asking the database on its own schedule</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span class="dg-act dg-act-calm" aria-hidden="true"><i></i></span><span>One <code>jobs</code> table; workers wake on <code>LISTEN/NOTIFY</code>, with shared leases and retries</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Realtime</span>
+        <span class="dg-arch-cell dg-arch-old"><span class="dg-act dg-act-busy dg-act-ws" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i><i style="--k:5"></i><i style="--k:6"></i><i style="--k:7"></i></span><span>Every WebSocket queries the database twice every 250 ms; a reconnect pulls the full history</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span class="dg-act dg-act-calm" aria-hidden="true"><i></i></span><span>The socket only says “changes”; the phone pulls <code>/sync</code> after its last sequence number</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Cards</span>
+        <span class="dg-arch-cell dg-arch-old"><span>One card's state spread over 6–8 fields in a Java-era queue</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>Its own <code>cards</code> table with a single state machine</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">API</span>
+        <span class="dg-arch-cell dg-arch-old"><span>~290 routes, 6 success shapes, 114 error codes, 6 ways to do idempotency</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>One <code>/api/v2</code>: one envelope, a closed set of error codes, one idempotency ledger</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Client</span>
+        <span class="dg-arch-cell dg-arch-old"><span>One 2,665-line <code>AgentClient</code>; 41 screens call the API directly</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>A client runtime: a local database per account, an outbox, sync; screens only read stores</span></span>
+      </div><div class="dg-arch-row">
+        <span class="dg-arch-label">Data</span>
+        <span class="dg-arch-cell dg-arch-old"><span>106 tables; 38 core tables without row-level security</span></span>
+        <span class="dg-arch-cell dg-arch-new"><span>About 70 tables; row-level security forced on every user table</span></span>
+      </div>
+  </div>
+  <figcaption>The dots show how often the database gets asked. In 1.x it was asked all the time; in 2.0 it speaks up when something actually happens.</figcaption>
+</figure>

@@ -83,6 +83,16 @@ The price of doing it at once is that there's no gradual rollout. A gradual migr
 
 This was also our answer to Spolsky. Some of the knowledge collected in the old code no longer lives in the code. It lives in the story of *Kiwi's Wednesday*. As long as the story survives, a rewrite only throws away the implementation. Whether that holds up is what the rest of this post is about.
 
+**What changed underneath.**
+
+The audit had one more finding. The personal-assistant part of Zero was the only part with clean layers, so we rebuilt everything else in its shape:
+
+::: diagram arch-diff
+
+Two of these changes matter most for the rest of this story. Background work used to be 13 pollers per agent pod, each asking the database "anything for me?" on its own schedule, and every WebSocket connection queried the database twice every 250 ms. In 2.0, work is queued in one table and workers are woken by a notification. The server writes every change for a user into one ordered log, and the phone only hears "something changed", then pulls what's new since the last sequence number it saw. The server is the single source of truth; the client is a cache that catches up.
+
+That second change is also where a new kind of bug comes from, as you'll see below.
+
 **How much the storybook changed.**
 
 Start with the most direct question: the foundation was replaced, so how much did the checkup have to change?
@@ -136,6 +146,18 @@ It reminded me of Goodhart's law: when a measure becomes a target, it stops bein
 After the merge, 2.0 ran for a day with internal accounts. The worst problems it turned up were ones the checkup can't see by design. On real phones, the JavaScript engine was missing a function the browser has, so device and push registration silently never went out. Large accounts took too long on their first sync over a slow network, because Kiwi's data is small and the test database sits on the same machine. And a piece of native-only code kept piling up push registrations, a path the virtual iPhone never takes.
 
 I used to think the slower layers, L1 to L3, were only there to calibrate the fast one. Now I think each of them guards something L0 will never see: the real runtime, real data, real networks, and native code.
+
+**Performance, before and after.**
+
+We never ran an end-to-end benchmark of 1.x against 2.0, so I can't give you one headline number. The biggest change is in the shape of the load: the database used to be asked constantly whether anything had happened, and now it speaks up when something does.
+
+The hard numbers come from the days right after the merge, when we chased the slow first sync for large accounts:
+
+::: diagram perf-numbers
+
+The first one is almost funny. The snapshot query looked up each task's latest messages by task id alone, so it couldn't use the index that starts with the user id. Adding the owner condition back was a one-line change. The second came from the client rebuilding a whole contact, task, or thread view for every single change, instead of once per page. The migration numbers came from the database planning queries against brand-new tables that had no statistics yet.
+
+None of this means first sync is solved. A large account is 50,827 entities over 51 pages, about 105 MB of JSON, and replaying it on an iPhone 11 still took 31 to 42 seconds. In one experiment, moving the assistant's 30 messages from the last page to the first put them on screen 2.9 seconds after launch. Sending what people look at first, and the rest later, is the next step.
 
 **What we'll change next.**
 

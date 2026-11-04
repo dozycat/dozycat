@@ -1,0 +1,43 @@
+<figure class="dg dg-perf" role="img" aria-label="Measured before and after the post-merge fixes: task snapshot query 15,261 ms to 213 ms; client sync apply 786 ms to 18 ms; store notifications 14,000 to 70; contacts migration over 14 minutes to 106 seconds; tasks migration over 9 minutes to 22 seconds.">
+  <div class="dg-panel">
+    <div class="dg-title">MEASURED BEFORE AND AFTER THE FIXES</div>
+    <div class="dg-legend" aria-hidden="true"><span><i class="dg-perf-before"></i>before</span><span><i class="dg-perf-after"></i>after</span></div>
+    <div class="dg-perf-row" style="--i:0;--w:1.40%">
+        <span class="dg-perf-name"><b>Task snapshot query</b><small>1,000 tasks on real v2 data</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: 15,261 ms"></i>
+          <i class="dg-perf-after" title="After: 213 ms"></i>
+        </span>
+        <span class="dg-perf-vals"><s>15,261 ms</s><b>213 ms</b><em>72× faster</em></span>
+      </div><div class="dg-perf-row" style="--i:1;--w:2.29%">
+        <span class="dg-perf-name"><b>Client applying a sync</b><small>synthetic account: 2,000 contacts, 2,000 tasks, 10,000 messages</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: 786 ms"></i>
+          <i class="dg-perf-after" title="After: 18 ms"></i>
+        </span>
+        <span class="dg-perf-vals"><s>786 ms</s><b>18 ms</b><em>44× faster</em></span>
+      </div><div class="dg-perf-row" style="--i:2;--w:0.60%">
+        <span class="dg-perf-name"><b>Store notifications</b><small>same synthetic account</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: 14,000"></i>
+          <i class="dg-perf-after" title="After: 70"></i>
+        </span>
+        <span class="dg-perf-vals"><s>14,000</s><b>70</b><em>200× fewer</em></span>
+      </div><div class="dg-perf-row" style="--i:3;--w:12.62%">
+        <span class="dg-perf-name"><b>Migrating contacts</b><small>production copy, 461 users</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: > 14 min, unfinished"></i>
+          <i class="dg-perf-after" title="After: 106 s"></i>
+        </span>
+        <span class="dg-perf-vals"><s>> 14 min, unfinished</s><b>106 s</b><em>8×+ faster</em></span>
+      </div><div class="dg-perf-row" style="--i:4;--w:4.07%">
+        <span class="dg-perf-name"><b>Migrating tasks</b><small>production copy, 461 users</small></span>
+        <span class="dg-perf-bars">
+          <i class="dg-perf-before" title="Before: > 9 min, unfinished"></i>
+          <i class="dg-perf-after" title="After: 22 s"></i>
+        </span>
+        <span class="dg-perf-vals"><s>> 9 min, unfinished</s><b>22 s</b><em>25×+ faster</em></span>
+      </div>
+  </div>
+  <figcaption>Each bar is scaled to its own “before”. The SQL time is database execution only; the client numbers are a local synthetic benchmark, not an end-to-end phone measurement.</figcaption>
+</figure>
