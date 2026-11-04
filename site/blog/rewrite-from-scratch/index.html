@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>We Rewrote It Anyway — 懒猫君手记</title>
+<meta name="description" content="Joel Spolsky said never rewrite from scratch. With AI writing code faster than anyone can review it, we rewrote anyway: four days, a hundred thousand lines, and one user&#x27;s Wednesday as the safety net.">
+<meta property="og:title" content="We Rewrote It Anyway — 懒猫君手记">
+<meta property="og:description" content="Joel Spolsky said never rewrite from scratch. With AI writing code faster than anyone can review it, we rewrote anyway: four days, a hundred thousand lines, and one user&#x27;s Wednesday as the safety net.">
+<link rel="icon" type="image/png" href="../../assets/icon.png">
+<link rel="apple-touch-icon" href="../../assets/icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../assets/blog/diagrams.css">
+</head>
+<body class="blog-page article-page">
+<nav class="nav blog-site-nav">
+  <a class="logo logo-cn" href="../../" aria-label="回到懒猫君首页">
+    <span class="cat cat-mini" aria-hidden="true">
+      <span class="ear ear-l"></span>
+      <span class="ear ear-r"></span>
+      <span class="head">
+        <span class="eye eye-l"></span>
+        <span class="eye eye-r"></span>
+      </span>
+    </span>
+    懒猫君<span class="dot">。</span>
+  </a>
+  <div class="nav-links">
+    <a href="../../">小传</a>
+    <a class="nav-blog active" href="../">手记</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat/releases/latest/download/dozycat-0.1.6-arm64.dmg">领养一只懒猫</a>
+  </div>
+</nav>
+<main>
+  <article class="blog-article">
+    <header class="article-hero">
+      <a class="article-back" href="../">← 返回全部手记</a>
+      <div class="post-meta">
+        <span class="post-tags" aria-label="标签"><span class="post-tag">技术</span></span>
+        <span class="article-meta">2026.11.04 · 16 分钟</span>
+      </div>
+      <h1 lang="en">We Rewrote It Anyway</h1>
+      <p class="article-dek" lang="en">Joel Spolsky said never rewrite from scratch. With AI writing code faster than anyone can review it, we rewrote anyway: four days, a hundred thousand lines, and one user&#x27;s Wednesday as the safety net.</p>
+      <div class="article-energy" aria-hidden="true">
+        <span><i class="article-energy-mind" style="width:72%"></i></span>
+        <span><i class="article-energy-body" style="width:45%"></i></span>
+      </div>
+    </header>
+    <div class="markdown-body" lang="en">
+<blockquote><p>They did it by making the single worst strategic mistake that any software company can make: They decided to rewrite the code from scratch.</p><p>— Joel Spolsky, &quot;Things You Should Never Do, Part I&quot;, 2000</p></blockquote>
+<p>Spolsky wrote that in 2000, about Netscape deciding to rebuild its browser from the ground up and then going three years without shipping a new version. His reasoning was simple. Old code looks messy because it&#x27;s full of bug fixes collected over the years. Every strange branch is there because of a real user&#x27;s problem, and a rewrite throws all of that knowledge away.</p>
+<p>For more than twenty years, that has been close to industry consensus. We rewrote anyway.</p>
+<p>This post is about what happened. But first, the framework we were betting on.</p>
+<p><strong>The premise: AI now writes code faster than people can read it.</strong></p>
+<p>A coding agent today can open more pull requests in one evening than I can carefully review the next day. It writes features, adds unit tests, fixes CI, and updates the docs along the way. Writing code is no longer the bottleneck. <strong>Knowing the code is right</strong> is.</p>
+<p>So whenever I design a framework or a process for Zero, the AI assistant we&#x27;re building, I start with two questions:</p>
+<ol><li><strong>Will it become the bottleneck?</strong> If a verification step takes minutes, or needs a person, the whole pipeline moves at that speed, no matter how fast the AI writes.</li><li><strong>Can the AI game it?</strong> The AI&#x27;s goal is to make the check pass. The closer a check sits to the implementation, the easier it is to satisfy without doing the real work: change what a mock returns, loosen an assertion, add a special case to one branch. When no human can keep up with the output, nobody notices. This is reward hacking.</li></ol>
+<figure class="dg dg-flow" role="img" aria-label="The same stream of pull requests: sent to human review, they pile up at the gate; sent to a checkup that runs in seconds, every one is verified and let through.">
+  <div class="dg-panel">
+    <div class="dg-title">ONE EVENING · ONE STREAM OF PRS</div>
+    <div class="dg-lane">
+      <div class="dg-lane-head"><b>People read them</b><span>one at a time</span></div>
+      <div class="dg-track dg-track-slow">
+        <span class="dg-pile" aria-hidden="true"></span>
+        <span class="dg-gate"><em>human review</em></span>
+        <i class="dg-dot dg-dot-wait" style="--i:0"></i><i class="dg-dot dg-dot-wait" style="--i:1"></i><i class="dg-dot dg-dot-wait" style="--i:2"></i><i class="dg-dot dg-dot-wait" style="--i:3"></i><i class="dg-dot dg-dot-wait" style="--i:4"></i><i class="dg-dot dg-dot-wait" style="--i:5"></i><i class="dg-dot dg-dot-wait" style="--i:6"></i><i class="dg-dot dg-dot-wait" style="--i:7"></i>
+        <i class="dg-dot dg-dot-through"></i>
+      </div>
+      <div class="dg-lane-foot"><span class="dg-warn">the backlog keeps growing</span><span>few get through</span></div>
+    </div>
+    <div class="dg-lane">
+      <div class="dg-lane-head"><b>Machines verify them</b><span>seconds, on every PR</span></div>
+      <div class="dg-track dg-track-fast">
+        <span class="dg-gate dg-gate-auto"><em>product checkup</em></span>
+        <i class="dg-dot dg-dot-run" style="--i:0"></i><i class="dg-dot dg-dot-run" style="--i:1"></i><i class="dg-dot dg-dot-run" style="--i:2"></i><i class="dg-dot dg-dot-run" style="--i:3"></i><i class="dg-dot dg-dot-run" style="--i:4"></i><i class="dg-dot dg-dot-run" style="--i:5"></i><i class="dg-dot dg-dot-run" style="--i:6"></i><i class="dg-dot dg-dot-run" style="--i:7"></i>
+      </div>
+      <div class="dg-lane-foot"><span class="dg-ok">every one verified</span><span>as fast as the code is written</span></div>
+    </div>
+  </div>
+  <figcaption>Writing code is no longer the bottleneck. Knowing it's right is. Verification has to keep up with the AI, without a person in the loop.</figcaption>
+</figure>
+<p>Three decisions came out of those two questions.</p>
+<p><strong>First: verification has to be as fast as the AI.</strong></p>
+<p>Zero had a full native Swift app, and it felt great. But a compiled UI slows verification down in two ways. Changing one line of interface means a full compile, sign, and install cycle. And running it needs Xcode and a simulator, which is hard to do in bulk, in parallel, and unattended on an ordinary Linux machine.</p>
+<p>I made a fairly big bet: <strong>as CPUs keep getting faster, an interpreted UI will be good enough in most cases.</strong> The human eye can only follow so many frames, while hardware keeps getting faster. Most users will never feel the extra performance a compiled UI buys. The time an interpreted UI saves on verification gets used every single day.</p>
+<p>So the client moved to Expo and React Native. The same interface renders in a browser through react-native-web, and Playwright drives it. On every pull request, a Linux runner starts the production backend and agent, an embedded PGlite database, Redis, and the web app, and puts the whole product through a checkup. Every step saves a screenshot and the accessibility tree, so when something fails, the AI can read those files and find the problem on its own. Nobody has to tap through a simulator.</p>
+<p>One round of end-to-end verification now takes about as long as one round of the model writing code.</p>
+<p>The web isn&#x27;t native, of course. Lock-screen cards, the Dynamic Island, and system animations still have to be checked on a Mac, a simulator, or a real phone. So verification has four layers. Each layer down is more realistic, slower, more expensive, and runs less often.</p>
+<figure class="dg dg-layers" role="img" aria-label="Four layers of verification: the L0 web checkup runs on every PR; L1 native surfaces, L2 simulator and L3 real device are each more realistic, slower, more expensive, and run less often.">
+  <div class="dg-panel">
+    <div class="dg-title">FOUR LAYERS · MORE DOTS, MORE RUNS</div>
+    <div class="dg-layer-wrap">
+      <div class="dg-layer-list">
+      <div class="dg-layer" style="--dur:.9s;--n:3">
+        <span class="dg-layer-code">L0</span>
+        <span class="dg-layer-name"><b>Web checkup</b><small>Linux runner · every PR</small></span>
+        <span class="dg-layer-what">Production backend + the real React UI</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i></span>
+      </div><div class="dg-layer" style="--dur:2.6s;--n:1">
+        <span class="dg-layer-code">L1</span>
+        <span class="dg-layer-name"><b>Native surfaces</b><small>Mac</small></span>
+        <span class="dg-layer-what">Production SwiftUI compiled as-is to draw the lock screen</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i></span>
+      </div><div class="dg-layer" style="--dur:5s;--n:1">
+        <span class="dg-layer-code">L2</span>
+        <span class="dg-layer-name"><b>Simulator</b><small>iOS Simulator</small></span>
+        <span class="dg-layer-what">Pixel-by-pixel comparison with web, same state</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i></span>
+      </div><div class="dg-layer" style="--dur:10s;--n:1">
+        <span class="dg-layer-code">L3</span>
+        <span class="dg-layer-name"><b>Real device</b><small>TestFlight · before release</small></span>
+        <span class="dg-layer-what">Someone picks up a phone and taps through</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i></span>
+      </div>
+      </div>
+      <div class="dg-scale" aria-hidden="true"><span>fast · cheap</span><i></i><span>real · costly</span></div>
+    </div>
+  </div>
+  <figcaption>The frequent layer has to be fast. The rare layers guard what it can't see.</figcaption>
+</figure>
+<p><strong>Second: one clock for the whole system.</strong></p>
+<p>A lot of what Zero does is about time. It starts preparing a meeting brief 30 minutes before the meeting and sends the notification 15 minutes before. A note you jot down on your iPad late at night shouldn&#x27;t make your phone buzz all night. A login token expires after an hour and should be refreshed without you noticing. In the real world, you&#x27;d wait tens of minutes, or a whole night, to see any of this happen once.</p>
+<p>The usual approach is to mock time wherever it&#x27;s used: a fake clock in the scheduler, another in the token check, a parameter in place of <code>now()</code> in SQL. Every mock is one more gap where time in the test can drift from time in production, and every gap is a place for the AI to cheat.</p>
+<p>We went the other way: <strong>no business code touches time. We control how fast it flows, at the very bottom.</strong> Before any service loads, the checkup process replaces the global <code>Date</code> with <code>virtual = real + offset</code>. The database&#x27;s <code>now()</code>, the scheduler, token issuing, and the current time in the agent&#x27;s prompt all read the same clock, and the browser follows it through Playwright&#x27;s clock. Time still passes at real speed, so timers and concurrency stay real, but the clock can jump forward. It never goes back. Production code doesn&#x27;t know it exists.</p>
+<figure class="dg dg-clock" role="img" aria-label="Virtual clock: time jumps from 9:00 to 10:29, 10:30, 10:44 and 10:45. Every service reads the same clock, and the notification reaches the lock screen only at 10:45.">
+  <div class="dg-panel">
+    <div class="dg-title">TWO REAL HOURS · ONE MINUTE IN THE CHECKUP</div>
+    <div class="dg-clock-stage">
+      <div class="dg-phone" aria-hidden="true">
+        <span class="dg-phone-notch"></span>
+        <span class="dg-phone-date">Wednesday</span>
+        <span class="dg-phone-time"><span class="dg-slot" style="--k:0">09:00</span><span class="dg-slot" style="--k:1">10:29</span><span class="dg-slot" style="--k:2">10:30</span><span class="dg-slot" style="--k:3">10:44</span><span class="dg-slot" style="--k:4">10:45</span></span>
+        <span class="dg-notice"><b>Meeting brief · 11:00</b><small>Before you meet Monica, you might want to know…</small></span>
+        <span class="dg-phone-hint">LOCK SCREEN</span>
+      </div>
+      <div class="dg-clock-side">
+        <div class="dg-events"><span class="dg-slot" style="--k:0"><b>Confirm the 11:00 meeting</b><small>Nothing should happen yet</small></span><span class="dg-slot" style="--k:1"><b>Jump to 31 minutes before</b><small>Assert: still nothing</small></span><span class="dg-slot" style="--k:2"><b>Agent starts the brief</b><small>Using its notes on Kiwi and Monica</small></span><span class="dg-slot" style="--k:3"><b>The brief is ready</b><small>The lock screen stays quiet</small></span><span class="dg-slot" style="--k:4"><b>Notification arrives</b><small>15 minutes before, right on time</small></span></div>
+        <div class="dg-timeline" aria-hidden="true">
+          <span class="dg-rail"><i class="dg-fill"></i></span>
+          <span class="dg-head"></span>
+          <span class="dg-stop" style="--k:0"><i></i><em>09:00</em></span><span class="dg-stop" style="--k:1"><i></i><em>10:29</em></span><span class="dg-stop" style="--k:2"><i></i><em>10:30</em></span><span class="dg-stop" style="--k:3"><i></i><em>10:44</em></span><span class="dg-stop" style="--k:4"><i></i><em>10:45</em></span>
+        </div>
+        <div class="dg-hub">
+          <code>virtual = real + offset</code>
+          <span class="dg-chips"><i>Scheduler</i><i>SQL now()</i><i>Token issue / expiry</i><i>Effect Clock</i><i>The agent's “now”</i><i>Browser · second device</i></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption>The clock only jumps forward, never back. Production code reads system time and never knows this clock exists.</figcaption>
+</figure>
+<p>Confirm an 11:00 meeting at 9:00. Jump to 10:29: nothing should have happened. At 10:30, the agent starts preparing the brief, using its notes on Kiwi and Monica. At 10:44 the brief is ready, and the lock screen is still quiet. At 10:45, the notification arrives. Two hours of product time play out in about a minute.</p>
+<p><strong>Third: trust only what the user sees.</strong></p>
+<p>Where an assertion lives decides how easy it is to fool.</p>
+<p>Zero&#x27;s tests are written as a storybook called <em>Kiwi&#x27;s Wednesday</em>. Each test is a scene from one day in Kiwi&#x27;s life: what Kiwi asked for, which card appeared, and, after one tap on the lock screen, what showed up in the app and what went away. Between that tap and the change on screen sits the whole real system: client, backend, agent, database, and push.</p>
+<p>An assertion like that is hard to fake with a one-line change. To make &quot;Kiwi sees this card&quot; true, you have to get the whole path right.</p>
+<p>A few rules make cheating harder still:</p>
+<ul><li><strong>Only the model and the outside world are replaced.</strong> The model is a scripted stand-in that follows a script, and Google, Feishu, and APNs are protocol-level fakes. Everything else is production code.</li><li><strong>Assertions are promises Kiwi could read.</strong> &quot;Exactly one card on the lock screen, no ordinary notification&quot;, not <code>apns.length === 1</code>. If a test can&#x27;t be written into the story, we haven&#x27;t worked out what it means for the user yet.</li><li><strong>Known issues fail in reverse.</strong> If a bug marked <code>knownIssue</code> stops reproducing, the checkup turns red, so someone has to confirm why it went away.</li><li><strong>Ratchets only tighten.</strong> Things like the number of web-only code branches and iOS pixel differences have baselines that can only go down.</li><li><strong>The data is locked.</strong> Kiwi&#x27;s seed data is pinned by SHA-256, so nobody can change the data to make a test pass.</li></ul>
+<p>Because the assertions sit where the user is, they don&#x27;t care about the implementation. As long as Kiwi&#x27;s day goes the same way, the checkup stays green. I used to say this was what would let us do big refactors safely. Until this rewrite, that was only a claim.</p>
+<p><strong>Then we rewrote it.</strong></p>
+<p>Zero 2.0 was an incompatible rewrite. From the audit on October 30 to the merge on November 2: four days, 381 commits, 366 of them written by coding agents, 2,139 files changed, and roughly a hundred thousand lines added and as many removed.</p>
+<p>No one can read a change that big line by line. It was the premise above taken to its extreme: the AI writes far faster than anyone can review, and verification is all you have. So I treated it as an experiment. This is the write-up.</p>
+<p><strong>Why it had to happen all at once.</strong></p>
+<p>2.0 assumed every user would be made to upgrade once. No compatibility with old clients, old protocols, or old local storage. Production data would move to the new structure in one go, during a write freeze.</p>
+<p>We skipped a gradual migration because of what the audit found: the compatibility layer was itself the biggest piece of code. To match the old Java and Python backends byte for byte, the code had 147 places with things like <code>javaBlank</code>, <code>LegacyJsonNumber</code>, and Jackson fingerprints, all locked down by golden fixtures exported from a sibling repo. The state of a single confirmation card was spread across six to eight fields. Each agent pod ran 13 pollers, each writing in its own way. A gradual migration would have kept old and new side by side for a long time, and all of that would have lived on.</p>
+<p>The price of doing it at once is that there&#x27;s no gradual rollout. A gradual migration finds problems through dual writes, feature flags, and a small group of users going first. A one-shot switch can only find them before the merge. Our refactoring plan had a single acceptance rule: correctness no longer means matching the old implementation byte for byte. Behavior is defined by the product checkup and by eval replays.</p>
+<p>This was also our answer to Spolsky. Some of the knowledge collected in the old code no longer lives in the code. It lives in the story of <em>Kiwi&#x27;s Wednesday</em>. As long as the story survives, a rewrite only throws away the implementation. Whether that holds up is what the rest of this post is about.</p>
+<p><strong>How much the storybook changed.</strong></p>
+<p>Start with the most direct question: the foundation was replaced, so how much did the checkup have to change?</p>
+<p>All of <code>scripts/product-checkup</code> changed across 64 files, +511/−392. The tests themselves were 54 files, +359/−300. The assertions fall roughly into three layers, and they fared very differently:</p>
+<figure class="dg dg-rewrite" role="img" aria-label="Three layers during the rewrite: assertions that read the screen barely changed; assertions that query the database or match routes had to change; the implementation underneath was replaced entirely.">
+  <div class="dg-panel">
+    <div class="dg-title">ZERO 2.0 · FOUR DAYS · 381 COMMITS, 366 BY CODING AGENTS</div>
+    <div class="dg-stack">
+      <div class="dg-tier dg-tier-story">
+        <span class="dg-tier-label"><b>The story · what the user sees</b><small>238 screen reads + 125 taps and inputs</small></span>
+        <span class="dg-tier-state dg-ok">barely touched</span>
+      </div>
+      <div class="dg-tier dg-tier-mid">
+        <span class="dg-tier-label"><b>Middle layer · database</b><small>162 t.db(SQL) checks</small></span>
+        <span class="dg-tier-state dg-warn">fixed in one commit</span>
+      </div>
+      <div class="dg-tier dg-tier-mid dg-tier-mid2">
+        <span class="dg-tier-label"><b>Middle layer · route regexes</b><small>76 HTTP / WebSocket matchers</small></span>
+        <span class="dg-tier-state dg-warn">changed six times</span>
+      </div>
+      <div class="dg-tier dg-tier-impl">
+        <span class="dg-tier-label"><b>The implementation</b><small>2,139 files · ~100k lines in, ~100k out · grey is old, green is new</small></span>
+        <span class="dg-blocks" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i><i style="--k:5"></i><i style="--k:6"></i><i style="--k:7"></i><i style="--k:8"></i><i style="--k:9"></i><i style="--k:10"></i><i style="--k:11"></i></span>
+      </div>
+    </div>
+  </div>
+  <figcaption>The foundation was replaced; the storybook changed by a few hundred lines. The closer an assertion sits to the implementation, the more it costs to migrate.</figcaption>
+</figure>
+<p>The top layer barely moved, as expected. The work was in the other two. We&#x27;d added them to see what was happening in the middle. They&#x27;re easy to write and handy when debugging, but they&#x27;re really assertions about the implementation. Looking back, the thicker those two layers are, the more a migration costs.</p>
+<p>Two more things helped. The checkup runs the real production backend and agent, so once the internals moved to jobs, <code>/api/v2</code>, and the client runtime, the checkup was testing the new code directly, with no extra adapter. And Kiwi&#x27;s seed data is pinned by SHA-256. We didn&#x27;t re-export it this time. We kept its pre-2.0 shape and mapped it to v2 at load time. The data and the story stayed the same. Only the implementation in between changed.</p>
+<p><strong>What it caught.</strong></p>
+<p>To accept the change, we ran all 67 checkup tests on the baseline commit, ran them again after the rewrite, and compared. Plenty of red lights came on along the way. These are the ones that turned out to be real product bugs. The unit tests were green for every one of them.</p>
+<p><em>After the token expired, the app stopped getting updates.</em> <code>journey-conference-day</code> is a morning with Kiwi and Monica. After the four domain branches were merged, the scene stalled at 12:10, when Kiwi reopens the app: the &quot;Contact Updated&quot; that should have appeared never did. The calendar domain had copied <code>connection.token</code> when it mounted, and because it happened to mount last, it took over the sync port for the whole account. When the session was renewed, the new token went into the original connection object. The calendar domain&#x27;s copy stayed stale, so once the token expired, every <code>/api/v2/sync</code> call for the account came back 401.</p>
+<p>This bug needs three things at once: the calendar domain mounts last, the token expires, and the server has changes after that. Every domain branch passed its own tests. The bug only shows up after the merge, and only after one token lifetime of real time has passed. The virtual clock fast-forwarded the morning to 12:10, and production code decided on its own whether the token had expired. Nobody mocked it. Making time a first-class part of the system paid off right here.</p>
+<p><em>The notification arrived before the brief.</em> To track down the bug above, we bisected the merge commits. On the commit just before the calendar branch was merged, the same scene got further and stalled somewhere else: the APNs reminder came at the wrong moment. Once the assistant&#x27;s pre-meeting run moved to the jobs runtime, it fired right on time. But the brief was still being published by its own timer, every 15 seconds. So when the notification reached the lock screen, the brief it was meant to open hadn&#x27;t been published yet. Two bugs were stacked in that one scene, and the first was hiding the second.</p>
+<p><em>Things handed to the assistant didn&#x27;t show up in Up next.</em> The account domain recorded every calendar write as an <code>assistant.schedule</code> change, but the assistant&#x27;s store ignored that kind of change and only reloaded after the assistant sent a message.</p>
+<p><em>A screenshot was saved to contacts, but the thread never got the message.</em> A few server-side paths, like screenshot results and the welcome thread, inserted rows straight into <code>task_messages</code>, bypassing the message store. No change log entry was written, so the client never received them.</p>
+<p>These bugs have one thing in common: <strong>the data in the database was right.</strong> What broke was somewhere along the chain from database write to change log to client cache to screen. 2.0 made the server the single source of truth, with the client catching up only through the change log. The price is a new kind of bug: something writes to the database and forgets to emit the change. Assertions that query the database can&#x27;t see it. Assertions that read the screen can.</p>
+<figure class="dg dg-sync" role="img" aria-label="The sync chain: database, change log, client cache, screen. When the change log entry is never written, the database assertion still passes; only the screen assertion fails.">
+  <div class="dg-panel">
+    <div class="dg-title">THE DATA WAS RIGHT · IT BROKE IN THE MIDDLE</div>
+    <div class="dg-chain-pair">
+      <div class="dg-chain dg-chain-ok">
+        <span class="dg-chain-title">All the way to the screen</span>
+        <div class="dg-chain-body">
+          <span class="dg-pipe" aria-hidden="true"><i class="dg-pulse"></i></span>
+          <span class="dg-node dg-node-0"><b>Screen</b><small>update appears</small></span><span class="dg-node dg-node-1"><b>Client cache</b><small>catches up</small></span><span class="dg-node dg-node-2"><b>Change log</b><small>entry written</small></span><span class="dg-node dg-node-3"><b>Database</b><small>written correctly</small></span>
+        </div>
+        <div class="dg-badges"><span class="dg-badge dg-badge-ok">t.db ✓</span><span class="dg-badge dg-badge-ok">t.see ✓</span></div>
+      </div>
+      <div class="dg-chain dg-chain-broken">
+        <span class="dg-chain-title">Wrote the row, forgot the change</span>
+        <div class="dg-chain-body">
+          <span class="dg-pipe" aria-hidden="true"><i class="dg-pulse"></i></span>
+          <span class="dg-node dg-node-0"><b>Screen</b><small>nothing appears</small></span><span class="dg-node dg-node-1"><b>Client cache</b><small>still stale</small></span><span class="dg-node dg-node-2"><b>Change log</b><small>never written</small></span><span class="dg-node dg-node-3"><b>Database</b><small>written correctly</small></span>
+        </div>
+        <div class="dg-badges"><span class="dg-badge dg-badge-ok">t.db ✓</span><span class="dg-badge dg-badge-bad">t.see ✗</span></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>The database check is green on both sides. Only the screen check notices that Kiwi, on the right, is still waiting for something that never comes.</figcaption>
+</figure>
+<p><strong>The one it missed.</strong></p>
+<p>There was also a time when the check passed and the product was wrong. The cause was our acceptance rule, not the AI changing a test.</p>
+<p>The baseline already had 7 failing checkup tests. Our rule was: after the rewrite, if the remaining failures have the same names as the baseline failures, that counts as a pass. In the end, 60 passed and 7 failed, and the names matched exactly.</p>
+<p>One of them was <code>contact-merge</code>. On the baseline, it stopped at step two. An earlier redesign on main had changed some copy, the test couldn&#x27;t find &quot;Introduced by Wang&quot;, and it aborted. Line 137 of that test holds the assertion &quot;calendar attendee Monica is still a contact link you can open&quot;. That line never ran once during the entire rewrite.</p>
+<p>And the rewrite introduced a regression right there. When contacts were merged, the attendee was re-pointed to the surviving contact, but no change was written for the calendar event. The client cache still held the id of the deleted duplicate, so the attendee turned into plain text you couldn&#x27;t tap. Only when we merged main and picked up the copy fix did <code>contact-merge</code> on CI reach step 14 and turn red.</p>
+<p>This wasn&#x27;t a new bug. It&#x27;s the first row of our checkup findings table, &quot;merging contacts doesn&#x27;t re-point calendar attendees&quot;, fixed on October 13. My earlier write-up even used it as an example. Three weeks later, it came back on the new foundation in a different form. This is exactly what Spolsky worried about: bugs you&#x27;ve already fixed get thrown away along with the old code. This time the knowledge really did live in the story, and the story really could catch it. The assertion was just blocked by an unrelated failure earlier in the same test.</p>
+<figure class="dg dg-blind" role="img" aria-label="The 14 steps of one test. When only failing test names are compared, nothing after the failure at step 3 runs, and the regression at step 14 slips through. When assertions are compared and independent ones keep running, step 14 turns red.">
+  <div class="dg-panel">
+    <div class="dg-title">CONTACT-MERGE · 14 STEPS</div>
+    <div class="dg-run-row">
+      <div class="dg-run-head"><b>Rule 1 · same failing names as the baseline counts as a pass</b></div>
+      <div class="dg-cells"><i class="dg-cell dg-cell-pass dg-run" style="--i:1"><em>1</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:2"><em>2</em></i><i class="dg-cell dg-cell-fail dg-run" style="--i:3"><em>3</em></i><i class="dg-cell dg-cell-skip" style="--i:4"><em>4</em></i><i class="dg-cell dg-cell-skip" style="--i:5"><em>5</em></i><i class="dg-cell dg-cell-skip" style="--i:6"><em>6</em></i><i class="dg-cell dg-cell-skip" style="--i:7"><em>7</em></i><i class="dg-cell dg-cell-skip" style="--i:8"><em>8</em></i><i class="dg-cell dg-cell-skip" style="--i:9"><em>9</em></i><i class="dg-cell dg-cell-skip" style="--i:10"><em>10</em></i><i class="dg-cell dg-cell-skip" style="--i:11"><em>11</em></i><i class="dg-cell dg-cell-skip" style="--i:12"><em>12</em></i><i class="dg-cell dg-cell-skip" style="--i:13"><em>13</em></i><i class="dg-cell dg-cell-skip dg-cell-hidden" style="--i:14"><em>14</em></i></div>
+      <div class="dg-run-foot">
+        <span class="dg-note">Step 3: the copy changed, the text isn't found, the test aborts</span>
+        <span class="dg-verdict dg-verdict-ok">same failures · merge</span>
+      </div>
+      <div class="dg-ghost">Step 14, “can you still open the attendee?”, is in here. It never ran once.</div>
+    </div>
+    <div class="dg-run-row">
+      <div class="dg-run-head"><b>Rule 2 · compare by assertion, keep running independent ones</b></div>
+      <div class="dg-cells"><i class="dg-cell dg-cell-pass dg-run" style="--i:1"><em>1</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:2"><em>2</em></i><i class="dg-cell dg-cell-fail dg-run" style="--i:3"><em>3</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:4"><em>4</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:5"><em>5</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:6"><em>6</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:7"><em>7</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:8"><em>8</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:9"><em>9</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:10"><em>10</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:11"><em>11</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:12"><em>12</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:13"><em>13</em></i><i class="dg-cell dg-cell-fail dg-cell-reveal dg-run" style="--i:14"><em>14</em></i></div>
+      <div class="dg-run-foot">
+        <span class="dg-note">Step 3 still fails, as expected</span>
+        <span class="dg-verdict dg-verdict-bad">new failure · step 14</span>
+      </div>
+    </div>
+  </div>
+  <figcaption>Once the measure became the bar for merging, all it measured was whether the lists matched. Seven failing tests meant seven blind spots.</figcaption>
+</figure>
+<p>The framework actually has a tool for this. <code>knownIssue</code> marks a known problem, and the checkup fails if the problem stops reproducing. We didn&#x27;t use it this time. We compared test names by hand. Comparing names means treating every assertion after the failure point in a failing test as a pass. Seven failing tests meant seven blind spots.</p>
+<p>It reminded me of Goodhart&#x27;s law: when a measure becomes a target, it stops being a good measure. &quot;The failure list matches the baseline&quot; was a reasonable approximation. Once it became the bar for merging, all it measured was whether the lists matched.</p>
+<p><strong>False alarms.</strong></p>
+<p>It went the other way too. Several red lights turned out to be problems in the tests themselves. <code>contact-card-confirm</code> reported &quot;POST action missing&quot; and <code>meeting-brief-timeline</code> reported &quot;confirmation card missing&quot;. In both cases, the timing matcher was still looking for <code>/api/v1/tasks/:id/action</code>, while card decisions had moved to <code>POST /api/v2/cards/:id/decision</code>. <code>voice-message</code> reported &quot;key = not connected&quot; because, after a security fix, the voice service now uses a short-lived key issued by the backend.</p>
+<p>The most misleading was <code>journey-duplicate-person</code>. Its failure message read &quot;merge was blocked… blocked false, duplicate still present&quot;, which looks exactly like a product bug. It was only the regex for <code>HTTP 409 POST /api/v1/contacts/:id/merge</code> no longer matching the new route.</p>
+<p>None of these makes the checkup looser, but each one takes time to sort out: is the product wrong, or the test? After enough of them, people start assuming red probably means a test problem, and the next real red light is easier to wave through. Those 76 route regexes are 76 places where that can happen.</p>
+<p><strong>What it can&#x27;t see.</strong></p>
+<p>After the merge, 2.0 ran for a day with internal accounts on the zero-v2 environment. The most serious problems it turned up were ones the checkup can&#x27;t see by design:</p>
+<ul><li><strong>Hermes has no <code>crypto.randomUUID</code>.</strong> Generating idempotency keys threw an error, so on TestFlight builds, device registration, push registration, and every PATCH never went out. The checkup runs in Chromium and the tests run in Bun, and both have that global.</li><li><strong>First sync for a large account was too slow.</strong> One page of the snapshot query took 15 seconds, migrated accounts pulled everything again, and over a trans-ocean link a page couldn&#x27;t finish downloading in 15 seconds. After a reinstall, task details just spun. Kiwi&#x27;s data is small and PGlite runs on localhost, so the checkup has neither scale nor a slow network.</li><li><strong>Every token refresh created a new push registration.</strong> Seventeen piled up in 11 hours, and the Live Activity binding got lost. That&#x27;s native-only code, and the virtual iPhone never takes that path.</li><li><strong>The data migration stalled on a production copy.</strong> The new tables had no statistics, and a query plan got stuck for more than ten minutes. The checkup doesn&#x27;t cover data migrations.</li></ul>
+<p>Code review caught the client&#x27;s recovery paths. Greptile raised four P1 issues on the PR: an older edit to a record overwriting a newer one after a retry; deleted events staying in local storage after a snapshot restarted halfway; the 409 for <code>idempotency_key_in_progress</code> being treated as a final failure, which dropped pending writes; and the cursor moving forward even when the local database had only saved part of a batch. The checkup&#x27;s weak-network tests touched very few of these.</p>
+<p>None of this contradicts the four layers. I used to describe the fast L0 web checkup as the main line, with the slower L1 to L3 layers there to calibrate it. What I learned this time is that the lower layers aren&#x27;t just calibration. The Hermes runtime, real data volumes, slow networks, and native-only code are things L0 will never see, however we change it. The rewrite listed real-device testing, real-database testing, eval replays, and a cutover rehearsal as launch gates, and those are exactly where the problems surfaced. They just surfaced after the merge.</p>
+<p><strong>What we&#x27;ll change next.</strong></p>
+<p>In order of priority:</p>
+<ul><li><strong>Compare against the baseline down to the assertion.</strong> Compare the first failing assertion and its reason, not just the test name. Assertions that don&#x27;t depend on the failure point keep running. Known failures get a <code>knownIssue</code> mark on the specific assertion, instead of someone checking lists by hand.</li><li><strong>Run the full suite on CI for big changes.</strong> The rewrite only ran the core 6 tests on CI, three times, and never added <code>checkup:full</code>. The full runs, the bisecting, and the baseline comparison all happened locally, with no record on the PR. Pull requests above a certain size should run the full suite automatically and post the per-assertion comparison.</li><li><strong>Move middle-layer assertions into semantic helpers.</strong> Table queries and route regexes go into a small set of helpers, like &quot;card was decided&quot;, &quot;merge was rejected&quot;, and &quot;duplicate still present&quot;. Routes and table names appear only inside the helpers, so the next migration changes one place, and failure messages say what they mean.</li><li><strong>Turn what it can&#x27;t see into stories.</strong> Strip the globals Hermes doesn&#x27;t have from the web checkup. Add a large-account version of Kiwi. Write the client&#x27;s recovery paths as scenes with fault injection, like Kiwi editing a note about Monica on the subway.</li></ul>
+<p>All of this is still a plan. None of it has shipped yet.</p>
+<p><strong>Back to Spolsky.</strong></p>
+<p>He was against rewrites because the knowledge collected in old code had nowhere else to live. Things are a little different now. Writing code is cheap, and that knowledge can move out of the code and into stories about what users go through. Then the code itself can be replaced.</p>
+<p>I think the results mostly back that up. A hundred thousand lines changed, the storybook changed by a few hundred, and several bugs that crossed branches and crossed time were all found by one morning in Kiwi&#x27;s life. The results also show what it depends on: every scene has to play all the way through, and the acceptance rule can&#x27;t skip scenes on the story&#x27;s behalf. A rewrite should throw away the implementation, not the lessons the story remembers.</p>
+    </div>
+    <footer class="article-end">
+      <span class="article-end-mark">完</span>
+      <p>累了就先到这里。站起来接杯水，猫替你守着这一页。</p>
+      <a href="../">再读一篇手记 →</a>
+      </footer>
+  </article>
+</main>
+<footer class="footer">
+  <div class="footer-inner">
+    <span>懒猫君 · dozycat © 2026</span>
+    <span class="footer-links">
+      <a href="../../">小传</a>
+      <a href="../">手记</a>
+      <a href="https://github.com/dozycat/dozycat">GitHub</a>
+    </span>
+  </div>
+  <div class="footer-contact" aria-label="联系方式">
+    <a href="mailto:hi@dozycat.ai" aria-label="邮箱：hi@dozycat.ai" title="hi@dozycat.ai">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+    </a>
+    <a href="https://xhslink.cn/o/5Q78VAP7D6i" target="_blank" rel="noopener noreferrer" aria-label="小红书（在新标签页打开）" title="小红书">
+      <span class="contact-xhs" aria-hidden="true"></span>
+    </a>
+  </div>
+</footer>
+</body>
+</html>

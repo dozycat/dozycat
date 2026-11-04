@@ -1,0 +1,24 @@
+<figure class="dg dg-sync" role="img" aria-label="The sync chain: database, change log, client cache, screen. When the change log entry is never written, the database assertion still passes; only the screen assertion fails.">
+  <div class="dg-panel">
+    <div class="dg-title">THE DATA WAS RIGHT · IT BROKE IN THE MIDDLE</div>
+    <div class="dg-chain-pair">
+      <div class="dg-chain dg-chain-ok">
+        <span class="dg-chain-title">All the way to the screen</span>
+        <div class="dg-chain-body">
+          <span class="dg-pipe" aria-hidden="true"><i class="dg-pulse"></i></span>
+          <span class="dg-node dg-node-0"><b>Screen</b><small>update appears</small></span><span class="dg-node dg-node-1"><b>Client cache</b><small>catches up</small></span><span class="dg-node dg-node-2"><b>Change log</b><small>entry written</small></span><span class="dg-node dg-node-3"><b>Database</b><small>written correctly</small></span>
+        </div>
+        <div class="dg-badges"><span class="dg-badge dg-badge-ok">t.db ✓</span><span class="dg-badge dg-badge-ok">t.see ✓</span></div>
+      </div>
+      <div class="dg-chain dg-chain-broken">
+        <span class="dg-chain-title">Wrote the row, forgot the change</span>
+        <div class="dg-chain-body">
+          <span class="dg-pipe" aria-hidden="true"><i class="dg-pulse"></i></span>
+          <span class="dg-node dg-node-0"><b>Screen</b><small>nothing appears</small></span><span class="dg-node dg-node-1"><b>Client cache</b><small>still stale</small></span><span class="dg-node dg-node-2"><b>Change log</b><small>never written</small></span><span class="dg-node dg-node-3"><b>Database</b><small>written correctly</small></span>
+        </div>
+        <div class="dg-badges"><span class="dg-badge dg-badge-ok">t.db ✓</span><span class="dg-badge dg-badge-bad">t.see ✗</span></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>The database check is green on both sides. Only the screen check notices that Kiwi, on the right, is still waiting for something that never comes.</figcaption>
+</figure>

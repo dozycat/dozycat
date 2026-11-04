@@ -1,5 +1,13 @@
 [
   {
+    "slug": "rewrite-from-scratch",
+    "source": "posts/rewrite-from-scratch.md",
+    "tags": ["技术"],
+    "lang": "en",
+    "date": "2026-11-04",
+    "description": "Joel Spolsky said never rewrite from scratch. With AI writing code faster than anyone can review it, we rewrote anyway: four days, a hundred thousand lines, and one user's Wednesday as the safety net."
+  },
+  {
     "slug": "my-sports-story",
     "source": "posts/my-sports-story.md",
     "tags": ["生活", "运动"],

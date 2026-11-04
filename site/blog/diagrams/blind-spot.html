@@ -1,0 +1,23 @@
+<figure class="dg dg-blind" role="img" aria-label="The 14 steps of one test. When only failing test names are compared, nothing after the failure at step 3 runs, and the regression at step 14 slips through. When assertions are compared and independent ones keep running, step 14 turns red.">
+  <div class="dg-panel">
+    <div class="dg-title">CONTACT-MERGE · 14 STEPS</div>
+    <div class="dg-run-row">
+      <div class="dg-run-head"><b>Rule 1 · same failing names as the baseline counts as a pass</b></div>
+      <div class="dg-cells"><i class="dg-cell dg-cell-pass dg-run" style="--i:1"><em>1</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:2"><em>2</em></i><i class="dg-cell dg-cell-fail dg-run" style="--i:3"><em>3</em></i><i class="dg-cell dg-cell-skip" style="--i:4"><em>4</em></i><i class="dg-cell dg-cell-skip" style="--i:5"><em>5</em></i><i class="dg-cell dg-cell-skip" style="--i:6"><em>6</em></i><i class="dg-cell dg-cell-skip" style="--i:7"><em>7</em></i><i class="dg-cell dg-cell-skip" style="--i:8"><em>8</em></i><i class="dg-cell dg-cell-skip" style="--i:9"><em>9</em></i><i class="dg-cell dg-cell-skip" style="--i:10"><em>10</em></i><i class="dg-cell dg-cell-skip" style="--i:11"><em>11</em></i><i class="dg-cell dg-cell-skip" style="--i:12"><em>12</em></i><i class="dg-cell dg-cell-skip" style="--i:13"><em>13</em></i><i class="dg-cell dg-cell-skip dg-cell-hidden" style="--i:14"><em>14</em></i></div>
+      <div class="dg-run-foot">
+        <span class="dg-note">Step 3: the copy changed, the text isn't found, the test aborts</span>
+        <span class="dg-verdict dg-verdict-ok">same failures · merge</span>
+      </div>
+      <div class="dg-ghost">Step 14, “can you still open the attendee?”, is in here. It never ran once.</div>
+    </div>
+    <div class="dg-run-row">
+      <div class="dg-run-head"><b>Rule 2 · compare by assertion, keep running independent ones</b></div>
+      <div class="dg-cells"><i class="dg-cell dg-cell-pass dg-run" style="--i:1"><em>1</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:2"><em>2</em></i><i class="dg-cell dg-cell-fail dg-run" style="--i:3"><em>3</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:4"><em>4</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:5"><em>5</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:6"><em>6</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:7"><em>7</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:8"><em>8</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:9"><em>9</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:10"><em>10</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:11"><em>11</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:12"><em>12</em></i><i class="dg-cell dg-cell-pass dg-run" style="--i:13"><em>13</em></i><i class="dg-cell dg-cell-fail dg-cell-reveal dg-run" style="--i:14"><em>14</em></i></div>
+      <div class="dg-run-foot">
+        <span class="dg-note">Step 3 still fails, as expected</span>
+        <span class="dg-verdict dg-verdict-bad">new failure · step 14</span>
+      </div>
+    </div>
+  </div>
+  <figcaption>Once the measure became the bar for merging, all it measured was whether the lists matched. Seven failing tests meant seven blind spots.</figcaption>
+</figure>

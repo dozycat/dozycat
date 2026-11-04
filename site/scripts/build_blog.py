@@ -14,6 +14,7 @@ from pathlib import Path
 SITE_DIR = Path(__file__).resolve().parents[1]
 BLOG_DIR = SITE_DIR / "blog"
 MANIFEST_PATH = BLOG_DIR / "posts.json"
+DIAGRAM_DIR = BLOG_DIR / "diagrams"
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class Post:
     tags: tuple[str, ...]
     date: str
     description: str
+    lang: str
     title: str
     markdown: str
     reading_minutes: int
@@ -92,6 +94,7 @@ def markdown_to_html(markdown: str) -> tuple[str, str]:
     in_code = False
     list_type: str | None = None
     list_items: list[str] = []
+    quote_lines: list[str] = []
     section_index = 0
 
     def flush_paragraph() -> None:
@@ -108,7 +111,26 @@ def markdown_to_html(markdown: str) -> tuple[str, str]:
         list_type = None
         list_items.clear()
 
+    def flush_quote() -> None:
+        if quote_lines:
+            paragraphs: list[list[str]] = [[]]
+            for quoted in quote_lines:
+                if quoted.strip():
+                    paragraphs[-1].append(quoted)
+                elif paragraphs[-1]:
+                    paragraphs.append([])
+            inner = "".join(
+                f"<p>{inline_markdown(join_wrapped_lines(group))}</p>"
+                for group in paragraphs
+                if group
+            )
+            blocks.append(f"<blockquote>{inner}</blockquote>")
+            quote_lines.clear()
+
     for line in lines + [""]:
+        if not line.startswith(">"):
+            flush_quote()
+
         fence = re.match(r"^```\s*([\w+-]*)\s*$", line)
         if fence:
             if in_code:
@@ -132,6 +154,23 @@ def markdown_to_html(markdown: str) -> tuple[str, str]:
 
         if in_code:
             code_lines.append(line)
+            continue
+
+        quote = re.match(r"^>\s?(.*)$", line)
+        if quote:
+            flush_paragraph()
+            flush_list()
+            quote_lines.append(quote.group(1))
+            continue
+
+        diagram = re.fullmatch(r":::\s*diagram\s+([\w-]+)\s*", line.strip())
+        if diagram:
+            flush_paragraph()
+            flush_list()
+            snippet = DIAGRAM_DIR / f"{diagram.group(1)}.html"
+            if not snippet.is_file():
+                raise ValueError(f"Missing blog diagram: {snippet}")
+            blocks.append(snippet.read_text(encoding="utf-8").strip())
             continue
 
         picture = re.fullmatch(r'!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)', line.strip())
@@ -195,12 +234,13 @@ def markdown_to_html(markdown: str) -> tuple[str, str]:
 
 def word_count(markdown: str) -> int:
     without_code = re.sub(r"```.*?```", "", markdown, flags=re.DOTALL)
+    without_code = re.sub(r"^:::.*$", "", without_code, flags=re.MULTILINE)
     cjk = len(re.findall(r"[\u3400-\u9fff]", without_code))
     latin_words = len(re.findall(r"\b[A-Za-z0-9][A-Za-z0-9_-]*\b", without_code))
     return cjk + latin_words
 
 
-def page_head(title: str, description: str, stylesheet: str) -> str:
+def page_head(title: str, description: str, stylesheet: str, extra_css: str = "") -> str:
     escaped_title = html.escape(title)
     escaped_description = html.escape(description, quote=True)
     return f"""<!DOCTYPE html>
@@ -216,7 +256,7 @@ def page_head(title: str, description: str, stylesheet: str) -> str:
 <link rel="apple-touch-icon" href="{stylesheet}assets/icon.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{stylesheet}style.css">
+<link rel="stylesheet" href="{stylesheet}style.css">{extra_css}
 </head>"""
 
 
@@ -278,6 +318,7 @@ def render_cover(post: Post) -> str:
         "local-first": ("local", "laptop-minimal-check", "留在身边", "LOCAL FIRST"),
         "smile": ("smile", "smile", "记住开心", "LITTLE JOYS"),
         "fatigue": ("rest", "coffee", "歇一会儿", "TAKE A PAUSE"),
+        "rewrite-from-scratch": ("verify", "scan-eye", "重写一次", "FIELD TESTS"),
     }
     theme, icon, caption, eyebrow = covers.get(
         post.slug, ("local", "laptop-minimal-check", "慢慢记下", "FIELD NOTES")
@@ -330,7 +371,13 @@ def render_index(posts: list[Post]) -> str:
 
 
 def render_post(post: Post, body_html: str) -> str:
-    return f"""{page_head(f'{post.title} — 懒猫君手记', post.description, '../../')}
+    extra_css = (
+        '\n<link rel="stylesheet" href="../../assets/blog/diagrams.css">'
+        if 'class="dg ' in body_html
+        else ""
+    )
+    lang_attr = f' lang="{html.escape(post.lang, quote=True)}"' if post.lang != "zh-CN" else ""
+    return f"""{page_head(f'{post.title} — 懒猫君手记', post.description, '../../', extra_css)}
 <body class="blog-page article-page">
 {blog_nav('../../', '../')}
 <main>
@@ -341,14 +388,14 @@ def render_post(post: Post, body_html: str) -> str:
         {render_tags(post.tags)}
         <span class="article-meta">{post.display_date} · {post.reading_minutes} 分钟</span>
       </div>
-      <h1>{html.escape(post.title)}</h1>
-      <p class="article-dek">{html.escape(post.description)}</p>
+      <h1{lang_attr}>{html.escape(post.title)}</h1>
+      <p class="article-dek"{lang_attr}>{html.escape(post.description)}</p>
       <div class="article-energy" aria-hidden="true">
         <span><i class="article-energy-mind" style="width:72%"></i></span>
         <span><i class="article-energy-body" style="width:45%"></i></span>
       </div>
     </header>
-    <div class="markdown-body">
+    <div class="markdown-body"{lang_attr}>
 {body_html}
     </div>
     <footer class="article-end">
@@ -372,6 +419,9 @@ def load_posts() -> list[tuple[Post, str]]:
         markdown = source.read_text(encoding="utf-8")
         title, body_html = markdown_to_html(markdown)
         tags = tuple(item["tags"])
+        lang = item.get("lang", "zh-CN")
+        # 中文按每分钟 400 字估算，英文按每分钟 230 词。
+        words_per_minute = 230 if lang.startswith("en") else 400
         if not tags:
             raise ValueError(f"Blog post {item['slug']} needs at least one tag")
         post = Post(
@@ -380,9 +430,10 @@ def load_posts() -> list[tuple[Post, str]]:
             tags=tags,
             date=item["date"],
             description=item["description"],
+            lang=lang,
             title=title,
             markdown=markdown,
-            reading_minutes=max(1, round(word_count(markdown) / 400)),
+            reading_minutes=max(1, round(word_count(markdown) / words_per_minute)),
         )
         posts.append((post, body_html))
     return sorted(posts, key=lambda item: item[0].date, reverse=True)

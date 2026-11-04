@@ -1,0 +1,27 @@
+<figure class="dg dg-clock" role="img" aria-label="Virtual clock: time jumps from 9:00 to 10:29, 10:30, 10:44 and 10:45. Every service reads the same clock, and the notification reaches the lock screen only at 10:45.">
+  <div class="dg-panel">
+    <div class="dg-title">TWO REAL HOURS · ONE MINUTE IN THE CHECKUP</div>
+    <div class="dg-clock-stage">
+      <div class="dg-phone" aria-hidden="true">
+        <span class="dg-phone-notch"></span>
+        <span class="dg-phone-date">Wednesday</span>
+        <span class="dg-phone-time"><span class="dg-slot" style="--k:0">09:00</span><span class="dg-slot" style="--k:1">10:29</span><span class="dg-slot" style="--k:2">10:30</span><span class="dg-slot" style="--k:3">10:44</span><span class="dg-slot" style="--k:4">10:45</span></span>
+        <span class="dg-notice"><b>Meeting brief · 11:00</b><small>Before you meet Monica, you might want to know…</small></span>
+        <span class="dg-phone-hint">LOCK SCREEN</span>
+      </div>
+      <div class="dg-clock-side">
+        <div class="dg-events"><span class="dg-slot" style="--k:0"><b>Confirm the 11:00 meeting</b><small>Nothing should happen yet</small></span><span class="dg-slot" style="--k:1"><b>Jump to 31 minutes before</b><small>Assert: still nothing</small></span><span class="dg-slot" style="--k:2"><b>Agent starts the brief</b><small>Using its notes on Kiwi and Monica</small></span><span class="dg-slot" style="--k:3"><b>The brief is ready</b><small>The lock screen stays quiet</small></span><span class="dg-slot" style="--k:4"><b>Notification arrives</b><small>15 minutes before, right on time</small></span></div>
+        <div class="dg-timeline" aria-hidden="true">
+          <span class="dg-rail"><i class="dg-fill"></i></span>
+          <span class="dg-head"></span>
+          <span class="dg-stop" style="--k:0"><i></i><em>09:00</em></span><span class="dg-stop" style="--k:1"><i></i><em>10:29</em></span><span class="dg-stop" style="--k:2"><i></i><em>10:30</em></span><span class="dg-stop" style="--k:3"><i></i><em>10:44</em></span><span class="dg-stop" style="--k:4"><i></i><em>10:45</em></span>
+        </div>
+        <div class="dg-hub">
+          <code>virtual = real + offset</code>
+          <span class="dg-chips"><i>Scheduler</i><i>SQL now()</i><i>Token issue / expiry</i><i>Effect Clock</i><i>The agent's “now”</i><i>Browser · second device</i></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption>The clock only jumps forward, never back. Production code reads system time and never knows this clock exists.</figcaption>
+</figure>

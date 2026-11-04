@@ -1,0 +1,24 @@
+<figure class="dg dg-rewrite" role="img" aria-label="Three layers during the rewrite: assertions that read the screen barely changed; assertions that query the database or match routes had to change; the implementation underneath was replaced entirely.">
+  <div class="dg-panel">
+    <div class="dg-title">ZERO 2.0 · FOUR DAYS · 381 COMMITS, 366 BY CODING AGENTS</div>
+    <div class="dg-stack">
+      <div class="dg-tier dg-tier-story">
+        <span class="dg-tier-label"><b>The story · what the user sees</b><small>238 screen reads + 125 taps and inputs</small></span>
+        <span class="dg-tier-state dg-ok">barely touched</span>
+      </div>
+      <div class="dg-tier dg-tier-mid">
+        <span class="dg-tier-label"><b>Middle layer · database</b><small>162 t.db(SQL) checks</small></span>
+        <span class="dg-tier-state dg-warn">fixed in one commit</span>
+      </div>
+      <div class="dg-tier dg-tier-mid dg-tier-mid2">
+        <span class="dg-tier-label"><b>Middle layer · route regexes</b><small>76 HTTP / WebSocket matchers</small></span>
+        <span class="dg-tier-state dg-warn">changed six times</span>
+      </div>
+      <div class="dg-tier dg-tier-impl">
+        <span class="dg-tier-label"><b>The implementation</b><small>2,139 files · ~100k lines in, ~100k out · grey is old, green is new</small></span>
+        <span class="dg-blocks" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><i style="--k:4"></i><i style="--k:5"></i><i style="--k:6"></i><i style="--k:7"></i><i style="--k:8"></i><i style="--k:9"></i><i style="--k:10"></i><i style="--k:11"></i></span>
+      </div>
+    </div>
+  </div>
+  <figcaption>The foundation was replaced; the storybook changed by a few hundred lines. The closer an assertion sits to the implementation, the more it costs to migrate.</figcaption>
+</figure>

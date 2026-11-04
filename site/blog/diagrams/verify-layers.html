@@ -1,0 +1,32 @@
+<figure class="dg dg-layers" role="img" aria-label="Four layers of verification: the L0 web checkup runs on every PR; L1 native surfaces, L2 simulator and L3 real device are each more realistic, slower, more expensive, and run less often.">
+  <div class="dg-panel">
+    <div class="dg-title">FOUR LAYERS · MORE DOTS, MORE RUNS</div>
+    <div class="dg-layer-wrap">
+      <div class="dg-layer-list">
+      <div class="dg-layer" style="--dur:.9s;--n:3">
+        <span class="dg-layer-code">L0</span>
+        <span class="dg-layer-name"><b>Web checkup</b><small>Linux runner · every PR</small></span>
+        <span class="dg-layer-what">Production backend + the real React UI</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i></span>
+      </div><div class="dg-layer" style="--dur:2.6s;--n:1">
+        <span class="dg-layer-code">L1</span>
+        <span class="dg-layer-name"><b>Native surfaces</b><small>Mac</small></span>
+        <span class="dg-layer-what">Production SwiftUI compiled as-is to draw the lock screen</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i></span>
+      </div><div class="dg-layer" style="--dur:5s;--n:1">
+        <span class="dg-layer-code">L2</span>
+        <span class="dg-layer-name"><b>Simulator</b><small>iOS Simulator</small></span>
+        <span class="dg-layer-what">Pixel-by-pixel comparison with web, same state</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i></span>
+      </div><div class="dg-layer" style="--dur:10s;--n:1">
+        <span class="dg-layer-code">L3</span>
+        <span class="dg-layer-name"><b>Real device</b><small>TestFlight · before release</small></span>
+        <span class="dg-layer-what">Someone picks up a phone and taps through</span>
+        <span class="dg-beat" aria-hidden="true"><i style="--k:0"></i></span>
+      </div>
+      </div>
+      <div class="dg-scale" aria-hidden="true"><span>fast · cheap</span><i></i><span>real · costly</span></div>
+    </div>
+  </div>
+  <figcaption>The frequent layer has to be fast. The rare layers guard what it can't see.</figcaption>
+</figure>
