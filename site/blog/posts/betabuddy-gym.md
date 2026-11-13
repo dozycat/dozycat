@@ -4,7 +4,7 @@
 
 同一条线，188 的人伸手就到的点，152 的人要多踩三脚，或者干脆跳。别人的走法（圈里叫 beta）抄不了，因为身体不一样。我想做一个东西来回答这个问题：**换一副身体，这条线该怎么爬？**
 
-要回答它，得先有两样东西：一面量得准的墙，和一个会爬墙的模型。这篇手记写的是这两样东西怎么来的。成品是一个叫 BetaBuddy 的 App，文末有下载。
+要回答它，得先有两样东西：一面量得准的墙，和一个会爬墙的模型。这篇手记写的是这两样东西怎么来的。成品是一个叫 BetaBuddy 的 App，iOS 版已经上架 App Store，文末有下载。
 
 先说素材。我没有激光扫描仪，也没有馆方的图纸，手里只有手机拍的攀爬视频。这些视频只当测量参考用，本文和 App 里的画面全部是自己建的模型，没有任何原始影像。
 
@@ -137,7 +137,7 @@ App 是一层很薄的原生壳：iOS 用 SwiftUI，Android 用 Kotlin 和 Compo
 **下载**
 
 - Android 测试版：[GitHub Releases](https://github.com/dozycat/BetaBuddy/releases/tag/android-v1.1.0)，下载 APK 直接安装，需要 Android 8.0 以上。目前只在模拟器上测过。
-- iOS 版在审核中。
+- iOS 版：[App Store](https://apps.apple.com/app/id6809249574)，已上架。
 - App 的源码在 [dozycat/BetaBuddy](https://github.com/dozycat/BetaBuddy)。
 
 馆里的内容是非官方整理的，和场馆没有关系。线路会定期更换，请以现场为准。
