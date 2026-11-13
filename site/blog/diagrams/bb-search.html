@@ -1,0 +1,14 @@
+<figure class="dg dg-bb-search" role="img" aria-label="搜索图示意：每个状态记录左手、右手、左脚、右脚各在哪个岩点上。每一步只移动一只手或脚，得到相邻状态，每条边有一个代价。高个子可以直接够到远处的点，矮个子要多走几步或者起跳。">
+  <div class="dg-panel">
+    <div class="dg-title">一个状态 = 四肢各在哪个点上</div>
+    <div class="dg-bb-legend" aria-hidden="true"><span><i class="lh"></i>左手</span><span><i class="rh"></i>右手</span><span><i class="lf"></i>左脚</span><span><i class="rf"></i>右脚</span></div>
+    <div class="dg-bb-graph">
+      <div class="dg-bb-col"><div class="dg-bb-node "><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh">3</i><i class="lf">地</i><i class="rf">地</i></span><small>双手在起步点</small><em>起步</em></div></div>
+      <div class="dg-bb-col"><div class="dg-bb-node "><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh">3</i><i class="lf mv">2</i><i class="rf">地</i></span><small>左脚上点</small><em>+1.0</em></div><div class="dg-bb-node dim"><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh mv">7</i><i class="lf">地</i><i class="rf">地</i></span><small>脚还在地上</small><em>够不着</em></div></div>
+      <div class="dg-bb-col"><div class="dg-bb-node "><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh">3</i><i class="lf">2</i><i class="rf mv">3</i></span><small>右脚踩手点</small><em>+2.4</em></div><div class="dg-bb-node alt"><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh mv">8</i><i class="lf">2</i><i class="rf">地</i></span><small>只有爆发够才有这条边</small><em>+9.6 跳</em></div></div>
+      <div class="dg-bb-col"><div class="dg-bb-node hit"><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh mv">7</i><i class="lf">2</i><i class="rf">3</i></span><small>这一步最难</small><em>+8.5</em></div></div>
+    </div>
+    <div class="dg-bb-foot"><span>每条边动一只手或一只脚</span><span>边的代价 = 这一步身体最别扭的那一刻有多费劲</span></div>
+  </div>
+  <figcaption>换一个身材，图的形状就变了：臂展长的人多出几条直接够到的边，柔韧好的人多出高抬脚的边，爆发强的人多出起跳的边。最短路自然跟着变。</figcaption>
+</figure>

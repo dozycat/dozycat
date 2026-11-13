@@ -1,5 +1,12 @@
 [
   {
+    "slug": "betabuddy-gym",
+    "source": "posts/betabuddy-gym.md",
+    "tags": ["技术"],
+    "date": "2026-11-13",
+    "description": "用手机视频量出一座岩馆，再让一个会爬墙的模型告诉你：换一副身体，同一条线该怎么爬。螺母孔当尺子，最短路当教练。"
+  },
+  {
     "slug": "rewrite-from-scratch",
     "source": "posts/rewrite-from-scratch.md",
     "tags": ["技术"],

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>把一座岩馆装进手机 — 懒猫君手记</title>
+<meta name="description" content="用手机视频量出一座岩馆，再让一个会爬墙的模型告诉你：换一副身体，同一条线该怎么爬。螺母孔当尺子，最短路当教练。">
+<meta property="og:title" content="把一座岩馆装进手机 — 懒猫君手记">
+<meta property="og:description" content="用手机视频量出一座岩馆，再让一个会爬墙的模型告诉你：换一副身体，同一条线该怎么爬。螺母孔当尺子，最短路当教练。">
+<link rel="icon" type="image/png" href="../../assets/icon.png">
+<link rel="apple-touch-icon" href="../../assets/icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../assets/blog/diagrams.css">
+</head>
+<body class="blog-page article-page">
+<nav class="nav blog-site-nav">
+  <a class="logo logo-cn" href="../../" aria-label="回到懒猫君首页">
+    <span class="cat cat-mini" aria-hidden="true">
+      <span class="ear ear-l"></span>
+      <span class="ear ear-r"></span>
+      <span class="head">
+        <span class="eye eye-l"></span>
+        <span class="eye eye-r"></span>
+      </span>
+    </span>
+    懒猫君<span class="dot">。</span>
+  </a>
+  <div class="nav-links">
+    <a href="../../">小传</a>
+    <a class="nav-blog active" href="../">手记</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat/releases/latest/download/dozycat-0.1.6-arm64.dmg">领养一只懒猫</a>
+  </div>
+</nav>
+<main>
+  <article class="blog-article">
+    <header class="article-hero">
+      <a class="article-back" href="../">← 返回全部手记</a>
+      <div class="post-meta">
+        <span class="post-tags" aria-label="标签"><span class="post-tag">技术</span></span>
+        <span class="article-meta">2026.11.13 · 7 分钟</span>
+      </div>
+      <h1>把一座岩馆装进手机</h1>
+      <p class="article-dek">用手机视频量出一座岩馆，再让一个会爬墙的模型告诉你：换一副身体，同一条线该怎么爬。螺母孔当尺子，最短路当教练。</p>
+      <div class="article-energy" aria-hidden="true">
+        <span><i class="article-energy-mind" style="width:72%"></i></span>
+        <span><i class="article-energy-body" style="width:45%"></i></span>
+      </div>
+    </header>
+    <div class="markdown-body">
+<p>抱石的人都听过一句话：这条线是给高个子定的。</p>
+<p>同一条线，188 的人伸手就到的点，152 的人要多踩三脚，或者干脆跳。别人的走法（圈里叫 beta）抄不了，因为身体不一样。我想做一个东西来回答这个问题：<strong>换一副身体，这条线该怎么爬？</strong></p>
+<p>要回答它，得先有两样东西：一面量得准的墙，和一个会爬墙的模型。这篇手记写的是这两样东西怎么来的。成品是一个叫 BetaBuddy 的 App，文末有下载。</p>
+<p>先说素材。我没有激光扫描仪，也没有馆方的图纸，手里只有手机拍的攀爬视频。这些视频只当测量参考用，本文和 App 里的画面全部是自己建的模型，没有任何原始影像。</p>
+<p><strong>第一个发现：墙上自带一把尺子。</strong></p>
+<p>从视频里量尺寸，最头疼的是没有参照物。直到我注意到岩壁上那些密密麻麻的小黑点：装岩点用的螺母孔。它们是工厂按固定间距打的，横向 25 厘米，相邻两排错开 12.5 厘米。</p>
+<p>这就是一块铺满整面墙的标定板。</p>
+<figure class="dg dg-bb-lattice" role="img" aria-label="左边是手机斜着拍到的墙面，螺母孔点阵被透视压歪；右边是按点阵拟合单应矩阵后拉正的墙面，孔距横向 25 厘米、相邻两排错开 12.5 厘米。">
+  <div class="dg-panel">
+    <div class="dg-title">墙上自带一把尺子</div>
+    <svg viewBox="0 0 560 190" xmlns="http://www.w3.org/2000/svg">
+      <g class="dg-bb-dots dg-bb-raw"><circle cx="18.0" cy="150.0" r="2.4"/><circle cx="40.8" cy="148.9" r="2.4"/><circle cx="62.0" cy="148.0" r="2.4"/><circle cx="81.8" cy="147.0" r="2.4"/><circle cx="100.4" cy="146.2" r="2.4"/><circle cx="117.7" cy="145.4" r="2.4"/><circle cx="134.0" cy="144.6" r="2.4"/><circle cx="149.4" cy="143.9" r="2.4"/><circle cx="32.3" cy="130.8" r="2.3"/><circle cx="54.8" cy="130.4" r="2.3"/><circle cx="75.7" cy="130.1" r="2.3"/><circle cx="95.1" cy="129.7" r="2.3"/><circle cx="113.4" cy="129.4" r="2.3"/><circle cx="130.4" cy="129.1" r="2.3"/><circle cx="146.5" cy="128.9" r="2.3"/><circle cx="161.5" cy="128.6" r="2.3"/><circle cx="23.0" cy="110.9" r="2.1"/><circle cx="46.8" cy="111.3" r="2.1"/><circle cx="68.9" cy="111.6" r="2.1"/><circle cx="89.5" cy="111.9" r="2.1"/><circle cx="108.6" cy="112.2" r="2.1"/><circle cx="126.5" cy="112.5" r="2.1"/><circle cx="143.3" cy="112.7" r="2.1"/><circle cx="159.0" cy="112.9" r="2.1"/><circle cx="38.2" cy="90.3" r="2.0"/><circle cx="61.6" cy="91.4" r="2.0"/><circle cx="83.3" cy="92.5" r="2.0"/><circle cx="103.5" cy="93.5" r="2.0"/><circle cx="122.3" cy="94.4" r="2.0"/><circle cx="139.9" cy="95.3" r="2.0"/><circle cx="156.3" cy="96.1" r="2.0"/><circle cx="171.7" cy="96.8" r="2.0"/><circle cx="28.6" cy="67.3" r="1.8"/><circle cx="53.5" cy="69.4" r="1.8"/><circle cx="76.6" cy="71.3" r="1.8"/><circle cx="97.9" cy="73.1" r="1.8"/><circle cx="117.7" cy="74.8" r="1.8"/><circle cx="136.2" cy="76.4" r="1.8"/><circle cx="153.4" cy="77.8" r="1.8"/><circle cx="169.5" cy="79.2" r="1.8"/><circle cx="44.7" cy="45.1" r="1.7"/><circle cx="69.2" cy="48.1" r="1.7"/><circle cx="91.8" cy="50.9" r="1.7"/><circle cx="112.7" cy="53.5" r="1.7"/><circle cx="132.1" cy="55.9" r="1.7"/><circle cx="150.2" cy="58.1" r="1.7"/><circle cx="167.1" cy="60.2" r="1.7"/><circle cx="182.9" cy="62.1" r="1.7"/><circle cx="34.9" cy="18.2" r="1.6"/><circle cx="61.0" cy="22.5" r="1.6"/><circle cx="85.1" cy="26.5" r="1.6"/><circle cx="107.2" cy="30.1" r="1.6"/><circle cx="127.8" cy="33.5" r="1.6"/><circle cx="146.8" cy="36.6" r="1.6"/><circle cx="164.5" cy="39.5" r="1.6"/><circle cx="181.0" cy="42.3" r="1.6"/></g>
+      <g class="dg-bb-arrow"><path d="M258 96 H300"/><path d="M293 90 l8 6 -8 6"/></g>
+      <text class="dg-bb-cap" x="279" y="84" text-anchor="middle">拟合 H</text>
+      <g class="dg-bb-dots dg-bb-fit"><circle cx="330.0" cy="150.0" r="2.1"/><circle cx="355.5" cy="150.0" r="2.1"/><circle cx="381.0" cy="150.0" r="2.1"/><circle cx="406.5" cy="150.0" r="2.1"/><circle cx="432.0" cy="150.0" r="2.1"/><circle cx="457.5" cy="150.0" r="2.1"/><circle cx="483.0" cy="150.0" r="2.1"/><circle cx="508.5" cy="150.0" r="2.1"/><circle cx="342.8" cy="128.8" r="2.1"/><circle cx="368.2" cy="128.8" r="2.1"/><circle cx="393.8" cy="128.8" r="2.1"/><circle cx="419.2" cy="128.8" r="2.1"/><circle cx="444.8" cy="128.8" r="2.1"/><circle cx="470.2" cy="128.8" r="2.1"/><circle cx="495.8" cy="128.8" r="2.1"/><circle cx="521.2" cy="128.8" r="2.1"/><circle cx="330.0" cy="107.5" r="2.1"/><circle cx="355.5" cy="107.5" r="2.1"/><circle cx="381.0" cy="107.5" r="2.1"/><circle cx="406.5" cy="107.5" r="2.1"/><circle cx="432.0" cy="107.5" r="2.1"/><circle cx="457.5" cy="107.5" r="2.1"/><circle cx="483.0" cy="107.5" r="2.1"/><circle cx="508.5" cy="107.5" r="2.1"/><circle cx="342.8" cy="86.2" r="2.1"/><circle cx="368.2" cy="86.2" r="2.1"/><circle cx="393.8" cy="86.2" r="2.1"/><circle cx="419.2" cy="86.2" r="2.1"/><circle cx="444.8" cy="86.2" r="2.1"/><circle cx="470.2" cy="86.2" r="2.1"/><circle cx="495.8" cy="86.2" r="2.1"/><circle cx="521.2" cy="86.2" r="2.1"/><circle cx="330.0" cy="65.0" r="2.1"/><circle cx="355.5" cy="65.0" r="2.1"/><circle cx="381.0" cy="65.0" r="2.1"/><circle cx="406.5" cy="65.0" r="2.1"/><circle cx="432.0" cy="65.0" r="2.1"/><circle cx="457.5" cy="65.0" r="2.1"/><circle cx="483.0" cy="65.0" r="2.1"/><circle cx="508.5" cy="65.0" r="2.1"/><circle cx="342.8" cy="43.8" r="2.1"/><circle cx="368.2" cy="43.8" r="2.1"/><circle cx="393.8" cy="43.8" r="2.1"/><circle cx="419.2" cy="43.8" r="2.1"/><circle cx="444.8" cy="43.8" r="2.1"/><circle cx="470.2" cy="43.8" r="2.1"/><circle cx="495.8" cy="43.8" r="2.1"/><circle cx="521.2" cy="43.8" r="2.1"/><circle cx="330.0" cy="22.5" r="2.1"/><circle cx="355.5" cy="22.5" r="2.1"/><circle cx="381.0" cy="22.5" r="2.1"/><circle cx="406.5" cy="22.5" r="2.1"/><circle cx="432.0" cy="22.5" r="2.1"/><circle cx="457.5" cy="22.5" r="2.1"/><circle cx="483.0" cy="22.5" r="2.1"/><circle cx="508.5" cy="22.5" r="2.1"/></g>
+      <g class="dg-bb-dim"><path d="M330 164 H355.5"/><path d="M330 160 v8 M355.5 160 v8"/><text x="342.7" y="181" text-anchor="middle">25 cm</text>
+      <path d="M318 150 V128.75"/><path d="M314 150 h8 M314 128.75 h8"/><text x="309" y="143" text-anchor="end">12.5</text></g>
+      <text class="dg-bb-cap" x="110" y="181" text-anchor="middle">画面里的孔（像素）</text>
+      <text class="dg-bb-cap" x="470" y="181" text-anchor="middle">墙面上的孔（米）</text>
+    </svg>
+  </div>
+  <figcaption>岩壁的螺母孔是按固定间距打的。认出一百来个孔，就能把一张斜着拍的照片换算成墙面上的米制坐标，残差约 3 毫米。</figcaption>
+</figure>
+<p>做法很朴素：在一帧画面里把孔找出来，认出它们属于同一套点阵，再拟合一个单应矩阵，把像素坐标换成墙面上的米。一面墙认出 111 个孔，残差 2.8 毫米。</p>
+<p>后来我拿另一个机位拍的同一面墙单独再标一次，比较同一批特征点换算出来的位置：平面上 7 个点平均差 1.1 厘米。更有意思的是，两次标定各自选的坐标原点差了 (−0.50, +0.24) 米，正好是孔距的整数倍。两次认到的是同一套孔，只是各自从不同的孔开始数。</p>
+<p>这把尺子也有坑。点阵是周期性的，算法很容易“错一格”：整面墙平移 12.5 厘米，所有孔照样对得整整齐齐。稠密立体匹配在光墙上被这种周期纹理骗得很惨，最后只有和稀疏点一致的那部分结果被留下来。</p>
+<p><strong>第二个发现：把人去掉，比想象中容易。</strong></p>
+<p>墙的贴图不能带着人。好在示范视频大多是固定机位：手机架在地上，人在画面里爬来爬去，墙不动。把很多帧合成一张，动的东西就被挤掉了，剩下一张干净的墙。</p>
+<p>三十多个固定机位各出一张干净底图，这些底图本身又可以当作多视角照片，丢进三维重建里解出每个机位的位姿。</p>
+<p><strong>第三个发现：我以为的坡度是错的。</strong></p>
+<p>一开始我凭感觉给两面墙写了 −12° 和 −10° 的倾角，觉得它们是缓坡。三维重建跑完，实测是 +0.8°，几乎竖直。其中一条线顶部那块板更离谱：我把它当成和主墙共面，推出结束点高 4.68 米；实测那块板外倾 44°，结束点其实在 4.0 米高、离主墙面 0.9 米的地方。</p>
+<p>重力方向是这么估的：人拿手机拍视频时，画面的水平边大体是水平的。把所有帧的水平轴放在一起，它们张成一个平面，这个平面的法线就是重力。机位转动范围越大，估得越准。转了 75° 的那段，重复抽样的标准差是 0.2°；只转了 37° 的那段，我只敢说 ±3°。</p>
+<p>还有一个教训：别把整段视频一次性丢进去重建。不同的墙长得太像了，同样的灰板、同样的孔，算法会把两面墙的画面粘成一面。最后是一面一面单独建，再靠相邻两面共享的墙板把它们拼起来。</p>
+<p>整座馆建下来是五组岩壁加两块训练板。每面墙内部准到厘米级；各面在馆里的绝对位置靠平面图和柱子对齐，只有 ±1 米左右。对爬线来说够了，因为一条线只在一面墙上。</p>
+<p><strong>第四个发现：自动分割岩点不靠谱，得一个一个看。</strong></p>
+<p>按颜色自动分割出来的岩点，漏的漏，错的错。黑色、灰色、白色的点和墙面分不开，大造型经常被切成几块。</p>
+<p>最后的办法很笨：把拉正的墙面切成带坐标网格的小片，每个岩点给一个框，框里再自动抠轮廓，画回去核对。标一轮，换一个人复查一轮，然后随机抽样。第二次抽样看了 672 个条目：漏标 0，误标 8 个，1.2%，全是相邻两块板的接缝处同一个点被标了两次。</p>
+<p>线路也是逐条确认的：哪个是起步点，哪个是结束点，中间用了哪些点。规则只有一条，一条线只用同一种颜色的岩点，手脚都算。示范的人偶尔会踩到别的颜色上，那是踩错了，不算。一共 72 条。</p>
+<p><strong>现在墙有了。怎么让模型知道一个点该怎么抓？</strong></p>
+<p>墙上的岩点在数据里只是一圈轮廓加一个凸出高度。但爬的人看一眼就知道：这是个月牙，要从凹的那边扣；那是根竖条，得侧着拉。</p>
+<p>这部分我没用任何学习模型，就是几何。</p>
+<figure class="dg dg-bb-hold" role="img" aria-label="一个月牙形岩点的轮廓。虚线是它的凸包，凸包减去轮廓剩下的那块是开口。从开口的重心指向岩点重心的方向，就是手该拉的方向。">
+  <div class="dg-panel">
+    <div class="dg-title">从轮廓猜这个点怎么抓</div>
+    <div class="dg-bb-hold-grid">
+      <svg viewBox="50 30 280 100" xmlns="http://www.w3.org/2000/svg">
+        <path class="dg-bb-hull" d="M72 118 A78 62 0 0 1 228 118 Z"/>
+        <polygon class="dg-bb-shape" points="72.0,118.0 73.7,105.1 78.7,92.8 86.9,81.6 97.8,71.9 111.0,64.3 125.9,59.0 141.8,56.3 158.2,56.3 174.1,59.0 189.0,64.3 202.2,71.9 213.1,81.6 221.3,92.8 226.3,105.1 228.0,118.0 200.0,122.0 198.9,116.6 195.7,111.4 190.5,106.7 183.5,102.7 175.0,99.5 165.5,97.3 155.2,96.1 144.8,96.1 134.5,97.3 125.0,99.5 116.5,102.7 109.5,106.7 104.3,111.4 101.1,116.6 100.0,122.0"/>
+        <circle class="dg-bb-c1" cx="150" cy="108" r="4"/><circle class="dg-bb-c2" cx="150" cy="74" r="4"/>
+        <g class="dg-bb-pull"><path d="M150 104 V44"/><path d="M143 53 l7 -10 7 10"/></g>
+        <g class="dg-bb-lead"><path d="M156 108 H246"/><path d="M156 74 H246"/><path d="M158 46 H246"/></g><text x="250" y="111.5">开口重心</text><text x="250" y="77.5">岩点重心</text><text x="250" y="49.5">受力方向</text>
+      </svg>
+      <ul>
+        <li><b>实心度</b><small>轮廓面积 ÷ 凸包面积。低于 0.86 说明缺了一块，是月牙</small></li>
+        <li><b>长宽比</b><small>主成分方向上的跨度比。≥ 2 是长条，长轴接近竖直就是侧拉点</small></li>
+        <li><b>尺寸和凸出</b><small>边长不到 6 厘米的是脚点；很大的造型当斜面，可以下压、可以踩</small></li>
+      </ul>
+    </div>
+  </div>
+  <figcaption>图里这个月牙开口朝下，是个反提点：手从下面扣进去往上拉，所以身体得先爬到它旁边才用得上。开口朝上的月牙，算出来的方向正好相反。</figcaption>
+</figure>
+<p>对轮廓做一次主成分分析，得到长轴方向和长宽比。再算凸包，用轮廓面积除以凸包面积得到实心度。缺掉的那块（凸包减去轮廓）有自己的重心，从它指向岩点重心的方向，就是手该用力的方向：</p>
+<pre><code class="language-python">solid = area / hull_area
+if solid &lt; 0.86:                       # 缺了一块：月牙
+    notch = (hull_area * hull_c - area * c) / (hull_area - area)
+    pull = normalize(c - notch)        # 从开口指向有肉的一侧
+elif aspect &gt;= 2.0:                    # 长条：受力垂直于长轴
+    pull = normal_of(long_axis)        # 接近竖直的长条 → 侧拉</code></pre>
+<p>受力方向决定了身体得在哪一侧。一个侧拉点，肩膀必须在它的另一边才吃得上力；一个反提点，人得先爬到和它差不多高。有了这条约束，模型才会侧身、换脚、先上脚再出手，而不是面朝墙一路硬拉上去。</p>
+<p><strong>然后是爬。我把它做成了一个最短路问题。</strong></p>
+<figure class="dg dg-bb-search" role="img" aria-label="搜索图示意：每个状态记录左手、右手、左脚、右脚各在哪个岩点上。每一步只移动一只手或脚，得到相邻状态，每条边有一个代价。高个子可以直接够到远处的点，矮个子要多走几步或者起跳。">
+  <div class="dg-panel">
+    <div class="dg-title">一个状态 = 四肢各在哪个点上</div>
+    <div class="dg-bb-legend" aria-hidden="true"><span><i class="lh"></i>左手</span><span><i class="rh"></i>右手</span><span><i class="lf"></i>左脚</span><span><i class="rf"></i>右脚</span></div>
+    <div class="dg-bb-graph">
+      <div class="dg-bb-col"><div class="dg-bb-node "><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh">3</i><i class="lf">地</i><i class="rf">地</i></span><small>双手在起步点</small><em>起步</em></div></div>
+      <div class="dg-bb-col"><div class="dg-bb-node "><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh">3</i><i class="lf mv">2</i><i class="rf">地</i></span><small>左脚上点</small><em>+1.0</em></div><div class="dg-bb-node dim"><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh mv">7</i><i class="lf">地</i><i class="rf">地</i></span><small>脚还在地上</small><em>够不着</em></div></div>
+      <div class="dg-bb-col"><div class="dg-bb-node "><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh">3</i><i class="lf">2</i><i class="rf mv">3</i></span><small>右脚踩手点</small><em>+2.4</em></div><div class="dg-bb-node alt"><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh mv">8</i><i class="lf">2</i><i class="rf">地</i></span><small>只有爆发够才有这条边</small><em>+9.6 跳</em></div></div>
+      <div class="dg-bb-col"><div class="dg-bb-node hit"><span class="dg-bb-limbs"><i class="lh">5</i><i class="rh mv">7</i><i class="lf">2</i><i class="rf">3</i></span><small>这一步最难</small><em>+8.5</em></div></div>
+    </div>
+    <div class="dg-bb-foot"><span>每条边动一只手或一只脚</span><span>边的代价 = 这一步身体最别扭的那一刻有多费劲</span></div>
+  </div>
+  <figcaption>换一个身材，图的形状就变了：臂展长的人多出几条直接够到的边，柔韧好的人多出高抬脚的边，爆发强的人多出起跳的边。最短路自然跟着变。</figcaption>
+</figure>
+<p>状态很小：左手、右手、左脚、右脚各在哪个点上。每一步只动一只手或一只脚。从“双手在起步点、双脚在地上”出发，找到“双手在结束点”的代价最小的路径，用的是加权 A*。</p>
+<p>难的是每条边的代价。四肢的位置定了，身体怎么摆还有无数种可能。所以对每个状态，先在“骨盆位置 × 躯干倾角”的网格上搜一遍，找最省力的姿态：重心落在脚的支撑范围外面多少，手就得扛多少；扛的这部分除以“岩点好抓程度 × 力量体重比”，就是这一刻有多费劲。移动一只手的时候，那只手不受力，剩下三个点得撑得住，这是一步里最难的瞬间。</p>
+<p>选出来的姿态还要过一道验证：一副三维骨架，肢段长度按身高取人体测量学比例，肘和膝只能往一个方向弯，肩和髋的活动范围跟着柔韧走，任何关节不能穿进墙里。过不了就换下一个候选姿态，全都过不了，这个状态就不存在。App 里你看到的小人，画的就是这同一副骨架解出来的结果，所以“算的”和“画的”不会对不上。</p>
+<p>身材参数是这么接进去的：</p>
+<pre><code class="language-js">ratio  = (30 + 7 * strength) / weight   // 上肢力量 ÷ 体重：手点能扛多少
+legfac = weight / (45 + 4 * power)      // 腿的负担，也决定能跳多远
+hipAbd = (35 + 50 * flex) * RAD         // 髋能开多大：脚能抬多高
+arm    = (height + ape - shoulder) / 2  // 臂展：够不够得着</code></pre>
+<p>六个滑块：身高、体重、臂展差、力量、爆发、柔韧。它们不直接改答案，只改图里有哪些边、每条边多贵。</p>
+<figure class="dg dg-bb-video">
+  <div class="dg-bb-videowrap">
+    <video controls muted loop playsinline preload="metadata" poster="../../assets/blog/betabuddy/compare_poster.jpg" aria-label="同一条线的两种走法并排播放。左边是 152 厘米、柔韧 9 的攀爬者，走了 18 步；右边是 188 厘米、臂展多 6 厘米的攀爬者，走了 7 步。">
+      <source src="../../assets/blog/betabuddy/compare.mp4" type="video/mp4">
+    </video>
+    <span class="dg-bb-tag dg-bb-tag-l">152 cm · 柔韧 9 · 18 步</span>
+    <span class="dg-bb-tag dg-bb-tag-r">188 cm · 臂展 +6 · 7 步</span>
+  </div>
+  <figcaption>同一条线，同一套岩点。右边 7 步就到顶，之后画面停住；左边要多踩 11 步，中间还挂了一次脚跟。画面是 App 里的模型录屏。</figcaption>
+</figure>
+<p>这是我最喜欢的一个例子。同一条线，高瘦长臂的 7 步走完；152 厘米、柔韧很好的那位走了 18 步，中间挂了一次脚跟。没有人告诉模型“矮个子要多踩几脚”，这是最短路自己算出来的。</p>
+<p>够不着的时候可以跳。起跳能多够多远，由爆发、体重和脚点好坏决定；抓住之后双脚悬空，那个手点必须够好才挂得住，然后再把脚找回来。</p>
+<figure class="dg dg-bb-video dg-bb-video-one">
+  <div class="dg-bb-videowrap">
+    <video controls muted loop playsinline preload="metadata" poster="../../assets/blog/betabuddy/dyno_poster.jpg" aria-label="155 厘米、爆发 10 的攀爬者在一条黄色线路上的走法，15 步里有两次起跳。">
+      <source src="../../assets/blog/betabuddy/dyno.mp4" type="video/mp4">
+    </video>
+    <span class="dg-bb-tag dg-bb-tag-l">155 cm · 爆发 10 · 15 步，跳 2 次</span>
+  </div>
+  <figcaption>这条线 170 厘米的预设身材 11 步静态走完。155 厘米够不着，求解器给爆发高的那位排了两次起跳。</figcaption>
+</figure>
+<p>脚跟挂和脚尖勾也加了，但只在别的办法都不行、或者有一步特别难的时候才启用。不然模型会满墙挂脚，像只树懒。</p>
+<p><strong>它算得对吗？</strong></p>
+<figure class="dg dg-bb-scores" role="img" aria-label="两组结果。72 条线乘以 5 种身材共 360 个组合：339 个有解，21 个无解。70 条线按示范者身材求解后与示范走法对比：43 条基本一致，23 条部分一致，4 条无解。">
+  <div class="dg-panel">
+    <div class="dg-title">算出来的走法靠谱吗</div>
+    <div class="dg-bb-score">
+      <div class="dg-bb-score-head"><b>72 条线 × 5 种身材</b><span>360 个组合</span></div>
+      <div class="dg-bb-bar"><i class="ok" style="flex:339">339 有解</i><i class="no" style="flex:21"></i></div>
+      <small>21 个无解，其中两条线所有身材都无解</small>
+    </div>
+    <div class="dg-bb-score">
+      <div class="dg-bb-score-head"><b>和真人示范的走法比</b><span>70 条线，按示范者的身材算</span></div>
+      <div class="dg-bb-bar"><i class="ok" style="flex:43">43 基本一致</i><i class="mid" style="flex:23">23 部分一致</i><i class="no" style="flex:4"></i></div>
+      <small>4 条无解。示范里用了挂脚或勾脚的 8 条线，只有 1 条复现了同一只脚、同一个点</small>
+    </div>
+  </div>
+  <figcaption>“基本一致”指手点顺序和关键动作对得上。它说明模型大体没跑偏，不说明某一步你做得到。</figcaption>
+</figure>
+<p>每条线都有真人示范，我把示范的走法记下来当参照，再用示范者的身材去算。70 条里 43 条基本一致，23 条部分一致，4 条无解。</p>
+<p>该说的不足：</p>
+<ul><li>挂脚和勾脚基本没复现。示范里用到的 8 条线，模型只在 1 条上选了同一只脚、同一个点。</li><li>岩点好不好抓是从形状猜的，没有摩擦系数，也不分指力。</li><li>个别动作的中间帧，膝盖或手肘会擦进墙面十几厘米。</li><li>难度排序在两面墙上很弱：模型觉得难的线，不一定是定线员觉得难的线。</li><li>岩点的凸出高度，多视角拍到的是实测，只有单机位的是按外形估的。</li></ul>
+<p>所以 App 一进岩馆就写着：这是模型的推演，不是教练建议。它适合回答“有没有另一种走法”，不适合回答“我能不能过”。</p>
+<p><strong>最后，装进手机。</strong></p>
+<p>整座馆打成一个包：模型、72 条线、预先算好的 8 种身材的解、求解器本身，加上一个三维页面，一共 11 MB。包里没有照片贴图，墙是纯色的，岩点按真实轮廓和颜色建模。</p>
+<p>App 是一层很薄的原生壳：iOS 用 SwiftUI，Android 用 Kotlin 和 Compose。壳和包之间只有一份很短的约定：壳告诉页面打开哪面墙、哪条线、用什么语言；页面告诉壳“我好了”“用户选了这条线”。两个平台装的是同一个包，一个字节都不用改。</p>
+<p>预设身材的解是提前算好的，点开就播。自己拖滑块调出来的身材，求解器在手机上的后台线程里现算，最长十秒左右。</p>
+<p>岩馆这部分不联网。iOS 上页面走自定义协议从安装包里加载，其它请求一律拦掉；Android 版干脆没有申请网络权限。整座馆和你的攀爬记录都只在手机里。</p>
+<p>顺便记一个好笑的坑。Android 模拟器上，姿态识别一跑就崩，报非法指令。查了半天，代码没问题，问题出在模拟器里的一组 CPU 扩展指令上。给模拟器内核加一个启动参数把它关掉，就好了。这是模拟器环境的事，和 App 无关。</p>
+<p><strong>这个项目是怎么写出来的。</strong></p>
+<p>绝大部分代码是 coding agent 写的。我做的事情主要是看结果，然后说“不对”。</p>
+<p>“随机摆的岩点不算还原。”“先别急着求解，先把墙还原对。”“这个小人很假，朝向也有问题。”“示范的人踩到别的颜色，那是踩错了，按规则来。”</p>
+<p>回头看，每一句“不对”都在把问题往前推一层：从“看起来像”到“量得准”，从“能算出解”到“解得像人”。写代码已经不是瓶颈了，知道什么才算对，仍然是。</p>
+<p><strong>下载</strong></p>
+<ul><li>Android 测试版：<a href="https://github.com/dozycat/BetaBuddy/releases/tag/android-v1.1.0">GitHub Releases</a>，下载 APK 直接安装，需要 Android 8.0 以上。目前只在模拟器上测过。</li><li>iOS 版在审核中。</li><li>App 的源码在 <a href="https://github.com/dozycat/BetaBuddy">dozycat/BetaBuddy</a>。</li></ul>
+<p>馆里的内容是非官方整理的，和场馆没有关系。线路会定期更换，请以现场为准。</p>
+    </div>
+    <footer class="article-end">
+      <span class="article-end-mark">完</span>
+      <p>累了就先到这里。站起来接杯水，猫替你守着这一页。</p>
+      <a href="../">再读一篇手记 →</a>
+      </footer>
+  </article>
+</main>
+<footer class="footer">
+  <div class="footer-inner">
+    <span>懒猫君 · dozycat © 2026</span>
+    <span class="footer-links">
+      <a href="../../">小传</a>
+      <a href="../">手记</a>
+      <a href="https://github.com/dozycat/dozycat">GitHub</a>
+    </span>
+  </div>
+  <div class="footer-contact" aria-label="联系方式">
+    <a href="mailto:hi@dozycat.ai" aria-label="邮箱：hi@dozycat.ai" title="hi@dozycat.ai">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+    </a>
+    <a href="https://xhslink.cn/o/5Q78VAP7D6i" target="_blank" rel="noopener noreferrer" aria-label="小红书（在新标签页打开）" title="小红书">
+      <span class="contact-xhs" aria-hidden="true"></span>
+    </a>
+  </div>
+</footer>
+</body>
+</html>
