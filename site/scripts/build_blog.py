@@ -254,8 +254,6 @@ def page_head(title: str, description: str, stylesheet: str, extra_css: str = ""
 <meta property="og:description" content="{escaped_description}">
 <link rel="icon" type="image/png" href="{stylesheet}assets/icon.png">
 <link rel="apple-touch-icon" href="{stylesheet}assets/icon.png">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{stylesheet}style.css">{extra_css}
 </head>"""
 
@@ -439,6 +437,25 @@ def load_posts() -> list[tuple[Post, str]]:
     return sorted(posts, key=lambda item: item[0].date, reverse=True)
 
 
+def warn_uncovered_characters() -> None:
+    """Say so when a page uses a character the self-hosted subset fonts do not contain."""
+    charset_path = SITE_DIR / "assets" / "fonts" / "charset.txt"
+    if not charset_path.is_file():
+        return
+    covered = set(charset_path.read_text(encoding="utf-8"))
+    used: set[str] = set()
+    for pattern in ("*.html", "*.md"):
+        for path in SITE_DIR.rglob(pattern):
+            used.update(path.read_text(encoding="utf-8"))
+    missing = sorted(c for c in used - covered if c.isprintable() and not c.isspace())
+    if missing:
+        print(
+            f"Fonts: {len(missing)} character(s) fall back to the system font: "
+            f"{''.join(missing[:60])}\n"
+            "Run site/scripts/build_fonts.py to add them."
+        )
+
+
 def main() -> None:
     rendered_posts = load_posts()
     BLOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -452,6 +469,7 @@ def main() -> None:
             render_post(post, body_html), encoding="utf-8"
         )
     print(f"Built {len(rendered_posts)} blog post(s) in {BLOG_DIR}")
+    warn_uncovered_characters()
 
 
 if __name__ == "__main__":

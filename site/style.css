@@ -1,5 +1,21 @@
 /* dozycat 官网 — 实现自「dozycat 官网.dc.html」（Claude Design） */
 
+/* 字体自托管：只含站内用到的字（site/scripts/build_fonts.py 生成），不依赖外部字体服务。 */
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('assets/fonts/noto-sans-sc.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('assets/fonts/noto-serif-sc.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --paper: #FAFAF8;
   --bg: #EDECE8;
@@ -27,7 +43,7 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   background: var(--paper);
-  font-family: 'Noto Sans SC', sans-serif;
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
@@ -67,7 +83,7 @@ h1, h2, h3, p { margin: 0; }
 .logo { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
 .logo-cn {
   display: flex; align-items: center; gap: 10px;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 19px; font-weight: 600; letter-spacing: .08em;
 }
 .logo-cn .dot { margin-left: -.08em; }
@@ -384,12 +400,12 @@ h1, h2, h3, p { margin: 0; }
   text-align: center;
 }
 .chapter-no {
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 13px; letter-spacing: .5em; color: var(--coral);
   padding-left: .5em; /* 抵消末字距，保持居中 */
 }
 .chapter-title {
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 34px; font-weight: 600; letter-spacing: .02em;
   margin-top: 14px;
 }
@@ -399,7 +415,7 @@ h1, h2, h3, p { margin: 0; }
   text-align: left;
 }
 .prose p {
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 16px; line-height: 2.3; color: #43423E;
   text-wrap: pretty;
 }
@@ -432,7 +448,7 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
   display: flex; flex-direction: column; align-items: center;
 }
 .footnotes-title {
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 13px; letter-spacing: .5em; padding-left: .5em;
   color: var(--muted);
   border-top: 1px solid var(--line);
@@ -466,7 +482,7 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 .blog-index-hero { max-width: 680px; }
 .blog-index-hero h1 {
   margin-top: 18px;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 52px;
   line-height: 1.35;
   font-weight: 600;
@@ -476,7 +492,7 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 .blog-index-hero > p {
   max-width: 550px;
   margin-top: 24px;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 16px;
   line-height: 2.1;
   color: var(--ink-soft);
@@ -562,7 +578,7 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 }
 .blog-card-title {
   margin-top: 12px;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 25px;
   line-height: 1.55;
   font-weight: 600;
@@ -586,7 +602,7 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 }
 .article-hero h1 {
   margin-top: 18px;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 52px;
   line-height: 1.35;
   font-weight: 600;
@@ -596,7 +612,7 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 .article-dek {
   max-width: 660px;
   margin-top: 24px;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 18px;
   line-height: 2;
   color: var(--ink-soft);
@@ -616,7 +632,7 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
 .markdown-body {
   max-width: 720px;
   margin: 84px auto 0;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   color: #43423E;
 }
 .markdown-body h2 {
@@ -692,11 +708,11 @@ sup.fn a { color: var(--coral); padding: 0 2px; }
   justify-content: center;
   border: 1px solid var(--coral);
   border-radius: 50%;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
   font-size: 13px;
   color: var(--coral);
 }
-.article-end p { margin-top: 20px; font-family: 'Noto Serif SC', serif; font-size: 14px; line-height: 2; color: var(--muted); }
+.article-end p { margin-top: 20px; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 14px; line-height: 2; color: var(--muted); }
 .article-end a { display: inline-block; margin-top: 24px; font-size: 13px; color: var(--ink-soft); }
 
 /* 尾声接夜色带 */
