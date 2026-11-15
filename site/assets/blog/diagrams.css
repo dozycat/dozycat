@@ -755,6 +755,39 @@
 .dg-bb-bar .mid { background: var(--dg-amber); }
 .dg-bb-bar .no { padding: 0; background: var(--dg-fail); }
 
+/* ---------- BetaBuddy 第二篇：复查、分段、膝角 ---------- */
+.dg-bb2-grid { margin-top: 16px; }
+.dg-bb2-row { display: grid; grid-template-columns: 44px minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.dg-bb2-head { border-top: 0; padding-top: 0; font-size: 11.5px; color: var(--muted); }
+.dg-bb2-row > span { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dg-bb2-row > span i { display: block; flex: none; height: 10px; min-width: 3px; border-radius: 5px; background: var(--dg-fail); }
+.dg-bb2-row > span em { font-size: 12px; white-space: nowrap; color: var(--ink-soft); }
+.dg-bb2-row u { justify-self: start; padding: 2px 9px; border-radius: 999px; font-size: 12px; line-height: 1.6; text-decoration: none; white-space: nowrap; }
+.dg-bb2-row u.ok { background: var(--dg-pass-soft); color: var(--dg-pass); }
+.dg-bb2-row u.mid { background: var(--dg-amber-soft); color: var(--dg-amber); }
+.dg-bb2-row u.no { background: var(--dg-fail-soft); color: var(--dg-fail); }
+.dg-bb2-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.dg-bb2-step { position: relative; padding: 12px 12px 34px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--paper); font-size: 13.5px; }
+.dg-bb2-step small { margin-top: 5px; }
+.dg-bb2-step em { position: absolute; left: 12px; bottom: 10px; padding: 1px 8px; border-radius: 999px; font-size: 11px; line-height: 1.6; }
+.dg-bb2-step em.ok { background: var(--dg-pass-soft); color: var(--dg-pass); }
+.dg-bb2-step em.mid { background: var(--dg-amber-soft); color: var(--dg-amber); }
+.dg-bb2-knee svg { display: block; width: 100%; max-width: 460px; height: auto; margin: 14px auto 0; }
+.dg-bb2-knee svg text { font-size: 9.5px; fill: var(--muted); font-family: 'Noto Sans SC', sans-serif; }
+.dg-bb2-knee svg text.dg-bb2-note { fill: var(--dg-amber); font-size: 10.5px; }
+.dg-bb2-axis path { fill: none; stroke: var(--line-strong); stroke-width: 1; }
+.dg-bb2-band { fill: var(--dg-amber-soft); }
+.dg-bb2-curve { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dg-bb2-pt { fill: #fff; stroke: var(--ink); stroke-width: 1.4; }
+@media (max-width: 600px) {
+  .dg-bb2-row { grid-template-columns: 30px minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 6px; font-size: 12px; }
+  .dg-bb2-row u { padding: 1px 6px; font-size: 11px; }
+  .dg-bb2-row > span em { font-size: 11px; }
+  .dg-bb2-row > span { gap: 5px; }
+  .dg-bb2-row > span i { max-width: 38%; }
+  .dg-bb2-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 600px) {
   .dg-bb-hold-grid { grid-template-columns: 1fr; }
   .dg-bb-graph { grid-template-columns: repeat(2, minmax(0, 1fr)); }

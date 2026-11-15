@@ -1,5 +1,12 @@
 [
   {
+    "slug": "betabuddy-motion",
+    "source": "posts/betabuddy-motion.md",
+    "tags": ["技术"],
+    "date": "2026-11-15",
+    "description": "最短路算出来的走法，人不一定做得出来。给模型补上重心、铅垂线和抛物线，再请十七位看不到代码的复查者轮流挑刺：小人是怎么一点点爬得像个人的，以及哪里还不像。"
+  },
+  {
     "slug": "betabuddy-gym",
     "source": "posts/betabuddy-gym.md",
     "tags": ["技术"],

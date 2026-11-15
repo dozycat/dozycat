@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>那个小人，爬得不像人 — 懒猫君手记</title>
+<meta name="description" content="最短路算出来的走法，人不一定做得出来。给模型补上重心、铅垂线和抛物线，再请十七位看不到代码的复查者轮流挑刺：小人是怎么一点点爬得像个人的，以及哪里还不像。">
+<meta property="og:title" content="那个小人，爬得不像人 — 懒猫君手记">
+<meta property="og:description" content="最短路算出来的走法，人不一定做得出来。给模型补上重心、铅垂线和抛物线，再请十七位看不到代码的复查者轮流挑刺：小人是怎么一点点爬得像个人的，以及哪里还不像。">
+<link rel="icon" type="image/png" href="../../assets/icon.png">
+<link rel="apple-touch-icon" href="../../assets/icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../assets/blog/diagrams.css">
+</head>
+<body class="blog-page article-page">
+<nav class="nav blog-site-nav">
+  <a class="logo logo-cn" href="../../" aria-label="回到懒猫君首页">
+    <span class="cat cat-mini" aria-hidden="true">
+      <span class="ear ear-l"></span>
+      <span class="ear ear-r"></span>
+      <span class="head">
+        <span class="eye eye-l"></span>
+        <span class="eye eye-r"></span>
+      </span>
+    </span>
+    懒猫君<span class="dot">。</span>
+  </a>
+  <div class="nav-links">
+    <a href="../../">小传</a>
+    <a class="nav-blog active" href="../">手记</a>
+    <a class="btn btn-ink" href="https://github.com/dozycat/dozycat/releases/latest/download/dozycat-0.1.6-arm64.dmg">领养一只懒猫</a>
+  </div>
+</nav>
+<main>
+  <article class="blog-article">
+    <header class="article-hero">
+      <a class="article-back" href="../">← 返回全部手记</a>
+      <div class="post-meta">
+        <span class="post-tags" aria-label="标签"><span class="post-tag">技术</span></span>
+        <span class="article-meta">2026.11.15 · 8 分钟</span>
+      </div>
+      <h1>那个小人，爬得不像人</h1>
+      <p class="article-dek">最短路算出来的走法，人不一定做得出来。给模型补上重心、铅垂线和抛物线，再请十七位看不到代码的复查者轮流挑刺：小人是怎么一点点爬得像个人的，以及哪里还不像。</p>
+      <div class="article-energy" aria-hidden="true">
+        <span><i class="article-energy-mind" style="width:72%"></i></span>
+        <span><i class="article-energy-body" style="width:45%"></i></span>
+      </div>
+    </header>
+    <div class="markdown-body">
+<p>上一篇写的是怎么把一座岩馆装进手机：量墙，认岩点，把“怎么爬”做成一个最短路问题。小人能从起步点一路走到结束点，换一副身材，走法跟着变。</p>
+<p>然后我盯着它看了很久，越看越不对劲。</p>
+<p>它会双脚悬空挂在一个点上，身体歪在一边，一动不动。它会空着两只手，踩着踢脚板横着走一米多，再起跳。它跳起来的时候像在月球上，飘过去的。</p>
+<p>最短路只管哪条路代价最小，不管牛顿。这篇手记写的是后来怎么一点点把牛顿请回来：怎么建的模，路上撞到了什么，哪些解决了，哪些没有。</p>
+<p><strong>先找一个不认识这份代码的人来看。</strong></p>
+<p>改之前得先知道哪里不像。我自己看不出来了，写代码的 agent 也看不出来：每个动作它都知道“为什么是这样”，看什么都觉得有道理。</p>
+<p>所以定了一个规矩。每改完一轮，起一个全新的 agent 当复查者。它看不到代码，看不到文档，也不知道这一轮改了什么。它手里只有导出来的骨架坐标，和一个能把骨架画成三视图的工具。任务只有一句话：从图和数字判断，这是不是真人做得出来的动作。别客气。</p>
+<p>复查者会自己写脚本量东西。第一次认真量那些动态动作，出来三个数：</p>
+<ul><li>腾空的时候，重心往下掉的加速度是 2 到 4 m/s²。地球上是 9.8。</li><li>起跳速度 3.7 到 5.8 m/s。顶尖运动员原地纵跳，离地时大约是 3.7。</li><li>双脚悬空、基本不动的 1342 帧里，有 1127 帧身体偏在手点正下方 8 厘米以外。</li></ul>
+<p>三个数，三处都不是这个星球上的事。</p>
+<figure class="dg dg-bb2-reviews" role="img" aria-label="五次独立复查的结果。判为人体做不到的帧：第九次 324 帧里 19 帧，第十四次 618 帧里 13 帧，第十五次 617 帧里 3 帧，第十六次 662 帧里 2 帧，第十七次 670 帧里 1 帧。双手起跳这一项的结论依次是不像、不像、大体像、不像、不像；跳完找回脚依次是大体像、大体像、不像、大体像、大体像；接住依次是大体像、大体像、像、像、大体像。">
+  <div class="dg-panel">
+    <div class="dg-title">不认识代码的复查者怎么说</div>
+    <div class="dg-bb2-grid">
+      <div class="dg-bb2-row dg-bb2-head"><span>第几次</span><span>判“人做不到”的帧</span><span>双手起跳</span><span>跳完找回脚</span><span>接住</span></div>
+      <div class="dg-bb2-row"><b>9</b><span><i class="bad" style="width:58%"></i><em>19 / 324</em></span><u class="no">不像</u><u class="mid">大体像</u><u class="mid">大体像</u></div>
+      <div class="dg-bb2-row"><b>14</b><span><i class="bad" style="width:21%"></i><em>13 / 618</em></span><u class="no">不像</u><u class="mid">大体像</u><u class="mid">大体像</u></div>
+      <div class="dg-bb2-row"><b>15</b><span><i class="bad" style="width:5%"></i><em>3 / 617</em></span><u class="mid">大体像</u><u class="no">不像</u><u class="ok">像</u></div>
+      <div class="dg-bb2-row"><b>16</b><span><i class="bad" style="width:3%"></i><em>2 / 662</em></span><u class="no">不像</u><u class="mid">大体像</u><u class="ok">像</u></div>
+      <div class="dg-bb2-row"><b>17</b><span><i class="bad" style="width:2%"></i><em>1 / 670</em></span><u class="no">不像</u><u class="mid">大体像</u><u class="mid">大体像</u></div>
+    </div>
+    <div class="dg-bb-foot"><span>每次都是一个新的复查者：看不到代码，只有导出的骨架和三视图</span><span>第九次只看了动态跳的帧</span></div>
+  </div>
+  <figcaption>第十五次和第十六次看的起跳代码是同一份，结论却相反。这件事后面单独说。</figcaption>
+</figure>
+<p>前后一共复查了十七轮。下面按建模的顺序讲。</p>
+<p><strong>挂着的人是一根铅垂线。</strong></p>
+<p>原来的模型判断“稳不稳”只看脚：重心落在脚的支撑范围外面多少，手就得扛多少。脚一离点，这套算法就没了抓手，身体停在哪儿都算数。</p>
+<p>可是没有脚的时候，人就是一个摆。静止下来，重心一定在手点的正下方，没有别的可能。</p>
+<p>所以第一件事是把重心算对：按各段肢体的质量加权，躯干占一半，头 8%，一条大腿一成，小腿加脚 6%。然后加一条硬规则：没有脚受力的姿态，重心必须挂在手点下面；手上的负担有上限，原来放到 2.5 倍，现在收到 1.6 倍。</p>
+<p>这条规则一加，一批“解”就没了。它们本来也不该有。</p>
+<p><strong>跳，是一道中学物理题。</strong></p>
+<p>够不着的时候可以跳。原来的跳只是一条特别贵的边，画面上是把身体从这儿匀速挪到那儿。现在每一跳都要先算一遍：</p>
+<pre><code class="language-js">T   = Math.sqrt(2 * need / g)             // 手还差多远，就得飞多久
+v0  = [d.x / T, d.y / T + g * T / 2, d.z / T]   // 离脚那一刻的速度
+vC  = [v0.x, v0.y - g * T, v0.z]          // 手到点那一刻的速度
+lam = 1 + (|vC|² + 2 * g * drop) / (g * len)    // 荡到最低点，手上有几倍体重</code></pre>
+<p><code>need</code> 是起跳姿态下，肩离“够得着那个点”还差的距离。起跳速度不能超过这副身体的上限，上限由爆发、体重和脚点好坏决定。抓住之后如果没有脚，人会荡下去，荡到最低点时手上最重；那个点得够好，才挂得住。</p>
+<p>抓住之后的摆荡是一个有阻尼的摆：带着接住那一刻的速度，荡过手点正下方，再荡回来，每荡半个来回，幅度剩四成多。</p>
+<p>还有一种跳，一只手一直留在原来的点上。那不是自由落体，那只手在帮忙拉。做法是把重力打个折：那只手能担多少体重，重力就减掉多少。同样的起跳速度，能飞得更远一点。</p>
+<figure class="dg dg-bb2-phases" role="img" aria-label="一次动态跳分成六段：蓄力、蹬伸、腾空、接住、摆荡、找回脚。腾空按抛体运动算，摆荡按有阻尼的摆算，这两段是物理；蓄力和蹬伸是按给定曲线插值出来的。">
+  <div class="dg-panel">
+    <div class="dg-title">一次跳，拆成六段</div>
+    <div class="dg-bb2-steps">
+      <div class="dg-bb2-step"><b>蓄力</b><small>手脚都在点上，身体先沉下去。最后 0.12 秒刹住，直接接蹬伸</small><em class="mid">插值</em></div>
+      <div class="dg-bb2-step"><b>蹬伸</b><small>从发力位加速到起跳速度。远的那只手先松，近的那只拉到最后</small><em class="mid">插值</em></div>
+      <div class="dg-bb2-step"><b>腾空</b><small>重心只受重力，走抛物线。飞多久由“还差多远”决定</small><em class="ok">物理</em></div>
+      <div class="dg-bb2-step"><b>接住</b><small>手到点。带着这一刻的速度，算荡到最低点时手上有几倍体重</small><em class="ok">物理</em></div>
+      <div class="dg-bb2-step"><b>摆荡</b><small>没有脚，人就是一个摆：荡过手点正下方，再回来</small><em class="ok">物理</em></div>
+      <div class="dg-bb2-step"><b>找回脚</b><small>趁荡回来的那一下把脚搭上去，不等它自己停</small><em class="mid">插值</em></div>
+    </div>
+    <div class="dg-bb-foot"><span>“物理”的三段，复查者一直认可</span><span>“插值”的几段，是每一轮挨批的地方</span></div>
+  </div>
+  <figcaption>绿色的三段有公式可依。黄色的几段，是照着一条给定的曲线把身体挪过去，手脚再各自去够落点。</figcaption>
+</figure>
+<p>求解器判断“这一跳做不做得到”和画面上播的，是同一组数。这一点很重要，后面会看到它不成立的时候会出什么事。</p>
+<p><strong>有趣的事一：那只踩着“地面”的脚，离地两米。</strong></p>
+<p>查静态动作的时候发现一件怪事：两百多个关键帧里，标着“脚在地面”的那只脚，其实悬在垫子上方，最高的悬了两米多。</p>
+<p>原因很好笑。状态里的“地面”只是一个名字。另一只脚踩上岩点、人站起来之后，这只脚早就离地了，但名字没改。而“脚在地面”的状态有优待：单脚站立的限制、空手扶墙的限制，都管不到它。于是模型找到了一个漏洞，带着一只名义上在地面的脚，一路爬到了两米高。</p>
+<p>修法是一句话：叫“地面”的脚，必须真的踩得到垫子，踮脚为限。</p>
+<p>修完，一批线的起步走不通了。因为真人从垫子上墙，靠的是一个模型里原本没有的动作：一只脚先踩上点，另一只脚在垫子上一蹬，人就上去了。于是补了这个动作。垫子上的腿先屈再伸，手在身体升到一半时离开原处，够得着新点就抓住。</p>
+<p><strong>有趣的事二：最后一帧，膝盖突然直了。</strong></p>
+<p>有一轮复查者说：起跳前最后一帧，膝还弯着 130°，下一帧人已经在空中，腿直了。真人的腿是蹬直了才离地的。</p>
+<p>我当成 bug 追了半天，一度以为是哪次改动把膝角改坏了。最后发现改动没问题，是几何。</p>
+<figure class="dg dg-bb2-knee" role="img" aria-label="膝角和髋到踝距离的关系曲线。距离是腿长的一半时膝角 60 度，距离等于腿长时膝角 180 度。曲线在末端很陡：膝角从 130 度到 170 度，距离只从腿长的 90.6% 变到 99.6%，大约七厘米。">
+  <div class="dg-panel">
+    <div class="dg-title">腿快伸直的时候，膝角变得飞快</div>
+    <svg viewBox="0 0 340 180" xmlns="http://www.w3.org/2000/svg">
+      <rect class="dg-bb2-band" x="251.3" y="20" width="46.7" height="130"/>
+      <g class="dg-bb2-axis"><path d="M40 20 V150 H300"/><path d="M36 150 H40 M36 85 H40 M36 20 H40 M40 150 V154 M170 150 V154 M300 150 V154"/></g>
+      <polyline class="dg-bb2-curve" points="40.0,150.0 45.2,148.6 50.4,147.1 55.6,145.7 60.8,144.2 66.0,142.7 71.2,141.2 76.4,139.7 81.6,138.2 86.8,136.7 92.0,135.1 97.2,133.6 102.4,132.0 107.6,130.4 112.8,128.8 118.0,127.2 123.2,125.5 128.4,123.9 133.6,122.2 138.8,120.5 144.0,118.7 149.2,117.0 154.4,115.2 159.6,113.4 164.8,111.6 170.0,109.7 175.2,107.8 180.4,105.9 185.6,103.9 190.8,101.9 196.0,99.9 201.2,97.8 206.4,95.6 211.6,93.5 216.8,91.2 222.0,88.9 227.2,86.5 232.4,84.0 237.6,81.4 242.8,78.8 248.0,76.0 253.2,73.1 258.4,70.0 263.6,66.7 268.8,63.2 274.0,59.4 279.2,55.2 284.4,50.5 289.6,44.9 294.8,37.6 300.0,20.0"/>
+      <circle class="dg-bb2-pt" cx="251.3" cy="74.2" r="3.5"/><circle class="dg-bb2-pt" cx="298" cy="30.8" r="3.5"/>
+      <text x="32" y="153.5" text-anchor="end">60°</text><text x="32" y="88.5" text-anchor="end">120°</text><text x="32" y="23.5" text-anchor="end">180°</text>
+      <text x="40" y="166" text-anchor="middle">50%</text><text x="170" y="166" text-anchor="middle">75%</text><text x="300" y="166" text-anchor="middle">100%</text>
+      <text x="170" y="178" text-anchor="middle">髋到踝的距离 ÷ 腿长</text>
+      <text x="246" y="72" text-anchor="end">130°</text><text x="292" y="28" text-anchor="end">170°</text>
+      <text class="dg-bb2-note" x="274.6" y="140" text-anchor="middle">7 cm</text>
+    </svg>
+  </div>
+  <figcaption>大腿和小腿一样长的话，膝角 = 2·arcsin(距离 ÷ 腿长)。阴影那一段只占腿长的 9%，膝却要张开 40°。起跳前身体每秒走两三米，七厘米就是一帧的事。</figcaption>
+</figure>
+<p>腿快伸直的时候，膝角对距离极其敏感。膝从 130° 张到 170°，髋只需要再远离脚七厘米。而起跳前那一瞬间，身体每秒走两三米。七厘米，就是一帧。</p>
+<p>导出的帧隔 0.04 到 0.1 秒，最后一个“脚还在点上”的帧，可能离真正离脚还差大半帧。腿确实蹬直了，只是蹬直的那一下落在两帧之间。</p>
+<p>这件事教会我两点。一是给复查者的说明里要写清楚采样间隔。二是它也没有完全冤枉我：腿伸直的过程挤在最后几十毫秒里，说明蹬伸这一段的速度是怎么来的，本身就有问题。这一点到最后也没改好，后面说。</p>
+<p><strong>有趣的事三：矮的能爬，高一点的反而不能。</strong></p>
+<p>有一个很便宜的检查：固定一副身材，每次只动一个滑块，把 70 条线都算一遍。道理上，人高一点、力量大一点、柔韧好一点，能爬的线只会多，不会少。</p>
+<p>结果有一条线，150 厘米能解，158 厘米无解。</p>
+<p>追下去是求解器里一个很老实的偷懒。起步规则是“双手在起步点、双脚在地上”。如果站在垫子上两只手都摸得到起步点，求解器就只保留这一种起法。158 的人手臂伸直，刚好摸得到。可手臂已经伸直了，人蹲不下去；蹲不下去，就跳不起来。150 的人反倒没事：他根本摸不到，求解器给他留了另一种起法，先扶着墙蹲下，再跳上去抓。</p>
+<p>高个子被“摸得到”害了。修法是两种起法都留着，让最短路自己挑。</p>
+<p>同一个检查还揪出另一个洞：静态走法双脚离不了地的时候，求解器直接跳过了“勾脚”那一遍。有的线恰恰是靠脚跟勾住一个低处的点，把人带离地面的。</p>
+<p>修完这两处，不单调的情况从 4 处降到 1 处，示范者身材能解的线从 68 条变成 69 条。</p>
+<p><strong>有趣的事四：手抓住的那一帧，人弹了 16 厘米。</strong></p>
+<p>除了看图的复查者，还有一个 agent 专门在 iOS 模拟器里操作真的 App：真的点屏幕，真的播放，每 40 毫秒采一次骨架。它报告说，有一步跳，手抓住点的那一帧，骨盆在一个采样里挪了 16 厘米。</p>
+<p>我在导出的数据里复现了，17 厘米，对得上。</p>
+<p>原因是同一个时刻有两副骨架。起跳那一刻身体离墙多远，画面用的是“手还抓着点”的那副，往后坐着；求解器算重心用的是“手已经松开”的那副。两副骨架差了将近 20 厘米。腾空的时候这段差被悄悄补上了，到接住那一帧，又按原来的偏移摆了回去。</p>
+<p>上一篇我很得意地写过：算的和画的是同一副骨架，所以不会对不上。这句话在跳的那零点几秒里不成立。</p>
+<p>同一类问题还有一个：腾空时躯干一直保持起跳时往后坐的姿势，肩比求解器以为的离墙远了二三十厘米。于是接住那一刻手根本够不着点，整个人被拽过去。</p>
+<p>修法都一样朴素：从上一帧实际在的地方接着走，别相信另一套数。</p>
+<p><strong>有趣的事五：两位复查者，同一份代码，结论相反。</strong></p>
+<p>第十五轮，复查者说双手起跳“大体像”。我以为到头了。</p>
+<p>第十六轮换了一个复查者。起跳的代码一行没动，结论是“不像”，并且附了一长串数字。</p>
+<p>更尴尬的是另一件事。写代码的 agent 自己也量：离脚前后速度对不上的跳，57 步里只有 4 步。复查者量：23 步。</p>
+<p>差在量法上。它量的是动画内部“蹬伸”这一段的首尾；复查者量的是导出帧上的重心，把腿最后蹬直那一下也算了进去。自己出题自己答，分数当然好看。</p>
+<p>后来的做法是把复查者写的量测脚本原样拿过来，先在同一份数据上复现它的每一个数，一个不差，再用它当尺子去改。尺子得是别人的。</p>
+<p><strong>改完之后。</strong></p>
+<figure class="dg dg-bb-scores" role="img" aria-label="三组前后对比。70 条线乘以 8 种身材共 560 个组合：改之前 550 个有解，改之后 510 个。70 条线按示范者身材求解后与示范走法对比：改之前 50 条基本一致、19 条部分一致，改之后 52 条基本一致、17 条部分一致、1 条无解。双脚悬空静止的帧里偏离手点正下方 8 厘米以上的：改之前 1342 帧里 1127 帧，改之后 431 帧里 127 帧。">
+  <div class="dg-panel">
+    <div class="dg-title">数字上的变化</div>
+    <div class="dg-bb-score">
+      <div class="dg-bb-score-head"><b>70 条线 × 8 种身材，有解的</b><span>改之前 550 / 560</span></div>
+      <div class="dg-bb-bar"><i class="ok" style="flex:510">510 有解</i><i class="no" style="flex:50"></i></div>
+      <small>少掉的 40 个主要是三类：悬在半空挂不住了，髋开不到那么大了，起跳没有蹬伸的余地了</small>
+    </div>
+    <div class="dg-bb-score">
+      <div class="dg-bb-score-head"><b>和真人示范的走法比</b><span>改之前 50 / 19 / 0</span></div>
+      <div class="dg-bb-bar"><i class="ok" style="flex:52">52 基本一致</i><i class="mid" style="flex:17">17 部分一致</i><i class="no" style="flex:1"></i></div>
+      <small>没有一条变成“不一致”。1 条无解：示范的人自己也只是挂着荡了十几秒，没有完成</small>
+    </div>
+    <div class="dg-bb-score">
+      <div class="dg-bb-score-head"><b>双脚悬空不动时，身体歪在手点一侧的帧</b><span>改之前 1127 / 1342</span></div>
+      <div class="dg-bb-bar"><i class="mid" style="flex:127">127</i><i class="ok" style="flex:304">304 帧挂在正下方</i></div>
+      <small>剩下的多数是从单脚站立把另一只脚甩上去挂住的那一步</small>
+    </div>
+  </div>
+  <figcaption>腾空时重心的下落加速度：改之前复查者量到 2–4 m/s²，现在中位数 9.82。起跳速度：改之前量到 3.7–5.8 m/s，现在最大 3.28。</figcaption>
+</figure>
+<p>再列几样具体改了的：</p>
+<ul><li>两只手不是同时松的。身体往一边去，远的那只先够不着、先松，近的那只拉到最后。</li><li>起跳要有真的蹬伸距离。有一步是站在垫子上、腿几乎直着，“跳”出了 2 m/s，蹬伸的路程只有 8 厘米。这种跳被筛掉了。</li><li>跳完找回脚更快。人挂在手上是费力的，够得着就搭。复查者量到的悬空时间，中位数从 3 秒降到 2 秒出头。</li><li>悬空时屈臂锁多深，看力量。</li></ul>
+<p><strong>没解决的。</strong></p>
+<ul><li>双手都离点的那种跳，从松手到离脚的零点几秒，最后一轮复查仍然是“不像”。手松得早，速度挤在最后一格，手臂没有领着身体去够点。这一段是照着一条给定的曲线画出来的，没有“腿在蹬、手在拉、合起来把人加速”这件事本身。再往下，得按人体的动力学去合成，不是调参数能调出来的。</li><li>从垫子起跳也还是“不像”。数据里只剩三步，一步是真的蹲跳，另外两步不是。</li><li>力量是按“绝对力量 ÷ 体重”算的，体重轻的人占便宜。46 公斤、力量 5 的身材，比值相当于 65 公斤的人力量 8.8，所以小个子会悬空做很深的引体。该按肌肉横截面修正，还没做。</li><li>静态动作里，躯干偶尔一帧跳十几厘米的毛病，从 58 步压到 20 步。代价是蹭在墙上的脚多滑了几次。</li><li>这一轮的改动还没发版，也没在真机上跑过。</li></ul>
+<p>所以 App 里那句话还得留着：这是模型的推演，不是教练建议。</p>
+<p><strong>这一轮是怎么干的。</strong></p>
+<p>和上一篇一样，代码是 coding agent 写的。不一样的是这次不止一个：一个改求解器和动画，一批互不相识的复查者轮流看图挑刺，还有一个在模拟器里点屏幕。</p>
+<p>我说的话更少了，大概就这几句：</p>
+<p>“有些动作不是人能做出来的。”“有的走法像在抓空气，看不到点。”“最短路不一定是最好的走法。”“矮个子有些线解不出来，把爆发调满也不行，为什么？”</p>
+<p>上一篇的结尾说，写代码不是瓶颈了，知道什么才算对才是。这一轮的体会往前挪了半步：什么算对，最好别让做题的人自己说了算。找一个看不到答案的人，让他自己带尺子来。</p>
+<p>哪怕他是另一个 agent。</p>
+<p><strong>相关</strong></p>
+<ul><li>上一篇：<a href="../betabuddy-gym/">把一座岩馆装进手机</a></li><li>iOS 版：<a href="https://apps.apple.com/app/id6809249574">App Store</a></li><li>App 的源码在 <a href="https://github.com/dozycat/BetaBuddy">dozycat/BetaBuddy</a></li></ul>
+<p>馆里的内容是非官方整理的，和场馆没有关系。线路会定期更换，请以现场为准。</p>
+    </div>
+    <footer class="article-end">
+      <span class="article-end-mark">完</span>
+      <p>累了就先到这里。站起来接杯水，猫替你守着这一页。</p>
+      <a href="../">再读一篇手记 →</a>
+      </footer>
+  </article>
+</main>
+<footer class="footer">
+  <div class="footer-inner">
+    <span>懒猫君 · dozycat © 2026</span>
+    <span class="footer-links">
+      <a href="../../">小传</a>
+      <a href="../">手记</a>
+      <a href="https://github.com/dozycat/dozycat">GitHub</a>
+    </span>
+  </div>
+  <div class="footer-contact" aria-label="联系方式">
+    <a href="mailto:hi@dozycat.ai" aria-label="邮箱：hi@dozycat.ai" title="hi@dozycat.ai">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+    </a>
+    <a href="https://xhslink.cn/o/5Q78VAP7D6i" target="_blank" rel="noopener noreferrer" aria-label="小红书（在新标签页打开）" title="小红书">
+      <span class="contact-xhs" aria-hidden="true"></span>
+    </a>
+  </div>
+</footer>
+</body>
+</html>
